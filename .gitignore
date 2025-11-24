@@ -28,7 +28,6 @@ golden-model/__pycache__/
 work/
 vendor/
 target/
-golden-model/FP16/
 modelsim.ini
 transcript
 sw/inc/
