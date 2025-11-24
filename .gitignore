@@ -1,0 +1,40 @@
+########################
+# Bender
+########################
+.bender/
+
+########################
+# Python / virtualenvs
+########################
+venv/
+*/venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+########################
+# Golden model artifacts
+########################
+golden-model/venv/
+golden-model/gemm/txt/
+golden-model/**/*.pyc
+golden-model/__pycache__/
+
+########################
+# Simulation / build
+########################
+work/
+vendor/
+target/
+golden-model/FP16/
+modelsim.ini
+transcript
+sw/inc/
+*.wlf
+
+########################
+# IDE
+########################
+.vscode/
