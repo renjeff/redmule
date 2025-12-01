@@ -1,0 +1,129 @@
+# //  Questa Sim-64
+# //  Version 10.7b_1 linux_x86_64 Jul 26 2018
+# //
+# //  Copyright 1991-2018 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# vsim -voptargs="+acc" work.tb_redmule_mx_decoder 
+# Start time: 19:19:16 on Nov 27,2025
+# ** Note: (vsim-3812) Design is being optimized...
+# Loading sv_std.std
+# Loading work.tb_redmule_mx_decoder(fast)
+# Loading work.redmule_mx_decoder(fast)
+do waves_mx_decoder.do
+# 0 ns
+# 1 us
+run -all
+# === TEST: block_0 ===
+# === TEST PASSED: block_0 ===
+# === TEST: block_1 ===
+# === TEST PASSED: block_1 ===
+# === TEST: block_2 ===
+# === TEST PASSED: block_2 ===
+# === TEST: block_3 ===
+# === TEST PASSED: block_3 ===
+# === TEST: block_4 ===
+# === TEST PASSED: block_4 ===
+# === TEST: block_5 ===
+# === TEST PASSED: block_5 ===
+# === TEST: block_6 ===
+# === TEST PASSED: block_6 ===
+# === TEST: block_7 ===
+# === TEST PASSED: block_7 ===
+# === TEST: block_8 ===
+# === TEST PASSED: block_8 ===
+# === TEST: block_9 ===
+# === TEST PASSED: block_9 ===
+# === TEST: block_10 ===
+# === TEST PASSED: block_10 ===
+# === TEST: block_11 ===
+# === TEST PASSED: block_11 ===
+# === TEST: block_12 ===
+# === TEST PASSED: block_12 ===
+# === TEST: block_13 ===
+# === TEST PASSED: block_13 ===
+# === TEST: block_14 ===
+# === TEST PASSED: block_14 ===
+# === TEST: block_15 ===
+# === TEST PASSED: block_15 ===
+# === TEST: block_16 ===
+# === TEST PASSED: block_16 ===
+# === TEST: block_17 ===
+# === TEST PASSED: block_17 ===
+# === TEST: block_18 ===
+# === TEST PASSED: block_18 ===
+# === TEST: block_19 ===
+# === TEST PASSED: block_19 ===
+# === TEST: block_20 ===
+# === TEST PASSED: block_20 ===
+# === TEST: block_21 ===
+# === TEST PASSED: block_21 ===
+# === TEST: block_22 ===
+# === TEST PASSED: block_22 ===
+# === TEST: block_23 ===
+# === TEST PASSED: block_23 ===
+# === TEST: block_24 ===
+# === TEST PASSED: block_24 ===
+# === TEST: block_25 ===
+# === TEST PASSED: block_25 ===
+# === TEST: block_26 ===
+# === TEST PASSED: block_26 ===
+# === TEST: block_27 ===
+# === TEST PASSED: block_27 ===
+# === TEST: block_28 ===
+# === TEST PASSED: block_28 ===
+# === TEST: block_29 ===
+# === TEST PASSED: block_29 ===
+# === TEST: block_30 ===
+# === TEST PASSED: block_30 ===
+# === TEST: block_31 ===
+# === TEST PASSED: block_31 ===
+# === TEST: block_32 ===
+# === TEST PASSED: block_32 ===
+# === TEST: block_33 ===
+# === TEST PASSED: block_33 ===
+# === TEST: block_34 ===
+# === TEST PASSED: block_34 ===
+# === TEST: block_35 ===
+# === TEST PASSED: block_35 ===
+# === TEST: block_36 ===
+# === TEST PASSED: block_36 ===
+# === TEST: block_37 ===
+# === TEST PASSED: block_37 ===
+# === TEST: block_38 ===
+# === TEST PASSED: block_38 ===
+# === TEST: block_39 ===
+# === TEST PASSED: block_39 ===
+# === TEST: block_40 ===
+# === TEST PASSED: block_40 ===
+# === TEST: block_41 ===
+# === TEST PASSED: block_41 ===
+# === TEST: block_42 ===
+# === TEST PASSED: block_42 ===
+# === TEST: block_43 ===
+# === TEST PASSED: block_43 ===
+# === TEST: block_44 ===
+# === TEST PASSED: block_44 ===
+# === TEST: block_45 ===
+# === TEST PASSED: block_45 ===
+# === TEST: block_46 ===
+# === TEST PASSED: block_46 ===
+# === TEST: block_47 ===
+# === TEST PASSED: block_47 ===
+# === TEST: block_48 ===
+# === TEST PASSED: block_48 ===
+# === TEST: block_49 ===
+# === TEST PASSED: block_49 ===
+# All tests done. Ran 50 blocks.
+# ** Note: $finish    : tb_redmule_mx_decoder.sv(151)
+#    Time: 16535 ns  Iteration: 1  Instance: /tb_redmule_mx_decoder
+# 1
+# Break in Module tb_redmule_mx_decoder at tb_redmule_mx_decoder.sv line 151

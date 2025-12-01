@@ -1,39 +1,15 @@
-########################
-# Bender
-########################
-.bender/
-
-########################
-# Python / virtualenvs
-########################
-venv/
-*/venv/
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-
-########################
-# Golden model artifacts
-########################
-golden-model/venv/
-golden-model/gemm/txt/
-golden-model/**/*.pyc
-golden-model/__pycache__/
-
-########################
-# Simulation / build
-########################
-work/
-vendor/
-target/
-modelsim.ini
-transcript
+**venv
+**.bender
+target/sim/vsim/work/
+sw/build/
+golden-model/**/txt/
+target/sim/vsim/vsim.wlf
+sw/inc/*
+.bender/** */
+target/sim/vsim/transcript**
+rtl/work/
+vendor/** 
 sw/inc/
-*.wlf
-
-########################
-# IDE
-########################
-.vscode/
+rtl/vsim.wlf
+target/sim
+golden-model/common/
