@@ -3,6 +3,7 @@ module tb_redmule_mx_decoder;
   localparam int unsigned DATA_W    = 256;
   localparam int unsigned BITW      = 16;
   localparam int unsigned NUM_ELEMS = DATA_W / 8;
+  localparam int unsigned NUM_LANES = 4; 
 
   //Signals
   logic                   clk_i;
@@ -18,7 +19,7 @@ module tb_redmule_mx_decoder;
 
   logic                   fp16_valid_o;
   logic                   fp16_ready_i;
-  logic [BITW-1:0]        fp16_data_o;
+  logic [NUM_LANES*BITW-1:0]        fp16_data_o;
 
   // File I/O for golden model vectors
   integer fd;
@@ -32,7 +33,8 @@ module tb_redmule_mx_decoder;
   // DUT 
   redmule_mx_decoder #(
     .DATA_W(DATA_W),
-    .BITW(BITW)
+    .BITW(BITW),
+    .NUM_LANES(NUM_LANES)
   ) dut (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
@@ -46,6 +48,9 @@ module tb_redmule_mx_decoder;
     .fp16_ready_i(fp16_ready_i),
     .fp16_data_o(fp16_data_o)
   );
+  initial begin
+    $display("MX DECODER RTL: NUM_LANES = %0d", NUM_LANES);
+  end
 
   // clock
   initial clk_i = 0;
@@ -77,18 +82,42 @@ module tb_redmule_mx_decoder;
     @(posedge clk_i);
     mx_val_valid_i = 1'b0;
     mx_exp_valid_i = 1'b0;
-
+    
     // collect and check outputs
-    out_count = 0;
+    out_count = 0; 
     while (out_count < NUM_ELEMS) begin
       @(posedge clk_i);
       if (fp16_valid_o) begin
-        assert (fp16_data_o === fp16_block[out_count])
-          else $error("[%s] Mismatch at elem %0d: got 0x%04h expected 0x%04h",
-                      name, out_count, fp16_data_o, fp16_block[out_count]);
-        out_count++;
+        for ( int l = 0; l < NUM_LANES; l++ ) begin
+          if (out_count < NUM_ELEMS) begin
+            logic [15:0] lane_val;
+            lane_val = fp16_data_o[BITW*l +: BITW];
+
+            if (lane_val !== fp16_block[out_count]) begin
+              $error("[%s] Mismatch at elem %0d (lane %0d): got 0x%04h expected 0x%04h", 
+                    name, out_count, l, lane_val, fp16_block[out_count]);
+            end
+
+            out_count++;
+          end
+        end
       end
     end
+
+        
+    
+    // // scalar version
+    // // collect and check outputs
+    // out_count = 0;
+    // while (out_count < NUM_ELEMS) begin
+    //   @(posedge clk_i);
+    //   if (fp16_valid_o) begin
+    //     assert (fp16_data_o === fp16_block[out_count])
+    //       else $error("[%s] Mismatch at elem %0d: got 0x%04h expected 0x%04h",
+    //                   name, out_count, fp16_data_o, fp16_block[out_count]);
+    //     out_count++;
+    //   end
+    // end
 
     $display("=== TEST PASSED: %s ===", name);
   endtask

@@ -4,7 +4,8 @@ module redmule_mx_decoder
   //import hci_package::*;
 #(
   parameter int unsigned DATA_W = 256,//redmule_pkg::DATA_W,
-  parameter int unsigned BITW = 16
+  parameter int unsigned BITW = 16,
+  parameter int unsigned NUM_LANES = 1
 )(
   input  logic                   clk_i, 
   input  logic                   rst_ni,
@@ -19,7 +20,7 @@ module redmule_mx_decoder
 
   output logic                   fp16_valid_o,
   input logic                    fp16_ready_i,
-  output logic [BITW-1:0]        fp16_data_o
+  output logic [NUM_LANES*BITW-1:0]        fp16_data_o
 );
 
 // State machine
@@ -37,19 +38,44 @@ localparam int BIAS_FP16 = 15;
 // Internal registers
 localparam int unsigned ELEM_WIDTH = 8;
 localparam int unsigned NUM_ELEMS = DATA_W / ELEM_WIDTH;
+localparam int unsigned NUM_GROUPS = NUM_ELEMS / NUM_LANES;
 
 logic [DATA_W-1:0] val_reg_q, val_reg_d; // buffered block of MX values 
 logic [7:0] scale_reg_q, scale_reg_d; // buffered shared exp (E8M0)
 
-logic [$clog2(NUM_ELEMS)-1:0] elem_idx_q, elem_idx_d; // index in block
+logic [$clog2(NUM_GROUPS)-1:0] group_idx_q, group_idx_d; // index in block
 
 // MXFP8 datapath signals
 
-logic [ELEM_WIDTH-1:0] elem_mx;
-logic [BITW-1:0]      elem_fp16_unscaled;
-logic [BITW-1:0]      elem_fp16_scaled;
+logic [ELEM_WIDTH-1:0] elem_mx [NUM_LANES];
+logic [BITW-1:0]      elem_fp16_unscaled [NUM_LANES];
+logic [BITW-1:0]      elem_fp16_scaled [NUM_LANES];
 
-assign elem_mx = val_reg_q[ELEM_WIDTH*elem_idx_q +: ELEM_WIDTH];
+genvar lane;
+generate
+  for (lane = 0; lane < NUM_LANES; lane++) begin : gen_lanes
+    // lane element index inside a block
+    logic [$clog2(NUM_ELEMS)-1:0] elem_idx_lane;
+
+    assign elem_idx_lane = group_idx_q * NUM_LANES + lane;
+
+    // slice out the FP8 element for this lane
+    assign elem_mx[lane] = val_reg_q[ELEM_WIDTH*elem_idx_lane +: ELEM_WIDTH];
+
+    // per lane decode
+    always_comb begin
+      logic [15:0] tmp;
+      tmp = fp8_e4m3_to_fp16(elem_mx[lane]);
+      elem_fp16_unscaled[lane] = tmp;
+      elem_fp16_scaled[lane] = mx_scale_fp16(tmp, scale_reg_q);
+    end
+  end
+endgenerate
+
+// // scalar version
+// logic [$clog2(NUM_ELEMS)-1:0] elem_idx;
+// assign elem_idx = group_idx_q * NUM_LANES;
+// assign elem_mx = val_reg_q[ELEM_WIDTH*elem_idx +: ELEM_WIDTH];
 
 // sequential part
 always_ff @(posedge clk_i or negedge rst_ni ) begin : state_register
@@ -57,12 +83,12 @@ always_ff @(posedge clk_i or negedge rst_ni ) begin : state_register
     current_state <= IDLE;
     val_reg_q <= '0;
     scale_reg_q <= '0;
-    elem_idx_q <= '0;
+    group_idx_q <= '0;
   end else begin
     current_state <= next_state;
     val_reg_q <= val_reg_d;
     scale_reg_q <= scale_reg_d;
-    elem_idx_q <= elem_idx_d;
+    group_idx_q <= group_idx_d;
   end
 end
 
@@ -177,15 +203,15 @@ always_comb begin : fsm
   next_state = current_state;
   val_reg_d = val_reg_q;
   scale_reg_d = scale_reg_q;
-  elem_idx_d = elem_idx_q;
+  group_idx_d = group_idx_q;
 
   mx_val_ready_o = 1'b0;
   mx_exp_ready_o = 1'b0;
   fp16_valid_o = 1'b0;
   fp16_data_o = '0;
 
-  elem_fp16_unscaled = fp8_e4m3_to_fp16(elem_mx);
-  elem_fp16_scaled = mx_scale_fp16(elem_fp16_unscaled, scale_reg_q);
+  // elem_fp16_unscaled = fp8_e4m3_to_fp16(elem_mx); // scalar version
+  // elem_fp16_scaled = mx_scale_fp16(elem_fp16_unscaled, scale_reg_q);
   
   unique case (current_state)
     IDLE: begin
@@ -196,7 +222,7 @@ always_comb begin : fsm
         // latch inputs
         val_reg_d = mx_val_data_i;
         scale_reg_d = mx_exp_data_i;
-        elem_idx_d = '0;
+        group_idx_d = '0;
 
         next_state = DECODE;
       end
@@ -207,15 +233,20 @@ always_comb begin : fsm
       mx_exp_ready_o = 1'b0;
 
       fp16_valid_o = 1'b1;
-      fp16_data_o = elem_fp16_scaled;  
+      // fp16_data_o = elem_fp16_scaled[0];  // scalar version
+
+      // pack NUM_LANES outputs
+      for (int lane = 0; lane < NUM_LANES; lane++) begin
+        fp16_data_o[BITW*lane +: BITW] = elem_fp16_scaled[lane];
+      end
 
       if (fp16_ready_i) begin
-        if (elem_idx_q == NUM_ELEMS-1) begin
+        if (group_idx_q == NUM_GROUPS-1) begin
           // last element
-          elem_idx_d = '0;
+          group_idx_d = '0;
           next_state = IDLE;
         end else begin
-          elem_idx_d = elem_idx_q + 1;
+          group_idx_d = group_idx_q + 1;
         end
       end
     end

@@ -13,15 +13,16 @@
 # //  18 U.S.C. Section 1905.
 # //
 # vsim -voptargs="+acc" work.tb_redmule_mx_decoder 
-# Start time: 19:19:16 on Nov 27,2025
-# ** Note: (vsim-3812) Design is being optimized...
+# Start time: 16:24:54 on Dec 02,2025
+# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # Loading sv_std.std
 # Loading work.tb_redmule_mx_decoder(fast)
 # Loading work.redmule_mx_decoder(fast)
-do waves_mx_decoder.do
-# 0 ns
-# 1 us
+add wave *
+add wave -radix hex sim:/tb_redmule_mx_decoder/dut/current_state
+
 run -all
+# MX DECODER RTL: NUM_LANES = 4
 # === TEST: block_0 ===
 # === TEST PASSED: block_0 ===
 # === TEST: block_1 ===
@@ -123,7 +124,9 @@ run -all
 # === TEST: block_49 ===
 # === TEST PASSED: block_49 ===
 # All tests done. Ran 50 blocks.
-# ** Note: $finish    : tb_redmule_mx_decoder.sv(151)
-#    Time: 16535 ns  Iteration: 1  Instance: /tb_redmule_mx_decoder
+# ** Note: $finish    : tb_redmule_mx_decoder.sv(180)
+#    Time: 4535 ns  Iteration: 1  Instance: /tb_redmule_mx_decoder
 # 1
-# Break in Module tb_redmule_mx_decoder at tb_redmule_mx_decoder.sv line 151
+# Break in Module tb_redmule_mx_decoder at tb_redmule_mx_decoder.sv line 180
+# End time: 16:25:43 on Dec 02,2025, Elapsed time: 0:00:49
+# Errors: 0, Warnings: 0

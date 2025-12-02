@@ -54,8 +54,6 @@ def mx_scale_fp16_bits(val_fp16: int, shared_exp: int) -> int:
 
       val_scaled = val * 2^(shared_exp - 127)
 
-    Behaviour matches your SV mx_scale_fp16:
-
       - zero / Inf / NaN        -> returned as-is
       - underflow (new_e16 <=0) -> signed zero
       - overflow (new_e16 >=31) -> clamp to max finite (0x7bff) with sign
@@ -96,7 +94,6 @@ def mxfp8_decode_bits(fp8_val: int, shared_exp: int) -> int:
     Element-wise MXFP8 -> FP16 (bit patterns).
 
     First FP8(E4M3) -> FP16, then apply MX scaling with shared_exp.
-    This is exactly what your decoder RTL does per element.
     """
     base   = fp8_e4m3_to_fp16_bits(fp8_val)
     scaled = mx_scale_fp16_bits(base, shared_exp)
@@ -112,7 +109,6 @@ def fp16_bits_to_fp8_e4m3_unscaled(x: int) -> int:
       - Inf / NaN     -> FP8 Inf / NaN
       - normals       -> rebias exponent, saturate to max finite E4M3,
                          flush tiny to zero, simple mantissa truncation
-    This is a reasonable inverse of fp8_e4m3_to_fp16_bits.
     """
     x &= 0xFFFF
     s   = (x >> 15) & 0x1
@@ -145,7 +141,7 @@ def fp16_bits_to_fp8_e4m3_unscaled(x: int) -> int:
         return (s << 7) | (0xE << 3) | 0x7
 
     e8 = e8_unbiased & 0xF
-    m8 = (m16 >> 7) & 0x7  # truncation; can add rounding later
+    m8 = (m16 >> 7) & 0x7  # truncation; add rounding later
 
     return (s << 7) | (e8 << 3) | m8
 
@@ -154,7 +150,7 @@ def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
     """
     Element-wise FP16 -> MXFP8 (bit patterns).
 
-    Assumes the decode side does:
+    Decode side does:
       fp8 -> fp16_unscaled -> scale by 2^(shared_exp - 127).
 
     So to encode, we *undo* the MX scaling on the FP16 value first,
