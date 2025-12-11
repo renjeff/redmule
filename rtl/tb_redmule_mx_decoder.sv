@@ -3,8 +3,9 @@ module tb_redmule_mx_decoder;
   localparam int unsigned DATA_W    = 256;
   localparam int unsigned BITW      = 16;
   localparam int unsigned NUM_ELEMS = DATA_W / 8;
-  localparam int unsigned NUM_LANES = 4; 
-
+  localparam int unsigned NUM_LANES = 4;
+  string VECTOR_FILE = "../golden-model/MX/mx_decoder_vectors_mxfp8_e4m3.txt"; 
+  
   //Signals
   logic                   clk_i;
   logic                   rst_ni;
@@ -25,6 +26,7 @@ module tb_redmule_mx_decoder;
   integer fd;
   integer rc;
   integer test_idx;
+  integer error_count = 0;
 
   // Per-element FP8 inputs and FP16 expected outputs
   logic [7:0]  fp8_vals      [NUM_ELEMS];
@@ -96,6 +98,7 @@ module tb_redmule_mx_decoder;
             if (lane_val !== fp16_block[out_count]) begin
               $error("[%s] Mismatch at elem %0d (lane %0d): got 0x%04h expected 0x%04h", 
                     name, out_count, l, lane_val, fp16_block[out_count]);
+              error_count++;
             end
 
             out_count++;
@@ -141,9 +144,9 @@ module tb_redmule_mx_decoder;
     // File format, one block per line (all hex):
     //   <shared_exp> <32×fp8_vals> <32×fp16_expected>
 
-    fd = $fopen("../golden-model/MX/mx_decoder_vectors.txt", "r");
+    fd = $fopen(VECTOR_FILE, "r");
     if (fd == 0) begin
-      $fatal(1, "ERROR: could not open mx_decoder_vectors.txt");
+      $fatal(1, "ERROR: could not open vector file: %s", VECTOR_FILE);
     end
 
     test_idx = 0;
@@ -176,7 +179,13 @@ module tb_redmule_mx_decoder;
 
     $fclose(fd);
 
-    $display("All tests done. Ran %0d blocks.", test_idx);
+    if (error_count == 0) begin
+      $display("[TB] - Success!");
+      $display("[TB] - All decoder tests passed! Ran %0d blocks.", test_idx);
+    end else begin
+      $display("[TB] - Fail!");
+      $display("[TB] - Decoder tests failed with %0d errors. Ran %0d blocks.", error_count, test_idx);
+    end
     $finish;
   end
 

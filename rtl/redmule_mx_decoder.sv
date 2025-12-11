@@ -102,7 +102,7 @@ function automatic logic [15:0] fp8_e4m3_to_fp16 (input logic [7:0] in);
   logic [4:0]  e16;
   logic [9:0]  m16;
   int          e16_int;
-  // logic [15:0] tmp;   // << moved here
+
 
   begin 
     s  = in[7];

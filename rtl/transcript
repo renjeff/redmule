@@ -12,121 +12,123 @@
 # //  is prohibited from disclosure under the Trade Secrets Act,
 # //  18 U.S.C. Section 1905.
 # //
-# vsim -voptargs="+acc" work.tb_redmule_mx_decoder 
-# Start time: 16:24:54 on Dec 02,2025
-# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
+# vsim -voptargs="+acc" work.tb_redmule_mx_encoder 
+# Start time: 16:29:03 on Dec 11,2025
+# ** Note: (vsim-8009) Loading existing optimized design _opt1
 # Loading sv_std.std
-# Loading work.tb_redmule_mx_decoder(fast)
-# Loading work.redmule_mx_decoder(fast)
-add wave *
-add wave -radix hex sim:/tb_redmule_mx_decoder/dut/current_state
-
-run -all
-# MX DECODER RTL: NUM_LANES = 4
-# === TEST: block_0 ===
-# === TEST PASSED: block_0 ===
-# === TEST: block_1 ===
-# === TEST PASSED: block_1 ===
-# === TEST: block_2 ===
-# === TEST PASSED: block_2 ===
-# === TEST: block_3 ===
-# === TEST PASSED: block_3 ===
-# === TEST: block_4 ===
-# === TEST PASSED: block_4 ===
-# === TEST: block_5 ===
-# === TEST PASSED: block_5 ===
-# === TEST: block_6 ===
-# === TEST PASSED: block_6 ===
-# === TEST: block_7 ===
-# === TEST PASSED: block_7 ===
-# === TEST: block_8 ===
-# === TEST PASSED: block_8 ===
-# === TEST: block_9 ===
-# === TEST PASSED: block_9 ===
-# === TEST: block_10 ===
-# === TEST PASSED: block_10 ===
-# === TEST: block_11 ===
-# === TEST PASSED: block_11 ===
-# === TEST: block_12 ===
-# === TEST PASSED: block_12 ===
-# === TEST: block_13 ===
-# === TEST PASSED: block_13 ===
-# === TEST: block_14 ===
-# === TEST PASSED: block_14 ===
-# === TEST: block_15 ===
-# === TEST PASSED: block_15 ===
-# === TEST: block_16 ===
-# === TEST PASSED: block_16 ===
-# === TEST: block_17 ===
-# === TEST PASSED: block_17 ===
-# === TEST: block_18 ===
-# === TEST PASSED: block_18 ===
-# === TEST: block_19 ===
-# === TEST PASSED: block_19 ===
-# === TEST: block_20 ===
-# === TEST PASSED: block_20 ===
-# === TEST: block_21 ===
-# === TEST PASSED: block_21 ===
-# === TEST: block_22 ===
-# === TEST PASSED: block_22 ===
-# === TEST: block_23 ===
-# === TEST PASSED: block_23 ===
-# === TEST: block_24 ===
-# === TEST PASSED: block_24 ===
-# === TEST: block_25 ===
-# === TEST PASSED: block_25 ===
-# === TEST: block_26 ===
-# === TEST PASSED: block_26 ===
-# === TEST: block_27 ===
-# === TEST PASSED: block_27 ===
-# === TEST: block_28 ===
-# === TEST PASSED: block_28 ===
-# === TEST: block_29 ===
-# === TEST PASSED: block_29 ===
-# === TEST: block_30 ===
-# === TEST PASSED: block_30 ===
-# === TEST: block_31 ===
-# === TEST PASSED: block_31 ===
-# === TEST: block_32 ===
-# === TEST PASSED: block_32 ===
-# === TEST: block_33 ===
-# === TEST PASSED: block_33 ===
-# === TEST: block_34 ===
-# === TEST PASSED: block_34 ===
-# === TEST: block_35 ===
-# === TEST PASSED: block_35 ===
-# === TEST: block_36 ===
-# === TEST PASSED: block_36 ===
-# === TEST: block_37 ===
-# === TEST PASSED: block_37 ===
-# === TEST: block_38 ===
-# === TEST PASSED: block_38 ===
-# === TEST: block_39 ===
-# === TEST PASSED: block_39 ===
-# === TEST: block_40 ===
-# === TEST PASSED: block_40 ===
-# === TEST: block_41 ===
-# === TEST PASSED: block_41 ===
-# === TEST: block_42 ===
-# === TEST PASSED: block_42 ===
-# === TEST: block_43 ===
-# === TEST PASSED: block_43 ===
-# === TEST: block_44 ===
-# === TEST PASSED: block_44 ===
-# === TEST: block_45 ===
-# === TEST PASSED: block_45 ===
-# === TEST: block_46 ===
-# === TEST PASSED: block_46 ===
-# === TEST: block_47 ===
-# === TEST PASSED: block_47 ===
-# === TEST: block_48 ===
-# === TEST PASSED: block_48 ===
-# === TEST: block_49 ===
-# === TEST PASSED: block_49 ===
-# All tests done. Ran 50 blocks.
-# ** Note: $finish    : tb_redmule_mx_decoder.sv(180)
-#    Time: 4535 ns  Iteration: 1  Instance: /tb_redmule_mx_decoder
+# Loading work.tb_redmule_mx_encoder(fast)
+# Loading work.redmule_mx_encoder(fast)
+do waves_mx_encoder.do
+# 0 ns
+# 1 us
+# MX ENCODER RTL: NUM_LANES = 8
+# === ENC TEST: enc_block_0 ===
+# === ENC TEST PASSED: enc_block_0 ===
+# === ENC TEST: enc_block_1 ===
+# === ENC TEST PASSED: enc_block_1 ===
+# === ENC TEST: enc_block_2 ===
+# === ENC TEST PASSED: enc_block_2 ===
+# === ENC TEST: enc_block_3 ===
+# === ENC TEST PASSED: enc_block_3 ===
+# === ENC TEST: enc_block_4 ===
+# === ENC TEST PASSED: enc_block_4 ===
+# === ENC TEST: enc_block_5 ===
+# === ENC TEST PASSED: enc_block_5 ===
+# === ENC TEST: enc_block_6 ===
+# === ENC TEST PASSED: enc_block_6 ===
+# === ENC TEST: enc_block_7 ===
+# === ENC TEST PASSED: enc_block_7 ===
+# === ENC TEST: enc_block_8 ===
+# === ENC TEST PASSED: enc_block_8 ===
+# === ENC TEST: enc_block_9 ===
+# === ENC TEST PASSED: enc_block_9 ===
+# === ENC TEST: enc_block_10 ===
+# === ENC TEST PASSED: enc_block_10 ===
+# === ENC TEST: enc_block_11 ===
+# === ENC TEST PASSED: enc_block_11 ===
+# === ENC TEST: enc_block_12 ===
+# === ENC TEST PASSED: enc_block_12 ===
+# === ENC TEST: enc_block_13 ===
+# === ENC TEST PASSED: enc_block_13 ===
+# === ENC TEST: enc_block_14 ===
+# === ENC TEST PASSED: enc_block_14 ===
+# === ENC TEST: enc_block_15 ===
+# === ENC TEST PASSED: enc_block_15 ===
+# === ENC TEST: enc_block_16 ===
+# === ENC TEST PASSED: enc_block_16 ===
+# === ENC TEST: enc_block_17 ===
+# === ENC TEST PASSED: enc_block_17 ===
+# === ENC TEST: enc_block_18 ===
+# === ENC TEST PASSED: enc_block_18 ===
+# === ENC TEST: enc_block_19 ===
+# === ENC TEST PASSED: enc_block_19 ===
+# === ENC TEST: enc_block_20 ===
+# === ENC TEST PASSED: enc_block_20 ===
+# === ENC TEST: enc_block_21 ===
+# === ENC TEST PASSED: enc_block_21 ===
+# === ENC TEST: enc_block_22 ===
+# === ENC TEST PASSED: enc_block_22 ===
+# === ENC TEST: enc_block_23 ===
+# === ENC TEST PASSED: enc_block_23 ===
+# === ENC TEST: enc_block_24 ===
+# === ENC TEST PASSED: enc_block_24 ===
+# === ENC TEST: enc_block_25 ===
+# === ENC TEST PASSED: enc_block_25 ===
+# === ENC TEST: enc_block_26 ===
+# === ENC TEST PASSED: enc_block_26 ===
+# === ENC TEST: enc_block_27 ===
+# === ENC TEST PASSED: enc_block_27 ===
+# === ENC TEST: enc_block_28 ===
+# === ENC TEST PASSED: enc_block_28 ===
+# === ENC TEST: enc_block_29 ===
+# === ENC TEST PASSED: enc_block_29 ===
+# === ENC TEST: enc_block_30 ===
+# === ENC TEST PASSED: enc_block_30 ===
+# === ENC TEST: enc_block_31 ===
+# === ENC TEST PASSED: enc_block_31 ===
+# === ENC TEST: enc_block_32 ===
+# === ENC TEST PASSED: enc_block_32 ===
+# === ENC TEST: enc_block_33 ===
+# === ENC TEST PASSED: enc_block_33 ===
+# === ENC TEST: enc_block_34 ===
+# === ENC TEST PASSED: enc_block_34 ===
+# === ENC TEST: enc_block_35 ===
+# === ENC TEST PASSED: enc_block_35 ===
+# === ENC TEST: enc_block_36 ===
+# === ENC TEST PASSED: enc_block_36 ===
+# === ENC TEST: enc_block_37 ===
+# === ENC TEST PASSED: enc_block_37 ===
+# === ENC TEST: enc_block_38 ===
+# === ENC TEST PASSED: enc_block_38 ===
+# === ENC TEST: enc_block_39 ===
+# === ENC TEST PASSED: enc_block_39 ===
+# === ENC TEST: enc_block_40 ===
+# === ENC TEST PASSED: enc_block_40 ===
+# === ENC TEST: enc_block_41 ===
+# === ENC TEST PASSED: enc_block_41 ===
+# === ENC TEST: enc_block_42 ===
+# === ENC TEST PASSED: enc_block_42 ===
+# === ENC TEST: enc_block_43 ===
+# === ENC TEST PASSED: enc_block_43 ===
+# === ENC TEST: enc_block_44 ===
+# === ENC TEST PASSED: enc_block_44 ===
+# === ENC TEST: enc_block_45 ===
+# === ENC TEST PASSED: enc_block_45 ===
+# === ENC TEST: enc_block_46 ===
+# === ENC TEST PASSED: enc_block_46 ===
+# === ENC TEST: enc_block_47 ===
+# === ENC TEST PASSED: enc_block_47 ===
+# === ENC TEST: enc_block_48 ===
+# === ENC TEST PASSED: enc_block_48 ===
+# === ENC TEST: enc_block_49 ===
+# === ENC TEST PASSED: enc_block_49 ===
+# === ENC TEST: enc_block_50 ===
+# === ENC TEST PASSED: enc_block_50 ===
+# [TB] - Success!
+# [TB] - All encoder tests passed! Ran 51 blocks.
+# ** Note: $finish    : tb_redmule_mx_encoder.sv(212)
+#    Time: 4625 ns  Iteration: 1  Instance: /tb_redmule_mx_encoder
 # 1
-# Break in Module tb_redmule_mx_decoder at tb_redmule_mx_decoder.sv line 180
-# End time: 16:25:43 on Dec 02,2025, Elapsed time: 0:00:49
+# Break in Module tb_redmule_mx_encoder at tb_redmule_mx_encoder.sv line 212
+# End time: 16:30:02 on Dec 11,2025, Elapsed time: 0:00:59
 # Errors: 0, Warnings: 0

@@ -173,18 +173,16 @@ def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
     # undo MX scaling in exponent domain:
     # decode did: e16_scaled = e16_unscaled + delta
     # so here:   e16_unscaled = e16_scaled - delta
-    delta      = shared_exp - 127
-    e_unbiased = int(e16) - BIAS_FP16
-    e_unscaled = e_unbiased - delta
-    e16_uns    = e_unscaled + BIAS_FP16
+    delta      = shared_exp - 127  #signed
+    e16_unscaled   = int(e16) - delta # back to pre-scaled exponent
 
-    if e16_uns <= 0:
+    if e16_unscaled <= 0:
         tmp = (s << 15)  # underflow to zero
-    elif e16_uns >= 0x1F:
+    elif e16_unscaled >= 0x1F:
         # overflow before quantisation: clamp to max finite FP16
         tmp = (s << 15) | (0x1E << 10) | 0x3FF
     else:
-        tmp = (s << 15) | ((e16_uns & 0x1F) << 10) | m16
+        tmp = (s << 15) | ((e16_unscaled & 0x1F) << 10) | m16
 
     return fp16_bits_to_fp8_e4m3_unscaled(tmp)
 
@@ -203,3 +201,55 @@ def mxfp8_encode(val_fp16: np.float16, shared_exp: int) -> int:
     """FP16 (numpy.float16 scalar) -> MXFP8 8-bit value."""
     bits = np.uint16(np.array(val_fp16, dtype=np.float16).view(np.uint16))
     return mxfp8_encode_bits(int(bits), shared_exp)
+
+def compute_shared_exp_from_block(fp16_block_bits):
+    """
+    Compute MX shared exponent from a block of FP16 values.
+
+    currently: zero-extended max_16 to 8 bits
+
+    fp16_block_bits: list[int] of FP16 bit patterns
+    """
+    fp16_blocks_bits = [int(x) & 0xFFFF for x in fp16_block_bits]
+
+    max_e16 = 0
+    for x in fp16_block_bits:
+        e16 = (x >> 10) & 0x1F
+        if e16 != 0 and e16 != 0x1F and e16 > max_e16: # ignore zero/Inf/NaN
+            max_e16 = e16
+    
+    # no normal values in block -> neutral scale
+    if max_e16 == 0:
+        return 127
+    
+    eM_unbiased = max_e16 - BIAS_FP16 # exponent of max |V|
+    e_scale_unbiased = eM_unbiased - 7 # max pow2 exp in E4M3 = 7
+    e8m0 = e_scale_unbiased + 127 # E8M0 bias
+
+    if e8m0 < 0:
+        e8m0 = 0
+    elif e8m0 > 255:
+        e8m0 = 255
+    return e8m0 & 0xFF
+
+def encode_block_fp16_to_mx(fp16_block_bits):
+    """
+    Given a block of FP16 values, compute:
+    - shared_exp (8-bit)
+    - mx_vals (list of MXFP8 values)
+
+    using:
+
+    - shared_exp = compute_sahred_exp_from_block(...)
+    - fp8_i = mxfp8_encode_bits(fp16_i, shared_exp)
+
+    returns (shared_exp, mx_vals)
+    """
+
+    fp16_block_bits = [int(x) & 0xFFFF for x in fp16_block_bits]
+
+    shared_exp = compute_shared_exp_from_block(fp16_block_bits)
+
+    mx_vals = [mxfp8_encode_bits(v, shared_exp) & 0xFF for v in fp16_block_bits]
+
+    return shared_exp & 0xFF, mx_vals

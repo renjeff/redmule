@@ -33,5 +33,13 @@ add wave sim:/tb_redmule_mx_decoder/fp16_valid_o
 add wave sim:/tb_redmule_mx_decoder/fp16_data_o
 add wave sim:/tb_redmule_mx_decoder/fp16_ready_i
 
+# Test progress
+add wave -divider "Test tracking"
+add wave sim:/tb_redmule_mx_decoder/test_idx
+add wave sim:/tb_redmule_mx_decoder/error_count
+
 # Zoom to full simulation
 wave zoom full
+
+# Run simulation
+run -all
