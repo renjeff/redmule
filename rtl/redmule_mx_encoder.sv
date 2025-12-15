@@ -71,7 +71,9 @@ generate
   end
 endgenerate
 
+
 // // helper functions
+
 // Compute shared exp (E_shared) from max FP16 exponent
 // function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16);
 //   logic signed [8:0] delta;
@@ -100,17 +102,38 @@ function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16);
   end
 endfunction
 
+function automatic logic rne_round_up(
+    input logic lsb,
+    input logic round_bit,
+    input logic sticky_bit
+);
+    logic [1:0] rs;
+    begin
+        rs = {round_bit, sticky_bit};
+        unique case (rs)
+            2'b00,
+            2'b01: rne_round_up = 1'b0; // < ulp/2 away, round down
+            2'b10: rne_round_up = lsb; // = ulp/2 away, round towards even result
+            2'b11: rne_round_up = 1'b1; // > ulp/2 away, round up
+            default: rne_round_up = 1'b0;
+        endcase
+    end
+endfunction
+
 
 function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
   input logic [BITW-1:0] val_fp16
 );
-    // place holder: just drop low bits and keeo sign + 4b exp + 3b mant
     logic s;
     logic [4:0] e16;
     logic [9:0] m16;
 
     logic [3:0] e8;
-    logic [2:0] m8;
+    logic [2:0] m8_trunc, m8_round;
+
+    logic rbit, sbit;
+    logic round_up;
+    logic carry;
 
     int e_unbias;
 
@@ -122,6 +145,7 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
         //zero
         if (e16 == 5'b0)
             return {s,7'b0};
+
         //inf/NaN
         if (e16 == 5'b11111) begin
             if(m16 == 0)
@@ -130,9 +154,7 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
                 return {s,4'hF,3'b001}; //NaN
         end
         
-        //normal
-
-      
+        //normal: rebias exponent
         e_unbias = e16 - BIAS_FP16 + BIAS_FP8_E4M3;
 
         if (e_unbias <= 0)
@@ -141,13 +163,35 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
             return {s,4'hE,3'b111}; // saturate
         
         e8 = e_unbias[3:0];
-        m8 = m16[9:7]; // only truncate
+        m8_trunc = m16[9:7]; // only truncate
 
-        return{s,e8,m8};
+        // RNE rounding bits
+        rbit = m16[6];
+        sbit = | m16[5:0];
+        round_up = rne_round_up(m8_trunc[0], rbit, sbit);
+
+        // apply rounding
+        {carry, m8_round} = {1'b0, m8_trunc} + round_up;
+
+        if (carry) begin
+            // mantissa overflow, increment exp
+            if (e8 == 4'hE) begin
+                e8 = 4'hE; //saturate
+                m8_round = 3'b111;
+            end else begin
+                e8 = e8 + 4'd1;
+                // if it reaches 0xF, clamp back to finite
+                if (e8 == 4'hF) begin
+                    e8 = 4'hE;
+                    m8_round = 3'b111;
+                end
+            end
+        end
+
+        return{s,e8,m8_round};
     end
 endfunction
    
-
 // FP16 -> MXFP8 (E4M3+shared exp)
 function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
     input logic [BITW-1:0] val_fp16,

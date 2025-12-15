@@ -141,10 +141,38 @@ def fp16_bits_to_fp8_e4m3_unscaled(x: int) -> int:
         return (s << 7) | (0xE << 3) | 0x7
 
     e8 = e8_unbiased & 0xF
-    m8 = (m16 >> 7) & 0x7  # truncation; add rounding later
+    e8 = e8_unbiased & 0xF
 
-    return (s << 7) | (e8 << 3) | m8
+    # --- RNE rounding of mantissa: 10 bits -> 3 bits ---
+    m8_trunc = (m16 >> 7) & 0x7              # m16[9:7]
+    round_bit = (m16 >> 6) & 0x1             # m16[6]
+    sticky = 1 if (m16 & 0x3F) != 0 else 0   # OR m16[5:0]
 
+    # round-to-nearest, ties-to-even:
+    # RS=00/01 -> down
+    # RS=10 -> tie -> up iff LSB==1
+    # RS=11 -> up
+    if round_bit == 0:
+        round_up = 0
+    else:
+        # round_bit == 1
+        if sticky == 1:
+            round_up = 1
+        else:
+            # exact half-way tie
+            round_up = (m8_trunc & 0x1)
+
+    m8_round = m8_trunc + round_up
+
+    # handle mantissa carry into exponent
+    if m8_round == 0x8:  # overflowed past 3 bits (1000)
+        m8_round = 0x0
+        e8 += 1
+        # clamp if exponent would become 0xF (Inf/NaN encoding in FP8)
+        if e8 >= 0xF:
+            return (s << 7) | (0xE << 3) | 0x7
+
+    return (s << 7) | ((e8 & 0xF) << 3) | (m8_round & 0x7)
 
 def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
     """
