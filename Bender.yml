@@ -51,6 +51,10 @@ sources:
     - rtl/redmule_memory_scheduler.sv
     - rtl/redmule_complex.sv
 
+    - rtl/redmule_mx_fifo.sv
+    - rtl/redmule_mx_encoder.sv
+    - rtl/redmule_mx_decoder.sv
+
     - target: redmule_deprecated
       files:
         - rtl/redmule_wrap.sv

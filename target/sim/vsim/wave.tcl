@@ -69,6 +69,27 @@ add wave -noupdate -group Scheduler -color {} -height $MinHeight -max $MaxHeight
 add wave -noupdate -group Scheduler -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_memory_scheduler/*
 # Controller
 add wave -noupdate -group Controller -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_control/*
+add wave -noupdate -group Controller -group RegFile -label {MACFG Register} -color Yellow -height $MinHeight -radix hexadecimal $Testbench/$TopLevelPath/i_control/reg_file_q.hwpe_params(5)
+add wave -noupdate -group Controller -group RegFile -label {MACFG bit 16} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/i_control/reg_file_q.hwpe_params(5)(16)
+add wave -noupdate -group Controller -group RegFile -label {X_ADDR (idx 0)} -color Cyan -height $MinHeight -radix hexadecimal $Testbench/$TopLevelPath/i_control/reg_file_q.hwpe_params(0)
+add wave -noupdate -group Controller -group RegFile -label {All reg_file_q} -color Cyan -height $MinHeight -radix hexadecimal $Testbench/$TopLevelPath/i_control/reg_file_q
+add wave -noupdate -group Controller -group Tiler -label {MACFG from tiler input} -color Orange -height $MinHeight -radix hexadecimal $Testbench/$TopLevelPath/i_control/i_cfg_tiler/reg_file_i.hwpe_params(5)
+add wave -noupdate -group Controller -group Tiler -label {MACFG to tiler output} -color Orange -height $MinHeight -radix hexadecimal $Testbench/$TopLevelPath/i_control/i_cfg_tiler/reg_file_o.hwpe_params(5)
+# MX Data Path
+add wave -noupdate -group MX-DataPath -label {MX Enable} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_enable
+add wave -noupdate -group MX-DataPath -label {Any PE Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/any_pe_valid
+add wave -noupdate -group MX-DataPath -label {FIFO Push} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/fifo_push
+add wave -noupdate -group MX-DataPath -label {FIFO Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/fifo_valid
+add wave -noupdate -group MX-DataPath -label {FIFO Pop} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/fifo_pop
+add wave -noupdate -group MX-DataPath -label {Engine Output} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/z_buffer_d
+add wave -noupdate -group MX-DataPath -label {FIFO Data Out} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/fifo_data_out
+# MX Encoder
+add wave -noupdate -group MX-Encoder -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_mx_encoder/*
+add wave -noupdate -group MX-Encoder -label {Shared Exponent} -color Yellow -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/mx_exp_data
+add wave -noupdate -group MX-Encoder -label {Exponent Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_exp_valid
+add wave -noupdate -group MX-Encoder -label {Exponent Ready} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_exp_ready
+# MX Exponent Stream
+add wave -noupdate -group MX-Exponent-Stream -color Cyan -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/mx_exp_stream/*
 
 # Remove the hierarchial strip from signals
 config wave -signalnamewidth 1

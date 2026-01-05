@@ -53,27 +53,31 @@ assign config_d.gemm_ops        = gemm_op_e' (reg_file_i.hwpe_params[MACFG][12:1
 assign config_d.gemm_input_fmt  = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 7]);
 assign config_d.gemm_output_fmt = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 7]);
 
+// TILE size for iteration calculations
+// With ARRAY_HEIGHT=8 and PIPE_REGS=3: TILE = 8*4 = 32 (matches MX block size)
+localparam int unsigned TILE = ARRAY_HEIGHT*(PIPE_REGS+1);
+
 // Calculating the number of iterations alng the two dimensions of the X matrix
 logic [15:0] x_rows_iter_nolftovr;
 logic [15:0] x_cols_iter_nolftovr;
 assign x_rows_iter_nolftovr = config_d.m_size/ARRAY_WIDTH;
-assign x_cols_iter_nolftovr = config_d.n_size/(ARRAY_HEIGHT*(PIPE_REGS + 1));
+assign x_cols_iter_nolftovr = config_d.n_size/TILE;
 
 // Calculating the number of iterations along the two dimensions of the W matrix
 logic [15:0] w_cols_iter_nolftovr;
 logic [15:0] w_rows_iter_lftovr,
              w_rows_iter_nolftovr;
-assign w_cols_iter_nolftovr = config_d.k_size/(ARRAY_HEIGHT*(PIPE_REGS + 1));
+assign w_cols_iter_nolftovr = config_d.k_size/TILE;
 assign w_rows_iter_lftovr = w_rows_iter_nolftovr + ARRAY_HEIGHT - config_d.w_rows_lftovr;
 assign w_rows_iter_nolftovr = config_d.n_size;
 
 // Calculating the residuals along the input dimensions
 assign config_d.x_rows_lftovr = config_d.m_size - (x_rows_iter_nolftovr*ARRAY_WIDTH);
-assign config_d.x_cols_lftovr = config_d.n_size - (x_cols_iter_nolftovr*(ARRAY_HEIGHT*(PIPE_REGS + 1)));
+assign config_d.x_cols_lftovr = config_d.n_size - (x_cols_iter_nolftovr*TILE);
 
 // Calculating the residuals along the weight dimensions
 assign config_d.w_rows_lftovr = config_d.n_size - (ARRAY_HEIGHT*(config_d.n_size/ARRAY_HEIGHT));
-assign config_d.w_cols_lftovr = config_d.k_size - (w_cols_iter_nolftovr*(ARRAY_HEIGHT*(PIPE_REGS + 1)));
+assign config_d.w_cols_lftovr = config_d.k_size - (w_cols_iter_nolftovr*TILE);
 
 // Calculate w_cols, x_cols, x_rows iterations
 assign config_d.w_cols_iter = config_d.w_cols_lftovr != '0 ? w_cols_iter_nolftovr + 1 : w_cols_iter_nolftovr;

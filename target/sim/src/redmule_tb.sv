@@ -61,6 +61,19 @@ module redmule_tb
   hwpe_stream_intf_tcdm instr[0:0]  (.clk(clk_i));
   hwpe_stream_intf_tcdm stack[0:0]  (.clk(clk_i));
   hwpe_stream_intf_tcdm tcdm [MP:0] (.clk(clk_i));
+  
+  // MX exponent stream interface
+  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) mx_exp_stream (.clk(clk_i));
+  
+  // Simple exponent sink: always ready to accept exponents
+  assign mx_exp_stream.ready = 1'b1;
+  
+  // Optional: Monitor exponent stream for debugging
+  // always_ff @(posedge clk_i) begin
+  //   if (mx_exp_stream.valid && mx_exp_stream.ready) begin
+  //     $display("[%0t] MX Exponent: 0x%02h", $time, mx_exp_stream.data[7:0]);
+  //   end
+  // end
 
   logic [NC-1:0][1:0]  evt;
   logic [MP-1:0]       tcdm_gnt;
@@ -290,7 +303,8 @@ module redmule_tb
     .core_inst_req_o    ( core_inst_req    ),
     .core_data_rsp_i    ( core_data_rsp    ),
     .core_data_req_o    ( core_data_req    ),
-    .tcdm               ( redmule_tcdm     )
+    .tcdm               ( redmule_tcdm     ),
+    .mx_exp_stream      ( mx_exp_stream    )
   );
 
   integer f_x, f_W, f_y, f_tau;
@@ -360,6 +374,42 @@ module redmule_tb
       $display("[TB] - errors=%08x", errors);
     end
     $finish;
+  end
+
+  // MX Encoder Output Capture for Verification
+  integer mx_fp16_file, mx_fp8_file, mx_exp_file;
+  initial begin
+    mx_fp16_file = $fopen("mx_encoder_fp16_inputs.txt", "w");
+    mx_fp8_file  = $fopen("mx_encoder_fp8_outputs.txt", "w");
+    mx_exp_file  = $fopen("mx_encoder_exponents.txt", "w");
+  end
+
+  // Capture FP16 inputs when FIFO reads
+  always @(posedge clk_i) begin
+    if (i_dut.i_redmule_top.fifo_valid && i_dut.i_redmule_top.fifo_pop) begin
+      $fwrite(mx_fp16_file, "%h\n", i_dut.i_redmule_top.fifo_data_out);
+    end
+  end
+
+  // Capture FP8 outputs when encoder produces valid data
+  always @(posedge clk_i) begin
+    if (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) begin
+      $fwrite(mx_fp8_file, "%h\n", i_dut.i_redmule_top.mx_val_data);
+    end
+  end
+
+  // Capture shared exponents
+  always @(posedge clk_i) begin
+    if (i_dut.i_redmule_top.mx_exp_valid && i_dut.i_redmule_top.mx_exp_ready) begin
+      $fwrite(mx_exp_file, "%h\n", i_dut.i_redmule_top.mx_exp_data);
+    end
+  end
+
+  final begin
+    $fclose(mx_fp16_file);
+    $fclose(mx_fp8_file);
+    $fclose(mx_exp_file);
+    $display("[TB] - MX encoder outputs written to mx_encoder_*.txt");
   end
 
 endmodule // redmule_tb

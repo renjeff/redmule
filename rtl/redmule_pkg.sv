@@ -11,7 +11,7 @@ import hwpe_stream_package::*;
 
 package redmule_pkg;
 
-  parameter int unsigned            DATA_W       = 256 + 32; // TCDM port dimension (in bits)
+  parameter int unsigned            DATA_W       = 512 + 32; // TCDM port dimension (in bits)
   parameter int unsigned            MemDw        = 32;
   parameter int unsigned            NumByte      = MemDw/8;
   parameter int unsigned            ADDR_W       = hci_package::DEFAULT_AW;
@@ -20,9 +20,9 @@ package redmule_pkg;
   parameter int unsigned            N_CONTEXT    = 2;
   parameter fpnew_pkg::fp_format_e  FPFORMAT     = fpnew_pkg::FP16;
   parameter int unsigned            BITW         = fpnew_pkg::fp_width(FPFORMAT);
-  parameter int unsigned            ARRAY_HEIGHT = 4;
+  parameter int unsigned            ARRAY_HEIGHT = 8;
   parameter int unsigned            PIPE_REGS    = 3;
-  parameter int unsigned            ARRAY_WIDTH  = ARRAY_HEIGHT*PIPE_REGS; // Superior limit, smaller values are allowed.
+  parameter int unsigned            ARRAY_WIDTH  = ARRAY_HEIGHT * PIPE_REGS; // 8*3=24
   parameter int unsigned            TOT_DEPTH    = DATAW/BITW;
   parameter int unsigned            DEPTH        = TOT_DEPTH/ARRAY_HEIGHT;
   parameter int unsigned            STRB         = DATA_W/8;
@@ -30,7 +30,8 @@ package redmule_pkg;
   parameter fpnew_pkg::ifmt_logic_t IntFmtConfig = 4'b1000;
   parameter fpnew_pkg::operation_e  CAST_OP      = fpnew_pkg::F2F;
   parameter int unsigned MIN_FMT                 = fpnew_pkg::min_fp_width(FpFmtConfig);
-  parameter int unsigned DW_CUT                  = DATA_W - ARRAY_HEIGHT*(PIPE_REGS + 1)*MIN_FMT;
+  // DW_CUT calculation for cast modules - uses TILE size
+  parameter int unsigned DW_CUT                  = DATA_W - ARRAY_HEIGHT*(PIPE_REGS+1)*MIN_FMT;
   parameter int unsigned ECC_CHUNK_SIZE          = 32;
   parameter int unsigned ECC_N_CHUNK             = DATA_W / ECC_CHUNK_SIZE;
   parameter int unsigned LATCH_BUFFERS           = 0;
@@ -124,6 +125,7 @@ package redmule_pkg;
     fpnew_pkg::fp_format_e           output_cast_src_fmt;
     fpnew_pkg::fp_format_e           output_cast_dst_fmt;
     logic                            z_priority;
+    logic                           mx_enable;
   } cntrl_streamer_t;
 
   typedef struct packed {
@@ -219,6 +221,7 @@ package redmule_pkg;
 
   typedef struct packed {
     logic idle;
+    logic mx_enable;
   } cntrl_flags_t;
 
   typedef enum logic [2:0] { MATMUL=3'h0, GEMM=3'h1, ADDMAX=3'h2, ADDMIN=3'h3, MULMAX=3'h4, MULMIN=3'h5, MAXMIN=3'h6, MINMAX=3'h7 } gemm_op_e;
@@ -264,6 +267,7 @@ package redmule_pkg;
     fpu_fmt_e input_format;
     fpu_fmt_e computing_format;
     logic        gemm_selection;
+    logic     mx_enable;
   } redmule_config_t;
 
   typedef enum {

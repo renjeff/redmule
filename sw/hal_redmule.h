@@ -79,7 +79,14 @@ void redmule_cfg(unsigned int x, unsigned int w, unsigned int z, uint16_t m_size
   mcfg_reg0 = (k_size << 16) | (m_size << 0);
   mcfg_reg1 = n_size << 0;
 
+  // Bit [16]: MX enable (set to 1 to enable MX format encoding)
+  // Bits [12:10]: GEMM operation
+  // Bits [9:7]: Data format
   arith_reg = (gemm_op << 10) | (gemm_fmt << 7);
+  // Enable MX mode for MX format output
+  arith_reg |= (1 << 16);
+
+  printf("[DEBUG] Writing ARITH reg: 0x%08x (MX enable bit=%d)\n", arith_reg, (arith_reg >> 16) & 1);
 
   redmule_x_add_set((unsigned int)x);
   redmule_w_add_set((unsigned int)w);

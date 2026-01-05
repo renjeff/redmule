@@ -54,9 +54,9 @@
 #define ADDR_WIDTH 32
 #define DATA_WIDTH 256
 #define REDMULE_FMT 16
-#define ARRAY_HEIGHT 4
+#define ARRAY_HEIGHT 8
 #define PIPE_REGS 3
-#define ARRAY_WIDTH 12 /* Superior limit is ARRAY_HEIGHT*PIPE_REGS */
+#define ARRAY_WIDTH (ARRAY_HEIGHT * PIPE_REGS) /* 8*3=24 */
 
 // Base address
 #define REDMULE_BASE_ADD 0x00100000

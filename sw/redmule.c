@@ -18,6 +18,8 @@
 
 int main() {
 
+  printf("[DEBUG] Main started\n");
+
   uint16_t m_size = M_SIZE;
   uint16_t n_size = N_SIZE;
   uint16_t k_size = K_SIZE;

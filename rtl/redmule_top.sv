@@ -43,7 +43,9 @@ module redmule_top
   // Periph slave port for the controller side
   hwpe_ctrl_intf_periph.slave periph,
   // TCDM master ports for the memory side
-  hci_core_intf.initiator tcdm
+  hci_core_intf.initiator tcdm,
+  // MX shared exponent output stream (separate from data)
+  hwpe_stream_intf_stream.source mx_exp_stream
 );
 
 localparam int unsigned DATAW_ALIGN = `HCI_SIZE_GET_DW(tcdm) - SysDataWidth;
@@ -165,6 +167,11 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) y_buffer_fifo      ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_q         ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_fifo      ( .clk( clk_i ) );
 
+// MX encoder output signals (forward declaration for mux)
+logic [DATAW_ALIGN-1:0] mx_z_buffer_data;
+logic mx_val_valid;
+logic mx_enable;
+
 // The streamer will present a single master TCDM port used to stream data to and from the memeory.
 redmule_streamer #(
   .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
@@ -224,6 +231,16 @@ hwpe_stream_fifo #(
   .pop_o          ( y_buffer_fifo )
 );
 
+// MX bypass: Mux between z_buffer output and MX encoder output at 512-bit bus level
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_muxed ( .clk( clk_i ) );
+
+// MUX: Select between engine output (bypass) and MX encoder output
+// MX encoder output is 256 bits packed into lower half of 512-bit bus
+assign z_buffer_muxed.data  = mx_enable ? mx_z_buffer_data : z_buffer_q.data;
+assign z_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : z_buffer_q.strb;
+assign z_buffer_muxed.valid = mx_enable ? mx_val_valid : z_buffer_q.valid;
+assign z_buffer_q.ready     = mx_enable ? 1'b1 : z_buffer_muxed.ready; // Consume z_buffer when MX active
+
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
   .FIFO_DEPTH     ( 2             )
@@ -232,7 +249,7 @@ hwpe_stream_fifo #(
   .rst_ni         ( rst_ni        ),
   .clear_i        ( clear         ),
   .flags_o        ( z_fifo_flgs   ),
-  .push_i         ( z_buffer_q    ),
+  .push_i         ( z_buffer_muxed ),
   .pop_o          ( z_buffer_fifo )
 );
 
@@ -279,7 +296,11 @@ redmule_w_buffer #(
   .w_buffer_i  ( w_buffer_fifo.data )
 );
 
-logic [Width-1:0][BITW-1:0] z_buffer_d, y_bias_q;
+logic [Width-1:0][BITW-1:0] z_buffer_d, y_bias_q, z_buffer_d_muxed;
+
+// z_buffer_d_muxed: Always use z_buffer_d (MX bypass happens at FIFO input, not here)
+assign z_buffer_d_muxed = z_buffer_d;
+
 redmule_z_buffer #(
   .DW            ( DATAW_ALIGN        ),
   .FpFormat      ( FpFormat           ),
@@ -292,7 +313,7 @@ redmule_z_buffer #(
   .ctrl_i        ( z_buffer_ctrl      ),
   .flags_o       ( z_buffer_flgs      ),
   .y_buffer_i    ( y_buffer_fifo.data ),
-  .z_buffer_i    ( z_buffer_d         ),
+  .z_buffer_i    ( z_buffer_d_muxed   ),
   .y_buffer_o    ( y_bias_q           ),
   .z_buffer_o    ( z_buffer_q.data    ),
   .z_strb_o      ( z_buffer_q.strb    )
@@ -397,6 +418,136 @@ redmule_engine     #(
   .busy_o             ( busy             ),
   .ctrl_engine_i      ( cntrl_engine     )
 );
+
+/*---------------------------------------------------------------*/
+/* |                   MX ENCODER & FIFO                       | */
+/*---------------------------------------------------------------*/
+
+// Extract MX enable from flags (mx_enable declared at top for forward reference)
+assign mx_enable = cntrl_flags.mx_enable;
+
+// FIFO signals - using Width (not Height) since z_buffer_d is [Width-1:0] 
+logic [Width-1:0][BITW-1:0] fifo_data_out;
+logic fifo_push, fifo_pop, fifo_grant, fifo_valid;
+
+// Push conditions - check if engine has valid output
+// out_valid is [Width-1:0][Height-1:0], need to OR across all dimensions
+logic any_pe_valid;
+logic [Width-1:0] width_valid;
+always_comb begin
+  for (int w = 0; w < Width; w++) begin
+    width_valid[w] = |flgs_engine.out_valid[w]; // OR all Height PEs in this Width stage
+  end
+  any_pe_valid = |width_valid; // OR all Width stages
+end
+assign fifo_push = any_pe_valid && mx_enable;
+
+
+redmule_mx_fifo #(
+  .DATA_WIDTH ( Width*BITW ),  // Width lanes * 16 bits
+  .FIFO_DEPTH ( 4          )
+) i_engine_fifo (
+  .clk_i      ( clk_i         ),
+  .rst_ni     ( rst_ni        ),
+  .clear_i    ( clear         ),
+  .push_i     ( fifo_push     ),
+  .grant_o    ( fifo_grant    ),
+  .data_i     ( z_buffer_d    ),
+  .pop_i      ( fifo_pop      ),
+  .valid_o    ( fifo_valid    ),
+  .data_o     ( fifo_data_out )
+);
+
+// MX Encoder (mx_val_valid declared at top for forward reference)
+logic [DATAW/2-1:0] mx_val_data;  // 256 bits for 32 FP8 elements
+logic mx_val_ready;
+logic [7:0] mx_exp_data;
+logic mx_exp_valid, mx_exp_ready;
+
+redmule_mx_encoder #(
+  .DATA_W    ( DATAW/2 ),  // 256 bits output
+  .BITW      ( BITW  ),
+  .NUM_LANES ( Width )  // Process Width lanes per cycle
+) i_mx_encoder (
+  .clk_i          ( clk_i          ),
+  .rst_ni         ( rst_ni         ),
+  .fp16_valid_i   ( fifo_valid     ),
+  .fp16_ready_o   ( fifo_pop       ),
+  .fp16_data_i    ( fifo_data_out  ),
+  .mx_val_valid_o ( mx_val_valid   ),
+  .mx_val_ready_i ( mx_val_ready   ),
+  .mx_val_data_o  ( mx_val_data    ),
+  .mx_exp_valid_o ( mx_exp_valid   ),
+  .mx_exp_ready_i ( mx_exp_ready   ),
+  .mx_exp_data_o  ( mx_exp_data    )
+);
+
+// ============================================================================
+// LEGACY: Exponent storage and serialization logic (for smaller array configs)
+// ============================================================================
+// // Exponent storage (temporary solution)
+// localparam int MAX_MX_BLOCKS = 256;
+// // TODO: expose via sepereate TCDM port
+// logic [7:0] mx_exp_storage [MAX_MX_BLOCKS];
+// logic [$clog2(MAX_MX_BLOCKS)-1:0] exp_wr_ptr;
+// 
+// always_ff @(posedge clk_i or negedge rst_ni) begin
+//   if (!rst_ni) begin
+//     exp_wr_ptr <= '0;
+//   end else if (clear) begin
+//     exp_wr_ptr <= '0;
+//   end else if (mx_exp_valid && mx_exp_ready) begin
+//     mx_exp_storage[exp_wr_ptr] <= mx_exp_data;
+//     exp_wr_ptr <= exp_wr_ptr + 1;
+//   end
+// end
+// 
+// assign mx_exp_ready = 1'b1;
+// 
+// // Serialization: 256-bit -> Width*BITW chunks
+// localparam int MX_CHUNKS_PER_BLOCK = (256 + Width*BITW - 1) / (Width*BITW); // Ceiling division incase of non-even divisibility
+// logic [$clog2(MX_CHUNKS_PER_BLOCK):0] mx_word_cnt;
+// logic [Width*BITW-1:0] mx_chunk;
+// 
+// always_ff @(posedge clk_i or negedge rst_ni) begin
+//   if (!rst_ni) begin
+//     mx_word_cnt <= '0;
+//   end else if (clear) begin
+//     mx_word_cnt <= '0;
+//   end else if (mx_val_valid && mx_val_ready) begin
+//     if (mx_word_cnt == (256/(Width*BITW) - 1)) begin
+//       mx_word_cnt <= '0;
+//     end else begin
+//       mx_word_cnt <= mx_word_cnt + 1;
+//     end
+//   end
+// end
+// 
+// assign mx_chunk = mx_val_data[mx_word_cnt*(Width*BITW) +: Width*BITW];
+// assign mx_val_ready = (mx_word_cnt == (256/(Width*BITW) - 1));
+// ============================================================================
+
+// Exponent streaming: Expose shared exponent as separate output stream
+assign mx_exp_stream.valid = mx_exp_valid;
+assign mx_exp_stream.data  = {{(SysDataWidth-8){1'b0}}, mx_exp_data};
+assign mx_exp_stream.strb  = '1;
+assign mx_exp_ready = mx_exp_stream.ready;
+
+// Data stream handshake
+assign mx_val_ready = 1'b1;
+
+// MX format constants
+localparam int MX_ELEM_WIDTH = 8;   // FP8 element width  
+localparam int MX_BLOCK_ELEMS = 32; // 32 elements per MX block
+
+// MX encoder output packing: 32 FP8 elements (256 bits) into DATAW_ALIGN (512 bits)
+// No serialization needed - memory bus is 512 bits, MX output is 256 bits
+// Pack FP8 mantissas in lower 256 bits, upper 256 bits zero (or could hold metadata)
+// (mx_z_buffer_data declared at top for forward reference)
+assign mx_z_buffer_data = {{(DATAW_ALIGN-256){1'b0}}, mx_val_data};
+
+// z_buffer_d is not used for MX - we intercept at z_buffer_q level
+// The muxed signal connects to z_buffer, but MX bypass happens at FIFO input
 
 /*---------------------------------------------------------------*/
 /* |                    Memory Controller                      | */

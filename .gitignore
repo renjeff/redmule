@@ -13,3 +13,4 @@ sw/inc/
 rtl/vsim.wlf
 target/sim
 golden-model/common/
+work

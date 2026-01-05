@@ -236,6 +236,8 @@ module redmule_ctrl
   assign cntrl_scheduler_o.rst        = current == REDMULE_FINISHED;
   assign cntrl_scheduler_o.finished   = current == REDMULE_FINISHED;
   assign latch_clear                  = current == REDMULE_LATCH_RST;
+  // Read MX enable from slave register file (before tiler) since MACFG is at slave index 5
+  assign cntrl_flags_o.mx_enable = reg_file_d.hwpe_params[MACFG][16];
 
   always_comb begin : controller_fsm
     cntrl_flags_o.idle = 1'b0;

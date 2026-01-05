@@ -12,26 +12,13 @@
 # //  is prohibited from disclosure under the Trade Secrets Act,
 # //  18 U.S.C. Section 1905.
 # //
-# vsim -voptargs="+acc" work.tb_redmule_mx_decoder 
-# Start time: 16:17:59 on Nov 25,2025
+# vsim -voptargs="+acc" tb_redmule_mx_roundtrip 
+# Start time: 21:18:35 on Dec 15,2025
 # ** Note: (vsim-3812) Design is being optimized...
-# ** Error: (vopt-13130) Failed to find design unit tb_redmule_mx_decoder.
+# ** Error: (vopt-13130) Failed to find design unit tb_redmule_mx_roundtrip.
 #         Searched libraries:
 #             work
 # Optimization failed
 # Error loading design
-# End time: 16:17:59 on Nov 25,2025, Elapsed time: 0:00:00
+# End time: 21:18:35 on Dec 15,2025, Elapsed time: 0:00:00
 # Errors: 1, Warnings: 0
-do rtl/waves_mx_decoder.do
-# ** Error: Unrecognized dataset prefix: sim
-# Error in macro ./rtl/waves_mx_decoder.do line 7
-# Unrecognized dataset prefix: sim
-#     while executing
-# "add wave -divider "Top-level""
-do rtl/waves_mx_decoder.do
-# ** Error: Unrecognized dataset prefix: sim
-# Error in macro ./rtl/waves_mx_decoder.do line 7
-# Unrecognized dataset prefix: sim
-#     while executing
-# "add wave -divider "Top-level""
-exit

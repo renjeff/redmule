@@ -86,19 +86,37 @@ endgenerate
 // endfunction
 function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16);
   int signed eM_unbiased;
-  int signed e_scale_unbiased;
+  int signed scale_needed;
   int signed e8m0;
   begin
-    eM_unbiased      = max_e16 - BIAS_FP16;
-    e_scale_unbiased = eM_unbiased - 7;
-    e8m0             = e_scale_unbiased + 127;
-
-    if (e8m0 < 0)
-      compute_shared_exp = 8'd0;
-    else if (e8m0 > 255)
-      compute_shared_exp = 8'd255;
-    else
-      compute_shared_exp = e8m0[7:0];
+    // Special case: if no normal values found in block (max_e16 == 0),
+    // return neutral scale (127 = 0x7F) to match golden model behavior.
+    // This happens when all inputs are zero, subnormal, Inf, or NaN.
+    if (max_e16 == 5'd0) begin
+      compute_shared_exp = 8'd127;
+    end else begin
+      // MX scaling: adjust so max FP16 exponent maps to max usable FP8 exponent
+      // For MXFP8 E4M3: max exponent is 14 (0b1110), representing unbiased 7
+      // 
+      // We want: max_e16 (unbiased) = e8_max (unbiased) + scale_bias
+      // scale_bias = max_e16_unbiased - e8_max_unbiased
+      //            = (max_e16 - 15) - (14 - 7)
+      //            = max_e16 - 15 - 7
+      //            = max_e16 - 22
+      // 
+      // E8M0 encoding: shared_exp = scale_bias + 127
+      
+      eM_unbiased = int'(max_e16) - BIAS_FP16;     // Unbiased FP16 max exp
+      scale_needed = eM_unbiased - 7;               // 7 = max unbiased FP8 E4M3 exp (14-7)
+      e8m0 = scale_needed + 127;                    // E8M0 biased format
+      
+      if (e8m0 < 0)
+        compute_shared_exp = 8'd0;
+      else if (e8m0 > 255)
+        compute_shared_exp = 8'd255;
+      else
+        compute_shared_exp = e8m0[7:0];
+    end
   end
 endfunction
 
@@ -158,7 +176,7 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
         e_unbias = e16 - BIAS_FP16 + BIAS_FP8_E4M3;
 
         if (e_unbias <= 0)
-            return {s,7'b0}; //underflow to zero
+            return {s,4'b0000, 3'b000}; //underflow to zero
         if (e_unbias >= 15)
             return {s,4'hE,3'b111}; // saturate
         
@@ -201,36 +219,71 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
     logic [4:0] e16;
     logic [9:0] m16;
 
-    logic [BITW-1:0] tmp;
+    logic [3:0] e8;
+    logic [2:0] m8_trunc, m8_round;
+    logic rbit, sbit, round_up, carry;
+
     int signed delta;
-    int signed e16_unscaled;
+    int signed e8_unbiased;
+    int signed e8_biased_tmp;
 
     begin
         s = val_fp16[15];
         e16 = val_fp16[14:10];
         m16 = val_fp16[9:0];
 
-        // Zero/Inf/NaN: don't touch exponent, just quantise
+        // Zero
+        if (e16 == 5'b0)
+            return {s, 7'b0};
 
-        if (e16 == 5'b0 || e16 == 5'b11111) begin
-            fp16_to_mxfp8 = fp16_to_fp8_e4m3_unscaled(val_fp16);
-            return fp16_to_mxfp8;
+        // Inf/NaN
+        if (e16 == 5'b11111) begin
+            if (m16 == 0)
+                return {s, 4'hF, 3'b000}; // inf
+            else 
+                return {s, 4'hF, 3'b001}; // NaN
+        end
+
+        // Normal: compute FP8 exponent directly
+        // Decoder does: e16_scaled = e8 - BIAS_FP8 + BIAS_FP16 + (shared_exp - 127)
+        // So encoder needs: e8 = e16 - BIAS_FP16 + BIAS_FP8 - (shared_exp - 127)
+        delta = int'(shared_exp) - 127;
+        e8_unbiased = int'(e16) - BIAS_FP16 - delta;
+        
+        // Check for underflow (maps to zero in FP8)
+        if (e8_unbiased < -BIAS_FP8_E4M3)
+            return {s, 4'b0000, 3'b000};
+        
+        // Check for overflow (saturate to max finite FP8)
+        if (e8_unbiased > 7)  // max unbiased exp for E4M3 is 7 (biased 14)
+            return {s, 4'hE, 3'b111};
+        
+        // Bias the exponent for FP8
+        e8_biased_tmp = e8_unbiased + BIAS_FP8_E4M3;
+        e8 = e8_biased_tmp[3:0];
+        
+        // Handle subnormal result (e8 would be 0)
+        if (e8 == 4'b0)
+            return {s, 4'b0000, 3'b000}; // flush to zero for simplicity
+        
+        // Truncate mantissa with RNE rounding
+        m8_trunc = m16[9:7];
+        rbit = m16[6];
+        sbit = |m16[5:0];
+        round_up = rne_round_up(m8_trunc[0], rbit, sbit);
+        
+        {carry, m8_round} = {1'b0, m8_trunc} + round_up;
+        
+        if (carry) begin
+            if (e8 >= 4'hE) begin
+                e8 = 4'hE;
+                m8_round = 3'b111;
+            end else begin
+                e8 = e8 + 4'd1;
+            end
         end
         
-        // undo MX scaling:d ecode does e16_scaled = e16_unscaled + (shared_exp -127)
-        delta = int'(shared_exp) - 127;
-        e16_unscaled = e16 - delta;
-
-        // clamp to FP8 range
-        if (e16_unscaled <= 0)
-            tmp = {s, 5'b0, 10'b0}; // underflow
-        else if (e16_unscaled >= 31)
-            tmp = {s, 5'b11110, 10'b1111111111}; // overflow to max finite
-        else
-            tmp = {s, e16_unscaled[4:0], m16}; // normal value
-
-        fp16_to_mxfp8 = fp16_to_fp8_e4m3_unscaled(tmp);
-        return fp16_to_mxfp8;
+        return {s, e8, m8_round};
     end
 endfunction
 
