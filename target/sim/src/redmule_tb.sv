@@ -29,8 +29,6 @@ module redmule_tb
   // MX test vector storage for data
   logic [255:0] mx_x_data_mem [0:255];
   logic [255:0] mx_w_data_mem [0:255];
-  integer mx_x_data_idx = 0;
-  integer mx_w_data_idx = 0;
   
   localparam int unsigned NC = 1;
   localparam int unsigned ID = 10;
@@ -59,12 +57,33 @@ module redmule_tb
     default: '0
   };
 
+
   // global signals
   string stim_instr, stim_data, stack_init;
+  string mx_dir_resolved; // Directory for MX vectors, derived from stim_data
   logic test_mode;
   logic [31:0] core_boot_addr;
   logic redmule_busy;
   logic scan_cg_en;
+
+  // MX encoder output file handles
+  integer mx_fp16_file, mx_fp8_file, mx_exp_file;
+
+
+  // Helper: get directory name from path
+  function automatic string dirname(input string path);
+    int i;
+    dirname = path;
+    // find last '/'
+    for (i = path.len()-1; i >= 0; i--) begin
+      if (path.getc(i) == "/") begin
+        dirname = path.substr(0, i-1);
+        return dirname;
+      end
+    end
+    // no slash -> current dir
+    dirname = ".";
+  endfunction
 
   hwpe_stream_intf_tcdm instr[0:0]  (.clk(clk_i));
   hwpe_stream_intf_tcdm stack[0:0]  (.clk(clk_i));
@@ -172,24 +191,29 @@ module redmule_tb
   // --- Protocol Assertions for Exponent Streams ---
   // 1. Data must remain stable while valid=1 and ready=0
   logic [31:0] x_exp_data_last, w_exp_data_last;
+  logic x_exp_stall_q, w_exp_stall_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       x_exp_data_last <= 32'h0;
       w_exp_data_last <= 32'h0;
+      x_exp_stall_q   <= 1'b0;
+      w_exp_stall_q   <= 1'b0;
     end else begin
       if (x_mx_exp_stream.valid && !x_mx_exp_stream.ready)
         x_exp_data_last <= x_mx_exp_stream.data;
       if (w_mx_exp_stream.valid && !w_mx_exp_stream.ready)
         w_exp_data_last <= w_mx_exp_stream.data;
+      x_exp_stall_q <= x_mx_exp_stream.valid && !x_mx_exp_stream.ready;
+      w_exp_stall_q <= w_mx_exp_stream.valid && !w_mx_exp_stream.ready;
     end
   end
 
   // Assert data is stable while valid=1 and ready=0
   always_ff @(posedge clk_i) begin
-    if (x_mx_exp_stream.valid && !x_mx_exp_stream.ready)
+    if((x_mx_exp_stream.valid && !x_mx_exp_stream.ready) && x_exp_stall_q)
       assert(x_mx_exp_stream.data == x_exp_data_last)
         else $error("[TB][ASSERT] x_mx_exp_stream.data changed while valid=1 and ready=0");
-    if (w_mx_exp_stream.valid && !w_mx_exp_stream.ready)
+    if ((w_mx_exp_stream.valid && !w_mx_exp_stream.ready) && w_exp_stall_q)
       assert(w_mx_exp_stream.data == w_exp_data_last)
         else $error("[TB][ASSERT] w_mx_exp_stream.data changed while valid=1 and ready=0");
   end
@@ -476,12 +500,7 @@ module redmule_tb
   initial begin
     integer id;
     int cnt_rd, cnt_wr;
-    // Load MX data test vectors if enabled
-    if (mx_enable) begin
-      $display("[TB] Loading MX data test vectors...");
-      $readmemh("golden-model/MX/mx_x_data.txt", mx_x_data_mem);
-      $readmemh("golden-model/MX/mx_w_data.txt", mx_w_data_mem);
-    end
+
 
 
     if (!$value$plusargs("STIM_INSTR=%s", stim_instr)) stim_instr = "";
@@ -491,6 +510,29 @@ module redmule_tb
     $display("Please find STIM_DATA loaded from %s", stim_data);
     $display("Please find STACK_INIT loaded from %s", stack_init);
 
+    // MX: derive directory from stim_data
+    if (mx_enable) begin
+      // derive MX directory from stim_data absolute path
+      mx_dir_resolved = dirname(stim_data);
+      $display("[TB] MX dir derived from STIM_DATA: %s", mx_dir_resolved);
+
+      // clear
+      for (int i = 0; i < $size(mx_x_data_mem); i++) begin
+        mx_x_data_mem[i] = '0;
+        mx_w_data_mem[i] = '0;
+      end
+      for (int i = 0; i < $size(mx_x_exp_mem); i++) begin
+        mx_x_exp_mem[i] = '0;
+        mx_w_exp_mem[i] = '0;
+      end
+
+      // load from same folder as stim_data.txt
+      $readmemh({mx_dir_resolved, "/mx_x_data.txt"}, mx_x_data_mem);
+      $readmemh({mx_dir_resolved, "/mx_w_data.txt"}, mx_w_data_mem);
+      $readmemh({mx_dir_resolved, "/mx_x_exp.txt"},  mx_x_exp_mem);
+      $readmemh({mx_dir_resolved, "/mx_w_exp.txt"},  mx_w_exp_mem);
+    end
+
     test_mode = 1'b0;
     core_boot_addr = 32'h1C000084;
 
@@ -499,12 +541,7 @@ module redmule_tb
     $readmemh(stim_data,  redmule_tb.i_dummy_dmemory.memory);
     $readmemh(stack_init, redmule_tb.i_dummy_stack_memory.memory);
 
-    // Load MX exponent test vectors if enabled
-    if (mx_enable) begin
-      $display("[TB] Loading MX exponent test vectors...");
-      $readmemh("golden-model/MX/mx_x_exp.txt", mx_x_exp_mem);
-      $readmemh("golden-model/MX/mx_w_exp.txt", mx_w_exp_mem);
-    end
+
 
     // End: WFI + returned != -1 signals end-of-computation
     while(~core_sleep || errors==-1) begin
@@ -585,23 +622,23 @@ module redmule_tb
     $display("[TB] - MX encoder outputs written to mx_encoder_*.txt");
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      mx_x_exp_idx <= 0;
-      mx_w_exp_idx <= 0;
-    end else begin
-      // Increment X index only on successful handshake
-      if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready) begin
-        mx_x_exp_idx <= mx_x_exp_idx + 1;
-        //$display("[TB][X_EXP] Handshake: idx=%0d data=0x%08x", mx_x_exp_idx, mx_x_exp_mem[mx_x_exp_idx]);
-      end
+  // always_ff @(posedge clk_i or negedge rst_ni) begin
+  //   if (!rst_ni) begin
+  //     mx_x_exp_idx <= 0;
+  //     mx_w_exp_idx <= 0;
+  //   end else begin
+  //     // Increment X index only on successful handshake
+  //     if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready) begin
+  //       mx_x_exp_idx <= mx_x_exp_idx + 1;
+  //       //$display("[TB][X_EXP] Handshake: idx=%0d data=0x%08x", mx_x_exp_idx, mx_x_exp_mem[mx_x_exp_idx]);
+  //     end
 
-      // Increment W index only on successful handshake
-      if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready) begin
-        mx_w_exp_idx <= mx_w_exp_idx + 1;
-        //$display("[TB][W_EXP] Handshake: idx=%0d data=0x%08x", mx_w_exp_idx, mx_w_exp_mem[mx_w_exp_idx]);
-      end
-    end
-  end
+  //     // Increment W index only on successful handshake
+  //     if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready) begin
+  //       mx_w_exp_idx <= mx_w_exp_idx + 1;
+  //       //$display("[TB][W_EXP] Handshake: idx=%0d data=0x%08x", mx_w_exp_idx, mx_w_exp_mem[mx_w_exp_idx]);
+  //     end
+  //   end
+  // end
 
 endmodule // redmule_tb
