@@ -1,3 +1,6 @@
+# vsim -c -do "run -all; quit" tb_redmule_mx_decoder_w 
+# Start time: 14:38:49 on Jan 08,2026
+# ** Note: (vsim-3812) Design is being optimized...
 # //  Questa Sim-64
 # //  Version 10.7b_1 linux_x86_64 Jul 26 2018
 # //
@@ -12,253 +15,958 @@
 # //  is prohibited from disclosure under the Trade Secrets Act,
 # //  18 U.S.C. Section 1905.
 # //
-# vsim -voptargs="+acc" tb_redmule_mx_roundtrip 
-# Start time: 17:01:29 on Dec 16,2025
-# ** Note: (vsim-8009) Loading existing optimized design _opt2
 # Loading sv_std.std
-# Loading work.tb_redmule_mx_roundtrip(fast)
-# Loading work.redmule_mx_encoder(fast)
-# Loading work.redmule_mx_decoder(fast)
-# A time value could not be extracted from the current line
-add wave *
-run -all
+# Loading work.tb_redmule_mx_decoder_w(fast)
+# run -all
 # =================================================
-# MX ROUNDTRIP TEST: NUM_LANES = 4
-# Testing FP16 -> MXFP8 -> FP16 conversion chain
+# MX DECODER W (per-group exp) TESTBENCH
+# DATA_W=256, NUM_ELEMS=32, NUM_LANES=8, NUM_GROUPS=4
 # =================================================
-# --- Running: edge_cases ---
-#  PASS - Max ULP: 64.00, Avg ULP: 10.88 (limit: 128)
-# --- Running: roundtrip_0 ---
-#   [INFO] elem 5: ULP=109.00 (0xd3ed -> 0xd380)
-#  PASS - Max ULP: 109.00, Avg ULP: 18.62 (limit: 128)
-# --- Running: roundtrip_1 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 20.33 (limit: 128)
-# --- Running: roundtrip_2 ---
-#  PASS - Max ULP: 58.00, Avg ULP: 17.19 (limit: 128)
-# --- Running: roundtrip_3 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 19.59 (limit: 128)
-# --- Running: roundtrip_4 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 19.98 (limit: 128)
-# --- Running: roundtrip_5 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 19.00 (limit: 128)
-# --- Running: roundtrip_6 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 21.77 (limit: 128)
-# --- Running: roundtrip_7 ---
-#   [INFO] elem 13: ULP=120.00 (0xbff8 -> 0xbf80)
-#  PASS - Max ULP: 120.00, Avg ULP: 24.62 (limit: 128)
-# --- Running: roundtrip_8 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 18.86 (limit: 128)
-# --- Running: roundtrip_9 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 20.83 (limit: 128)
-# --- Running: roundtrip_10 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 18.98 (limit: 128)
-# --- Running: roundtrip_11 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 18.05 (limit: 128)
-# --- Running: roundtrip_12 ---
-#   [INFO] elem 5: ULP=120.00 (0xb3f8 -> 0xb380)
-#  PASS - Max ULP: 120.00, Avg ULP: 25.28 (limit: 128)
-# --- Running: roundtrip_13 ---
-#   [INFO] elem 13: ULP=102.00 (0xd3e6 -> 0xd380)
-#  PASS - Max ULP: 102.00, Avg ULP: 20.75 (limit: 128)
-# --- Running: roundtrip_14 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 17.23 (limit: 128)
-# --- Running: roundtrip_15 ---
-#  PASS - Max ULP: 55.00, Avg ULP: 23.20 (limit: 128)
-# --- Running: roundtrip_16 ---
-#  PASS - Max ULP: 52.00, Avg ULP: 15.98 (limit: 128)
-# --- Running: roundtrip_17 ---
-#  PASS - Max ULP: 56.00, Avg ULP: 20.39 (limit: 128)
-# --- Running: roundtrip_18 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 21.73 (limit: 128)
-# --- Running: roundtrip_19 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 21.38 (limit: 128)
-# --- Running: roundtrip_20 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 21.47 (limit: 128)
-# --- Running: roundtrip_21 ---
-#   [INFO] elem 5: ULP=120.00 (0x4bf8 -> 0x4b80)
-#  PASS - Max ULP: 120.00, Avg ULP: 21.55 (limit: 128)
-# --- Running: roundtrip_22 ---
-#   [INFO] elem 21: ULP=124.00 (0xb3fc -> 0xb380)
-#  PASS - Max ULP: 124.00, Avg ULP: 25.16 (limit: 128)
-# --- Running: roundtrip_23 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 18.41 (limit: 128)
-# --- Running: roundtrip_24 ---
-#   [INFO] elem 29: ULP=65.00 (0x43c1 -> 0x4380)
-#  PASS - Max ULP: 65.00, Avg ULP: 21.70 (limit: 128)
-# --- Running: roundtrip_25 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 21.39 (limit: 128)
-# --- Running: roundtrip_26 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 15.75 (limit: 128)
-# --- Running: roundtrip_27 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 16.72 (limit: 128)
-# --- Running: roundtrip_28 ---
-#   [INFO] elem 5: ULP=107.00 (0x57eb -> 0x5780)
-#  PASS - Max ULP: 107.00, Avg ULP: 25.91 (limit: 128)
-# --- Running: roundtrip_29 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 19.95 (limit: 128)
-# --- Running: roundtrip_30 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 18.06 (limit: 128)
-# --- Running: roundtrip_31 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 18.25 (limit: 128)
-# --- Running: roundtrip_32 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 18.20 (limit: 128)
-# --- Running: roundtrip_33 ---
-#   [INFO] elem 21: ULP=115.00 (0xd3f3 -> 0xd380)
-#  PASS - Max ULP: 115.00, Avg ULP: 22.88 (limit: 128)
-# --- Running: roundtrip_34 ---
-#   [INFO] elem 13: ULP=120.00 (0x3ff8 -> 0x3f80)
-#  PASS - Max ULP: 120.00, Avg ULP: 21.55 (limit: 128)
-# --- Running: roundtrip_35 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 23.97 (limit: 128)
-# --- Running: roundtrip_36 ---
-#   [INFO] elem 5: ULP=95.00 (0xbbdf -> 0xbb80)
-#  PASS - Max ULP: 95.00, Avg ULP: 22.67 (limit: 128)
-# --- Running: roundtrip_37 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 21.41 (limit: 128)
-# --- Running: roundtrip_38 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 24.00 (limit: 128)
-# --- Running: roundtrip_39 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 24.25 (limit: 128)
-# --- Running: roundtrip_40 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 24.88 (limit: 128)
-# --- Running: roundtrip_41 ---
-#  PASS - Max ULP: 57.00, Avg ULP: 14.89 (limit: 128)
-# --- Running: roundtrip_42 ---
-#   [INFO] elem 5: ULP=102.00 (0xb7e6 -> 0xb780)
-#   [INFO] elem 29: ULP=86.00 (0x37d6 -> 0x3780)
-#  PASS - Max ULP: 102.00, Avg ULP: 27.72 (limit: 128)
-# --- Running: roundtrip_43 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 18.16 (limit: 128)
-# --- Running: roundtrip_44 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 23.41 (limit: 128)
-# --- Running: roundtrip_45 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 20.41 (limit: 128)
-# --- Running: roundtrip_46 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 18.28 (limit: 128)
-# --- Running: roundtrip_47 ---
-#   [INFO] elem 5: ULP=107.00 (0x43eb -> 0x4380)
-#   [INFO] elem 29: ULP=89.00 (0x43d9 -> 0x4380)
-#  PASS - Max ULP: 107.00, Avg ULP: 18.56 (limit: 128)
-# --- Running: roundtrip_48 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 21.56 (limit: 128)
-# --- Running: roundtrip_49 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 19.58 (limit: 128)
-# --- Running: roundtrip_50 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 19.58 (limit: 128)
-# --- Running: roundtrip_51 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 16.06 (limit: 128)
-# --- Running: roundtrip_52 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 16.45 (limit: 128)
-# --- Running: roundtrip_53 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 22.28 (limit: 128)
-# --- Running: roundtrip_54 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 17.53 (limit: 128)
-# --- Running: roundtrip_55 ---
-#   [INFO] elem 21: ULP=95.00 (0x43df -> 0x4380)
-#  PASS - Max ULP: 95.00, Avg ULP: 24.62 (limit: 128)
-# --- Running: roundtrip_56 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 19.11 (limit: 128)
-# --- Running: roundtrip_57 ---
-#   [INFO] elem 21: ULP=97.00 (0x57e1 -> 0x5780)
-#  PASS - Max ULP: 97.00, Avg ULP: 22.11 (limit: 128)
-# --- Running: roundtrip_58 ---
-#   [INFO] elem 21: ULP=106.00 (0x4bea -> 0x4b80)
-#   [INFO] elem 29: ULP=104.00 (0x4be8 -> 0x4b80)
-#  PASS - Max ULP: 106.00, Avg ULP: 21.39 (limit: 128)
-# --- Running: roundtrip_59 ---
-#   [INFO] elem 29: ULP=125.00 (0xd3fd -> 0xd380)
-#  PASS - Max ULP: 125.00, Avg ULP: 25.53 (limit: 128)
-# --- Running: roundtrip_60 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 18.88 (limit: 128)
-# --- Running: roundtrip_61 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 22.12 (limit: 128)
-# --- Running: roundtrip_62 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 16.91 (limit: 128)
-# --- Running: roundtrip_63 ---
-#   [INFO] elem 21: ULP=108.00 (0x43ec -> 0x4380)
-#  PASS - Max ULP: 108.00, Avg ULP: 22.66 (limit: 128)
-# --- Running: roundtrip_64 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 18.91 (limit: 128)
-# --- Running: roundtrip_65 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 18.69 (limit: 128)
-# --- Running: roundtrip_66 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 21.81 (limit: 128)
-# --- Running: roundtrip_67 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 19.81 (limit: 128)
-# --- Running: roundtrip_68 ---
-#   [INFO] elem 13: ULP=74.00 (0xc7ca -> 0xc780)
-#  PASS - Max ULP: 74.00, Avg ULP: 20.89 (limit: 128)
-# --- Running: roundtrip_69 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 22.89 (limit: 128)
-# --- Running: roundtrip_70 ---
-#  PASS - Max ULP: 56.00, Avg ULP: 18.50 (limit: 128)
-# --- Running: roundtrip_71 ---
-#  PASS - Max ULP: 54.00, Avg ULP: 16.23 (limit: 128)
-# --- Running: roundtrip_72 ---
-#  PASS - Max ULP: 55.00, Avg ULP: 15.84 (limit: 128)
-# --- Running: roundtrip_73 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 22.62 (limit: 128)
-# --- Running: roundtrip_74 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 20.78 (limit: 128)
-# --- Running: roundtrip_75 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 18.62 (limit: 128)
-# --- Running: roundtrip_76 ---
-#   [INFO] elem 21: ULP=67.00 (0x57c3 -> 0x5780)
-#  PASS - Max ULP: 67.00, Avg ULP: 18.81 (limit: 128)
-# --- Running: roundtrip_77 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 17.84 (limit: 128)
-# --- Running: roundtrip_78 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 23.23 (limit: 128)
-# --- Running: roundtrip_79 ---
-#  PASS - Max ULP: 46.00, Avg ULP: 16.77 (limit: 128)
-# --- Running: roundtrip_80 ---
-#   [INFO] elem 5: ULP=69.00 (0xcfc5 -> 0xcf80)
-#  PASS - Max ULP: 69.00, Avg ULP: 19.34 (limit: 128)
-# --- Running: roundtrip_81 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 24.44 (limit: 128)
-# --- Running: roundtrip_82 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 22.41 (limit: 128)
-# --- Running: roundtrip_83 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 21.62 (limit: 128)
-# --- Running: roundtrip_84 ---
-#  PASS - Max ULP: 60.00, Avg ULP: 16.98 (limit: 128)
-# --- Running: roundtrip_85 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 23.53 (limit: 128)
-# --- Running: roundtrip_86 ---
-#  PASS - Max ULP: 57.00, Avg ULP: 16.73 (limit: 128)
-# --- Running: roundtrip_87 ---
-#   [INFO] elem 5: ULP=126.00 (0xd7fe -> 0xd780)
-#  PASS - Max ULP: 126.00, Avg ULP: 24.19 (limit: 128)
-# --- Running: roundtrip_88 ---
-#  PASS - Max ULP: 58.00, Avg ULP: 18.19 (limit: 128)
-# --- Running: roundtrip_89 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 18.50 (limit: 128)
-# --- Running: roundtrip_90 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 16.53 (limit: 128)
-# --- Running: roundtrip_91 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 26.00 (limit: 128)
-# --- Running: roundtrip_92 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 19.81 (limit: 128)
-# --- Running: roundtrip_93 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 16.27 (limit: 128)
-# --- Running: roundtrip_94 ---
-#  PASS - Max ULP: 64.00, Avg ULP: 19.02 (limit: 128)
-# --- Running: roundtrip_95 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 24.05 (limit: 128)
-# --- Running: roundtrip_96 ---
-#  PASS - Max ULP: 62.00, Avg ULP: 19.20 (limit: 128)
-# --- Running: roundtrip_97 ---
-#  PASS - Max ULP: 63.00, Avg ULP: 18.44 (limit: 128)
-# --- Running: roundtrip_98 ---
-#  PASS - Max ULP: 61.00, Avg ULP: 25.86 (limit: 128)
-# --- Running: roundtrip_99 ---
-#  PASS - Max ULP: 59.00, Avg ULP: 23.14 (limit: 128)
+# 
+# --- Generating test block 0 ---
+# === W DEC TEST: block_0 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_0 ===
+# 
+# 
+# --- Generating test block 1 ---
+# === W DEC TEST: block_1 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_1 ===
+# 
+# 
+# --- Generating test block 2 ---
+# === W DEC TEST: block_2 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_2 ===
+# 
+# 
+# --- Generating test block 3 ---
+# === W DEC TEST: block_3 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_3 ===
+# 
+# 
+# --- Generating test block 4 ---
+# === W DEC TEST: block_4 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_4 ===
+# 
+# 
+# --- Generating test block 5 ---
+# === W DEC TEST: block_5 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_5 ===
+# 
+# 
+# --- Generating test block 6 ---
+# === W DEC TEST: block_6 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_6 ===
+# 
+# 
+# --- Generating test block 7 ---
+# === W DEC TEST: block_7 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_7 ===
+# 
+# 
+# --- Generating test block 8 ---
+# === W DEC TEST: block_8 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_8 ===
+# 
+# 
+# --- Generating test block 9 ---
+# === W DEC TEST: block_9 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_9 ===
+# 
+# 
+# --- Generating test block 10 ---
+# === W DEC TEST: block_10 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_10 ===
+# 
+# 
+# --- Generating test block 11 ---
+# === W DEC TEST: block_11 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_11 ===
+# 
+# 
+# --- Generating test block 12 ---
+# === W DEC TEST: block_12 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_12 ===
+# 
+# 
+# --- Generating test block 13 ---
+# === W DEC TEST: block_13 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_13 ===
+# 
+# 
+# --- Generating test block 14 ---
+# === W DEC TEST: block_14 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_14 ===
+# 
+# 
+# --- Generating test block 15 ---
+# === W DEC TEST: block_15 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_15 ===
+# 
+# 
+# --- Generating test block 16 ---
+# === W DEC TEST: block_16 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_16 ===
+# 
+# 
+# --- Generating test block 17 ---
+# === W DEC TEST: block_17 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_17 ===
+# 
+# 
+# --- Generating test block 18 ---
+# === W DEC TEST: block_18 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_18 ===
+# 
+# 
+# --- Generating test block 19 ---
+# === W DEC TEST: block_19 ===
+#   Input exponents per group:
+#     Group 0: exp=0x78
+#     Group 1: exp=0x7c
+#     Group 2: exp=0x80
+#     Group 3: exp=0x84
+#   Received FP16 outputs:
+#     Group 0 (exp=0x78):
+#       Lane 0: MX=0x38 -> FP16=0x2000
+#       Lane 1: MX=0x3c -> FP16=0x2200
+#       Lane 2: MX=0x40 -> FP16=0x2400
+#       Lane 3: MX=0xb8 -> FP16=0xa000
+#       Lane 4: MX=0x30 -> FP16=0x1c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x2600
+#       Lane 7: MX=0x34 -> FP16=0x1e00
+#     Group 1 (exp=0x7c):
+#       Lane 0: MX=0x38 -> FP16=0x3000
+#       Lane 1: MX=0x3c -> FP16=0x3200
+#       Lane 2: MX=0x40 -> FP16=0x3400
+#       Lane 3: MX=0xb8 -> FP16=0xb000
+#       Lane 4: MX=0x30 -> FP16=0x2c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x3600
+#       Lane 7: MX=0x34 -> FP16=0x2e00
+#     Group 2 (exp=0x80):
+#       Lane 0: MX=0x38 -> FP16=0x4000
+#       Lane 1: MX=0x3c -> FP16=0x4200
+#       Lane 2: MX=0x40 -> FP16=0x4400
+#       Lane 3: MX=0xb8 -> FP16=0xc000
+#       Lane 4: MX=0x30 -> FP16=0x3c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x4600
+#       Lane 7: MX=0x34 -> FP16=0x3e00
+#     Group 3 (exp=0x84):
+#       Lane 0: MX=0x38 -> FP16=0x5000
+#       Lane 1: MX=0x3c -> FP16=0x5200
+#       Lane 2: MX=0x40 -> FP16=0x5400
+#       Lane 3: MX=0xb8 -> FP16=0xd000
+#       Lane 4: MX=0x30 -> FP16=0x4c00
+#       Lane 5: MX=0x00 -> FP16=0x0000
+#       Lane 6: MX=0x44 -> FP16=0x5600
+#       Lane 7: MX=0x34 -> FP16=0x4e00
+# === W DEC TEST DONE: block_19 ===
+# 
+# 
 # =================================================
-# SUCCESS: All 100 roundtrip tests passed!
+# [TB] SUCCESS! All 20 W decoder tests completed.
 # =================================================
-# ** Note: $finish    : tb_redmule_mx_roundtrip.sv(350)
-#    Time: 25285 ns  Iteration: 1  Instance: /tb_redmule_mx_roundtrip
-# 1
-# Break in Module tb_redmule_mx_roundtrip at tb_redmule_mx_roundtrip.sv line 350
-# End time: 17:53:18 on Dec 16,2025, Elapsed time: 0:51:49
+# ** Note: $finish    : tb_redmule_mx_decoder_w.sv(195)
+#    Time: 1635 ns  Iteration: 1  Instance: /tb_redmule_mx_decoder_w
+# End time: 14:38:50 on Jan 08,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0

@@ -45,7 +45,10 @@ module redmule_top
   // TCDM master ports for the memory side
   hci_core_intf.initiator tcdm,
   // MX shared exponent output stream (separate from data)
-  hwpe_stream_intf_stream.source mx_exp_stream
+  hwpe_stream_intf_stream.source mx_exp_stream,
+  // MX shared exponent input streams for X and W decoders
+  hwpe_stream_intf_stream.sink x_mx_exp_stream,
+  hwpe_stream_intf_stream.sink w_mx_exp_stream
 );
 
 localparam int unsigned DATAW_ALIGN = `HCI_SIZE_GET_DW(tcdm) - SysDataWidth;
@@ -153,10 +156,12 @@ cntrl_flags_t  cntrl_flags;
 
 // X streaming interface + X FIFO interface
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_d         ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_muxed     ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_fifo      ( .clk( clk_i ) );
 
 // W streaming interface + W FIFO interface
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_d         ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_muxed     ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_fifo      ( .clk( clk_i ) );
 
 // Y streaming interface + Y FIFO interface
@@ -171,6 +176,7 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_fifo      ( .c
 logic [DATAW_ALIGN-1:0] mx_z_buffer_data;
 logic mx_val_valid;
 logic mx_enable;
+logic fifo_grant;  // Forward declaration for encoder FIFO backpressure
 
 // The streamer will present a single master TCDM port used to stream data to and from the memeory.
 redmule_streamer #(
@@ -195,28 +201,100 @@ redmule_streamer #(
   .flags_o         ( flgs_streamer       )
 );
 
+/*---------------------------------------------------------------*/
+/* |                   MX DECODERS (INPUT SIDE)                | */
+/*---------------------------------------------------------------*/
+
+// MX decoder parameters
+localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements
+localparam int unsigned MX_NUM_LANES = Width;  // Process Width elements per cycle
+
+// X decoder signals
+logic x_mx_fp16_valid, x_mx_fp16_ready;
+logic [MX_NUM_LANES*BITW-1:0] x_mx_fp16_data;
+logic x_mx_val_ready;  // Backpressure from X decoder
+
+// W decoder signals  
+logic w_mx_fp16_valid, w_mx_fp16_ready;
+logic [MX_NUM_LANES*BITW-1:0] w_mx_fp16_data;
+logic w_mx_val_ready;  // Backpressure from W decoder
+
+// MX Decoder for X data (single broadcast shared exponent)
+redmule_mx_decoder_x #(
+  .DATA_W    ( MX_DATA_W    ),
+  .BITW      ( BITW         ),
+  .NUM_LANES ( MX_NUM_LANES )
+) i_mx_decoder_x (
+  .clk_i          ( clk_i                        ),
+  .rst_ni         ( rst_ni                       ),
+  .mx_val_valid_i ( x_buffer_d.valid && mx_enable ),
+  .mx_val_ready_o ( x_mx_val_ready               ),
+  .mx_val_data_i  ( x_buffer_d.data[MX_DATA_W-1:0] ),
+  .mx_exp_valid_i ( x_mx_exp_stream.valid        ),
+  .mx_exp_ready_o ( x_mx_exp_stream.ready        ),
+  .mx_exp_data_i  ( x_mx_exp_stream.data[7:0]    ),
+  .fp16_valid_o   ( x_mx_fp16_valid              ),
+  .fp16_ready_i   ( x_mx_fp16_ready              ),
+  .fp16_data_o    ( x_mx_fp16_data               )
+);
+
+// MX Decoder for W data (vector of per-group shared exponents)
+redmule_mx_decoder_w #(
+  .DATA_W    ( MX_DATA_W    ),
+  .BITW      ( BITW         ),
+  .NUM_LANES ( MX_NUM_LANES )
+) i_mx_decoder_w (
+  .clk_i          ( clk_i                              ),
+  .rst_ni         ( rst_ni                             ),
+  .mx_val_valid_i ( w_buffer_d.valid && mx_enable      ),
+  .mx_val_ready_o ( w_mx_val_ready                     ),
+  .mx_val_data_i  ( w_buffer_d.data[MX_DATA_W-1:0]     ),
+  .mx_exp_valid_i ( w_mx_exp_stream.valid              ),
+  .mx_exp_ready_o ( w_mx_exp_stream.ready              ),
+  .mx_exp_data_i  ( w_mx_exp_stream.data[MX_NUM_LANES*8-1:0] ),
+  .fp16_valid_o   ( w_mx_fp16_valid                    ),
+  .fp16_ready_i   ( w_mx_fp16_ready                    ),
+  .fp16_data_o    ( w_mx_fp16_data                     )
+);
+
+// MX input mux for X data: Select between MX decoded and direct bypass
+// When MX disabled: pass through x_buffer_d directly
+// When MX enabled: use decoded FP16 output, pack into DATAW_ALIGN width
+assign x_buffer_muxed.valid = mx_enable ? x_mx_fp16_valid : x_buffer_d.valid;
+assign x_buffer_muxed.data  = mx_enable ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, x_mx_fp16_data} : x_buffer_d.data;
+assign x_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : x_buffer_d.strb;
+assign x_buffer_d.ready     = mx_enable ? x_mx_val_ready : x_buffer_muxed.ready;  // Use decoder backpressure
+assign x_mx_fp16_ready      = x_buffer_muxed.ready;
+
+// MX input mux for W data: Select between MX decoded and direct bypass
+assign w_buffer_muxed.valid = mx_enable ? w_mx_fp16_valid : w_buffer_d.valid;
+assign w_buffer_muxed.data  = mx_enable ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, w_mx_fp16_data} : w_buffer_d.data;
+assign w_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : w_buffer_d.strb;
+assign w_buffer_d.ready     = mx_enable ? w_mx_val_ready : w_buffer_muxed.ready;  // Use decoder backpressure
+assign w_mx_fp16_ready      = w_buffer_muxed.ready;
+
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
   .FIFO_DEPTH     ( 4             )
 ) i_x_buffer_fifo (
-  .clk_i          ( clk_i         ),
-  .rst_ni         ( rst_ni        ),
-  .clear_i        ( clear         ),
-  .flags_o        (               ),
-  .push_i         ( x_buffer_d    ),
-  .pop_o          ( x_buffer_fifo )
+  .clk_i          ( clk_i           ),
+  .rst_ni         ( rst_ni          ),
+  .clear_i        ( clear           ),
+  .flags_o        (                 ),
+  .push_i         ( x_buffer_muxed  ),
+  .pop_o          ( x_buffer_fifo   )
 );
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
   .FIFO_DEPTH     ( 4             )
 ) i_w_buffer_fifo (
-  .clk_i          ( clk_i         ),
-  .rst_ni         ( rst_ni        ),
-  .clear_i        ( clear         ),
-  .flags_o        ( w_fifo_flgs   ),
-  .push_i         ( w_buffer_d    ),
-  .pop_o          ( w_buffer_fifo )
+  .clk_i          ( clk_i           ),
+  .rst_ni         ( rst_ni          ),
+  .clear_i        ( clear           ),
+  .flags_o        ( w_fifo_flgs     ),
+  .push_i         ( w_buffer_muxed  ),
+  .pop_o          ( w_buffer_fifo   )
 );
 
 hwpe_stream_fifo #(
@@ -234,11 +312,34 @@ hwpe_stream_fifo #(
 // MX bypass: Mux between z_buffer output and MX encoder output at 512-bit bus level
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_muxed ( .clk( clk_i ) );
 
+// Handshake-safe MX mux logic
+// Hold valid AND data stable until ready is received (HWPE stream protocol)
+logic mx_mux_valid_q;
+logic [DATAW_ALIGN-1:0] mx_mux_data_q;
+logic mx_mux_handshake_done;
+
+assign mx_mux_handshake_done = z_buffer_muxed.valid && z_buffer_muxed.ready;
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    mx_mux_valid_q <= 1'b0;
+    mx_mux_data_q  <= '0;
+  end else if (clear) begin
+    mx_mux_valid_q <= 1'b0;
+    mx_mux_data_q  <= '0;
+  end else if (mx_mux_handshake_done) begin
+    mx_mux_valid_q <= 1'b0;  // Clear after successful handshake
+  end else if (mx_enable && mx_val_valid && !mx_mux_valid_q) begin
+    mx_mux_valid_q <= 1'b1;  // Latch valid when MX encoder outputs
+    mx_mux_data_q  <= mx_z_buffer_data;  // Latch data too
+  end
+end
+
 // MUX: Select between engine output (bypass) and MX encoder output
-// MX encoder output is 256 bits packed into lower half of 512-bit bus
-assign z_buffer_muxed.data  = mx_enable ? mx_z_buffer_data : z_buffer_q.data;
+// When MX enabled and holding: use latched data to prevent protocol violations
+assign z_buffer_muxed.data  = mx_enable ? (mx_mux_valid_q ? mx_mux_data_q : mx_z_buffer_data) : z_buffer_q.data;
 assign z_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : z_buffer_q.strb;
-assign z_buffer_muxed.valid = mx_enable ? mx_val_valid : z_buffer_q.valid;
+assign z_buffer_muxed.valid = mx_enable ? (mx_val_valid || mx_mux_valid_q) : z_buffer_q.valid;
 assign z_buffer_q.ready     = mx_enable ? 1'b1 : z_buffer_muxed.ready; // Consume z_buffer when MX active
 
 hwpe_stream_fifo #(
@@ -367,7 +468,8 @@ assign in_tag           = 1'b0;
 assign in_aux           = 1'b0;
 assign in_valid         = cntrl_engine.in_valid;
 assign flush            = cntrl_engine.flush | clear;
-assign out_ready        = cntrl_engine.out_ready;
+// Backpressure: when MX mode enabled, also check FIFO has space
+assign out_ready        = mx_enable ? (cntrl_engine.out_ready && fifo_grant) : cntrl_engine.out_ready;
 always_comb begin
   for (int w = 0; w < Width; w++) begin
     for (int h = 0; h < Height; h++) begin
@@ -427,8 +529,9 @@ redmule_engine     #(
 assign mx_enable = cntrl_flags.mx_enable;
 
 // FIFO signals - using Width (not Height) since z_buffer_d is [Width-1:0] 
+// Note: fifo_grant is forward-declared at top for backpressure
 logic [Width-1:0][BITW-1:0] fifo_data_out;
-logic fifo_push, fifo_pop, fifo_grant, fifo_valid;
+logic fifo_push, fifo_pop, fifo_valid;
 
 // Push conditions - check if engine has valid output
 // out_valid is [Width-1:0][Height-1:0], need to OR across all dimensions
@@ -440,7 +543,7 @@ always_comb begin
   end
   any_pe_valid = |width_valid; // OR all Width stages
 end
-assign fifo_push = any_pe_valid && mx_enable;
+assign fifo_push = any_pe_valid && mx_enable && fifo_grant;  // Only push when FIFO has space
 
 
 redmule_mx_fifo #(
@@ -463,6 +566,10 @@ logic [DATAW/2-1:0] mx_val_data;  // 256 bits for 32 FP8 elements
 logic mx_val_ready;
 logic [7:0] mx_exp_data;
 logic mx_exp_valid, mx_exp_ready;
+logic encoder_ready;  // Raw ready from encoder
+
+// Gate pop with mx_enable AND fifo_valid - only pop when FIFO has data
+assign fifo_pop = encoder_ready && mx_enable && fifo_valid;
 
 redmule_mx_encoder #(
   .DATA_W    ( DATAW/2 ),  // 256 bits output
@@ -471,8 +578,8 @@ redmule_mx_encoder #(
 ) i_mx_encoder (
   .clk_i          ( clk_i          ),
   .rst_ni         ( rst_ni         ),
-  .fp16_valid_i   ( fifo_valid     ),
-  .fp16_ready_o   ( fifo_pop       ),
+  .fp16_valid_i   ( fifo_valid && mx_enable ),  // Only valid when MX mode active
+  .fp16_ready_o   ( encoder_ready  ),
   .fp16_data_i    ( fifo_data_out  ),
   .mx_val_valid_o ( mx_val_valid   ),
   .mx_val_ready_i ( mx_val_ready   ),

@@ -10,13 +10,15 @@ timeunit 1ps; timeprecision 1ps;
 import hci_package::*;
 
 module redmule_tb
+
   import redmule_pkg::*;
 #(
   parameter TCP = 1.0ns, // clock period, 1 GHz clock
   parameter TA  = 0.2ns, // application time
   parameter TT  = 0.8ns,  // test time
   parameter logic UseXif = 1'b0,
-  parameter real  PROB_STALL = 0
+  parameter real  PROB_STALL = 0,
+  parameter logic mx_enable = 1'b1
 )(
   input logic clk_i,
   input logic rst_ni,
@@ -24,6 +26,12 @@ module redmule_tb
 );
 
   // parameters
+  // MX test vector storage for data
+  logic [255:0] mx_x_data_mem [0:255];
+  logic [255:0] mx_w_data_mem [0:255];
+  integer mx_x_data_idx = 0;
+  integer mx_w_data_idx = 0;
+  
   localparam int unsigned NC = 1;
   localparam int unsigned ID = 10;
   localparam int unsigned DW = redmule_pkg::DATA_W;
@@ -62,11 +70,151 @@ module redmule_tb
   hwpe_stream_intf_tcdm stack[0:0]  (.clk(clk_i));
   hwpe_stream_intf_tcdm tcdm [MP:0] (.clk(clk_i));
   
-  // MX exponent stream interface
+  // MX exponent stream interface (encoder output)
   hwpe_stream_intf_stream #(.DATA_WIDTH(32)) mx_exp_stream (.clk(clk_i));
   
   // Simple exponent sink: always ready to accept exponents
   assign mx_exp_stream.ready = 1'b1;
+  
+  // MX exponent stream interfaces (decoder inputs for X and W)
+  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) x_mx_exp_stream (.clk(clk_i));
+  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) w_mx_exp_stream (.clk(clk_i));
+
+  // MX test vector storage (increased size for large tests)
+  logic [31:0] mx_x_exp_mem [0:19999];
+  logic [31:0] mx_w_exp_mem [0:19999];
+  integer mx_x_exp_idx = 0;
+  integer mx_w_exp_idx = 0;
+  logic [31:0] x_exp_data_reg, w_exp_data_reg;
+  logic x_exp_valid_reg, w_exp_valid_reg;
+  logic [31:0] x_exp_data_q, x_exp_data_d;
+  logic [31:0] w_exp_data_q, w_exp_data_d;
+  integer mx_x_exp_idx_q, mx_x_exp_idx_d;
+  integer mx_w_exp_idx_q, mx_w_exp_idx_d;
+  logic x_exp_valid_d, w_exp_valid_d;
+  
+  // stream output registers
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      x_exp_data_q    <= 32'h0;
+      w_exp_data_q    <= 32'h0;
+      x_exp_valid_reg <= 1'b0;
+      w_exp_valid_reg <= 1'b0;
+      mx_x_exp_idx_q  <= 0;
+      mx_w_exp_idx_q  <= 0;
+    end else begin
+      x_exp_data_q    <= x_exp_data_d;
+      w_exp_data_q    <= w_exp_data_d;
+      x_exp_valid_reg <= x_exp_valid_d;
+      w_exp_valid_reg <= w_exp_valid_d;
+      mx_x_exp_idx_q  <= mx_x_exp_idx_d;
+      mx_w_exp_idx_q  <= mx_w_exp_idx_d;
+    end
+  end
+
+  // Combinational next-state logic for exponent streams
+  always_comb begin
+    // X exponent stream
+    x_exp_data_d   = x_exp_data_q;
+    mx_x_exp_idx_d = mx_x_exp_idx_q;
+    x_exp_valid_d  = x_exp_valid_reg;
+    if (!x_exp_valid_reg) begin
+      // Initial load after reset or after stream exhausted
+      if (mx_enable && (mx_x_exp_idx_q < $size(mx_x_exp_mem))) begin
+        x_exp_data_d  = mx_x_exp_mem[mx_x_exp_idx_q];
+        x_exp_valid_d = 1'b1;
+      end else if (!mx_enable) begin
+        x_exp_data_d  = 32'h0000_007f;
+        x_exp_valid_d = 1'b1;
+      end else begin
+        x_exp_data_d  = 32'h0;
+        x_exp_valid_d = 1'b0;
+      end
+    end else if (x_exp_valid_reg && x_mx_exp_stream.ready) begin
+      // Handshake: advance index and load next data if available
+      if (mx_enable && (mx_x_exp_idx_q+1 < $size(mx_x_exp_mem))) begin
+        mx_x_exp_idx_d = mx_x_exp_idx_q + 1;
+        x_exp_data_d   = mx_x_exp_mem[mx_x_exp_idx_q + 1];
+        x_exp_valid_d  = 1'b1;
+      end else begin
+        x_exp_data_d   = 32'h0;
+        x_exp_valid_d  = 1'b0;
+      end
+    end
+
+    // W exponent stream
+    w_exp_data_d   = w_exp_data_q;
+    mx_w_exp_idx_d = mx_w_exp_idx_q;
+    w_exp_valid_d  = w_exp_valid_reg;
+    if (!w_exp_valid_reg) begin
+      if (mx_enable && (mx_w_exp_idx_q < $size(mx_w_exp_mem))) begin
+        w_exp_data_d  = mx_w_exp_mem[mx_w_exp_idx_q];
+        w_exp_valid_d = 1'b1;
+      end else if (!mx_enable) begin
+        w_exp_data_d  = 32'h7f7f_7f7f;
+        w_exp_valid_d = 1'b1;
+      end else begin
+        w_exp_data_d  = 32'h0;
+        w_exp_valid_d = 1'b0;
+      end
+    end else if (w_exp_valid_reg && w_mx_exp_stream.ready) begin
+      if (mx_enable && (mx_w_exp_idx_q+1 < $size(mx_w_exp_mem))) begin
+        mx_w_exp_idx_d = mx_w_exp_idx_q + 1;
+        w_exp_data_d   = mx_w_exp_mem[mx_w_exp_idx_q + 1];
+        w_exp_valid_d  = 1'b1;
+      end else begin
+        w_exp_data_d   = 32'h0;
+        w_exp_valid_d  = 1'b0;
+      end
+    end
+  end
+
+  // --- Protocol Assertions for Exponent Streams ---
+  // 1. Data must remain stable while valid=1 and ready=0
+  logic [31:0] x_exp_data_last, w_exp_data_last;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      x_exp_data_last <= 32'h0;
+      w_exp_data_last <= 32'h0;
+    end else begin
+      if (x_mx_exp_stream.valid && !x_mx_exp_stream.ready)
+        x_exp_data_last <= x_mx_exp_stream.data;
+      if (w_mx_exp_stream.valid && !w_mx_exp_stream.ready)
+        w_exp_data_last <= w_mx_exp_stream.data;
+    end
+  end
+
+  // Assert data is stable while valid=1 and ready=0
+  always_ff @(posedge clk_i) begin
+    if (x_mx_exp_stream.valid && !x_mx_exp_stream.ready)
+      assert(x_mx_exp_stream.data == x_exp_data_last)
+        else $error("[TB][ASSERT] x_mx_exp_stream.data changed while valid=1 and ready=0");
+    if (w_mx_exp_stream.valid && !w_mx_exp_stream.ready)
+      assert(w_mx_exp_stream.data == w_exp_data_last)
+        else $error("[TB][ASSERT] w_mx_exp_stream.data changed while valid=1 and ready=0");
+  end
+
+  // 2. Index must not overrun vector length
+  always_ff @(posedge clk_i) begin
+    if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready)
+      assert(mx_x_exp_idx < $size(mx_x_exp_mem))
+        else $error("[TB][ASSERT] mx_x_exp_idx overran mx_x_exp_mem size");
+    if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready)
+      assert(mx_w_exp_idx < $size(mx_w_exp_mem))
+        else $error("[TB][ASSERT] mx_w_exp_idx overran mx_w_exp_mem size");
+  end
+
+  // 3. Only increment index on handshake (already implemented in always_ff)
+  // 4. No multiple drivers: all assignments are in this always_ff and assign blocks
+
+  // Connect registered outputs to interface
+  assign x_mx_exp_stream.valid = x_exp_valid_reg;
+  assign x_mx_exp_stream.data  = x_exp_data_q;
+  assign x_mx_exp_stream.strb  = 4'hf;
+
+  assign w_mx_exp_stream.valid = w_exp_valid_reg;
+  assign w_mx_exp_stream.data  = w_exp_data_q;
+  assign w_mx_exp_stream.strb  = 4'hf;
   
   // Optional: Monitor exponent stream for debugging
   // always_ff @(posedge clk_i) begin
@@ -304,7 +452,9 @@ module redmule_tb
     .core_data_rsp_i    ( core_data_rsp    ),
     .core_data_req_o    ( core_data_req    ),
     .tcdm               ( redmule_tcdm     ),
-    .mx_exp_stream      ( mx_exp_stream    )
+    .mx_exp_stream      ( mx_exp_stream    ),
+    .x_mx_exp_stream    ( x_mx_exp_stream  ),
+    .w_mx_exp_stream    ( w_mx_exp_stream  )
   );
 
   integer f_x, f_W, f_y, f_tau;
@@ -326,6 +476,13 @@ module redmule_tb
   initial begin
     integer id;
     int cnt_rd, cnt_wr;
+    // Load MX data test vectors if enabled
+    if (mx_enable) begin
+      $display("[TB] Loading MX data test vectors...");
+      $readmemh("golden-model/MX/mx_x_data.txt", mx_x_data_mem);
+      $readmemh("golden-model/MX/mx_w_data.txt", mx_w_data_mem);
+    end
+
 
     if (!$value$plusargs("STIM_INSTR=%s", stim_instr)) stim_instr = "";
     if (!$value$plusargs("STIM_DATA=%s", stim_data)) stim_data = "";
@@ -342,8 +499,24 @@ module redmule_tb
     $readmemh(stim_data,  redmule_tb.i_dummy_dmemory.memory);
     $readmemh(stack_init, redmule_tb.i_dummy_stack_memory.memory);
 
+    // Load MX exponent test vectors if enabled
+    if (mx_enable) begin
+      $display("[TB] Loading MX exponent test vectors...");
+      $readmemh("golden-model/MX/mx_x_exp.txt", mx_x_exp_mem);
+      $readmemh("golden-model/MX/mx_w_exp.txt", mx_w_exp_mem);
+    end
+
     // End: WFI + returned != -1 signals end-of-computation
-    while(~core_sleep || errors==-1) @(posedge clk_i);
+    while(~core_sleep || errors==-1) begin
+      // Feed MX data to X and W buffers if enabled
+      if (mx_enable) begin
+        // Example: drive X and W buffer inputs from test vectors
+        // (Replace with actual buffer interface as needed)
+        // x_buffer_data_in = mx_x_data_mem[mx_x_data_idx];
+        // w_buffer_data_in = mx_w_data_mem[mx_w_data_idx];
+      end
+      @(posedge clk_i);
+    end
     cnt_rd = redmule_tb.i_dummy_dmemory.cnt_rd[0] +
              redmule_tb.i_dummy_dmemory.cnt_rd[1] +
              redmule_tb.i_dummy_dmemory.cnt_rd[2] +
@@ -410,6 +583,25 @@ module redmule_tb
     $fclose(mx_fp8_file);
     $fclose(mx_exp_file);
     $display("[TB] - MX encoder outputs written to mx_encoder_*.txt");
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mx_x_exp_idx <= 0;
+      mx_w_exp_idx <= 0;
+    end else begin
+      // Increment X index only on successful handshake
+      if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready) begin
+        mx_x_exp_idx <= mx_x_exp_idx + 1;
+        //$display("[TB][X_EXP] Handshake: idx=%0d data=0x%08x", mx_x_exp_idx, mx_x_exp_mem[mx_x_exp_idx]);
+      end
+
+      // Increment W index only on successful handshake
+      if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready) begin
+        mx_w_exp_idx <= mx_w_exp_idx + 1;
+        //$display("[TB][W_EXP] Handshake: idx=%0d data=0x%08x", mx_w_exp_idx, mx_w_exp_mem[mx_w_exp_idx]);
+      end
+    end
   end
 
 endmodule // redmule_tb

@@ -44,7 +44,7 @@ module tb_redmule_mx_encoder;
   logic [7:0]  shared_exp_exp;
 
   // DUT
-  redmule_mx_encoder #(
+  redmule_mx_encoder_x #(
     .DATA_W   (DATA_W),
     .BITW     (BITW),
     .NUM_LANES(NUM_LANES)
