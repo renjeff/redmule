@@ -64,11 +64,56 @@ module redmule_tb
   logic test_mode;
   logic [31:0] core_boot_addr;
   logic redmule_busy;
+  logic core_sleep;
+  int errors;
+
+  // ---------------------------------------------------------------------------
+  // Performance counters
+  // ---------------------------------------------------------------------------
+  bit perf_enable;
+  logic perf_active;
+  longint unsigned perf_total_cycles;
+  longint unsigned perf_busy_cycles;
+  longint unsigned perf_encoder_blocks;
+  longint unsigned perf_decoder_blocks;
+
+  initial begin
+    if (!$value$plusargs("PERF_ENABLE=%0d", perf_enable)) begin
+      perf_enable = 1'b1;
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      perf_active         <= 1'b0;
+      perf_total_cycles   <= '0;
+      perf_busy_cycles    <= '0;
+      perf_encoder_blocks <= '0;
+      perf_decoder_blocks <= '0;
+    end else begin
+      if (perf_enable && !perf_active && fetch_enable_i) begin
+        perf_active <= 1'b1;
+      end
+
+      if (perf_active) begin
+        perf_total_cycles <= perf_total_cycles + 1;
+        if (i_dut.i_redmule_top.busy_o) begin
+          perf_busy_cycles <= perf_busy_cycles + 1;
+        end
+        if (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) begin
+          perf_encoder_blocks <= perf_encoder_blocks + 1;
+        end
+        if (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready) begin
+          perf_decoder_blocks <= perf_decoder_blocks + 1;
+        end
+      end
+
+      if (perf_active && core_sleep && (errors != -1)) begin
+        perf_active <= 1'b0;
+      end
+    end
+  end
   logic scan_cg_en;
-
-  // MX encoder output file handles
-  integer mx_fp16_file, mx_fp8_file, mx_exp_file;
-
 
   // Helper: get directory name from path
   function automatic string dirname(input string path);
@@ -111,6 +156,7 @@ module redmule_tb
   integer mx_x_exp_idx_q, mx_x_exp_idx_d;
   integer mx_w_exp_idx_q, mx_w_exp_idx_d;
   logic x_exp_valid_d, w_exp_valid_d;
+  logic mx_enable_q;
   
   // stream output registers
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -121,6 +167,7 @@ module redmule_tb
       w_exp_valid_reg <= 1'b0;
       mx_x_exp_idx_q  <= 0;
       mx_w_exp_idx_q  <= 0;
+      mx_enable_q     <= 1'b0;
     end else begin
       x_exp_data_q    <= x_exp_data_d;
       w_exp_data_q    <= w_exp_data_d;
@@ -128,6 +175,7 @@ module redmule_tb
       w_exp_valid_reg <= w_exp_valid_d;
       mx_x_exp_idx_q  <= mx_x_exp_idx_d;
       mx_w_exp_idx_q  <= mx_w_exp_idx_d;
+      mx_enable_q     <= mx_enable;
     end
   end
 
@@ -151,7 +199,19 @@ module redmule_tb
       end
     end else if (x_exp_valid_reg && x_mx_exp_stream.ready) begin
       // Handshake: advance index and load next data if available
-      if (mx_enable && (mx_x_exp_idx_q+1 < $size(mx_x_exp_mem))) begin
+      // Check if we just transitioned from bypass to MX mode
+      if (mx_enable && !mx_enable_q) begin
+        // Rising edge of mx_enable: reset index and load first element
+        mx_x_exp_idx_d = 0;
+        if ($size(mx_x_exp_mem) > 0) begin
+          x_exp_data_d   = mx_x_exp_mem[0];
+          x_exp_valid_d  = 1'b1;
+        end else begin
+          x_exp_data_d   = 32'h0;
+          x_exp_valid_d  = 1'b0;
+        end
+      end else if (mx_enable && (mx_x_exp_idx_q+1 < $size(mx_x_exp_mem))) begin
+        // Normal advance: load next element
         mx_x_exp_idx_d = mx_x_exp_idx_q + 1;
         x_exp_data_d   = mx_x_exp_mem[mx_x_exp_idx_q + 1];
         x_exp_valid_d  = 1'b1;
@@ -177,7 +237,20 @@ module redmule_tb
         w_exp_valid_d = 1'b0;
       end
     end else if (w_exp_valid_reg && w_mx_exp_stream.ready) begin
-      if (mx_enable && (mx_w_exp_idx_q+1 < $size(mx_w_exp_mem))) begin
+      // Handshake: advance index and load next data if available
+      // Check if we just transitioned from bypass to MX mode
+      if (mx_enable && !mx_enable_q) begin
+        // Rising edge of mx_enable: reset index and load first element
+        mx_w_exp_idx_d = 0;
+        if ($size(mx_w_exp_mem) > 0) begin
+          w_exp_data_d   = mx_w_exp_mem[0];
+          w_exp_valid_d  = 1'b1;
+        end else begin
+          w_exp_data_d   = 32'h0;
+          w_exp_valid_d  = 1'b0;
+        end
+      end else if (mx_enable && (mx_w_exp_idx_q+1 < $size(mx_w_exp_mem))) begin
+        // Normal advance: load next element
         mx_w_exp_idx_d = mx_w_exp_idx_q + 1;
         w_exp_data_d   = mx_w_exp_mem[mx_w_exp_idx_q + 1];
         w_exp_valid_d  = 1'b1;
@@ -484,7 +557,7 @@ module redmule_tb
   integer f_x, f_W, f_y, f_tau;
   logic start;
 
-  int errors = -1;
+
   always_ff @(posedge clk_i)
   begin
     if((core_data_req.addr == 32'h80000000) &&
@@ -501,8 +574,7 @@ module redmule_tb
     integer id;
     int cnt_rd, cnt_wr;
 
-
-
+    errors = -1;
     if (!$value$plusargs("STIM_INSTR=%s", stim_instr)) stim_instr = "";
     if (!$value$plusargs("STIM_DATA=%s", stim_data)) stim_data = "";
     if (!$value$plusargs("STACK_INIT=%s", stack_init)) stack_init = "";
@@ -576,6 +648,16 @@ module redmule_tb
 
     $display("[TB] - cnt_rd=%-8d", cnt_rd);
     $display("[TB] - cnt_wr=%-8d", cnt_wr);
+    if (perf_enable) begin
+      real busy_ratio;
+      busy_ratio = (perf_total_cycles != 0) ?
+                   (100.0 * real'(perf_busy_cycles) / real'(perf_total_cycles)) : 0.0;
+      $display("[PERF] total cycles    : %0d", perf_total_cycles);
+      $display("[PERF] busy cycles     : %0d", perf_busy_cycles);
+      $display("[PERF] busy ratio      : %0.2f %%", busy_ratio);
+      $display("[PERF] MX blocks enc   : %0d", perf_encoder_blocks);
+      $display("[PERF] MX blocks dec   : %0d", perf_decoder_blocks);
+    end
     if(errors != 0) begin
       $display("[TB] - Fail!");
       $error("[TB] - errors=%08x", errors);

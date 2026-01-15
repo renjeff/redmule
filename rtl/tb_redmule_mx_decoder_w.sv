@@ -31,7 +31,7 @@ module tb_redmule_mx_decoder_w;
 
   logic                        mx_exp_valid_i;
   logic                        mx_exp_ready_o;
-  logic [NUM_LANES*8-1:0]      mx_exp_data_i;  // Vector of per-group exponents
+  logic [NUM_GROUPS*8-1:0]     mx_exp_data_i;  // Vector of per-group exponents
 
   // FP16 outputs
   logic                        fp16_valid_o;
@@ -43,10 +43,10 @@ module tb_redmule_mx_decoder_w;
   integer error_count = 0;
 
   // DUT
-  redmule_mx_decoder_w #(
-    .DATA_W   (DATA_W),
-    .BITW     (BITW),
-    .NUM_LANES(NUM_LANES)
+  redmule_mx_decoder #(
+    .DATA_W    (DATA_W),
+    .BITW      (BITW),
+    .NUM_LANES (NUM_LANES)
   ) dut (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),
@@ -58,6 +58,7 @@ module tb_redmule_mx_decoder_w;
     .mx_exp_valid_i (mx_exp_valid_i),
     .mx_exp_ready_o (mx_exp_ready_o),
     .mx_exp_data_i  (mx_exp_data_i),
+    .vector_shared_exp_i (1'b1),
 
     .fp16_valid_o   (fp16_valid_o),
     .fp16_ready_i   (fp16_ready_i),

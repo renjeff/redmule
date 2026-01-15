@@ -53,8 +53,7 @@ sources:
 
     - rtl/redmule_mx_fifo.sv
     - rtl/redmule_mx_encoder.sv
-    - rtl/redmule_mx_decoder_x.sv
-    - rtl/redmule_mx_decoder_w.sv
+    - rtl/redmule_mx_decoder.sv
 
     - target: redmule_deprecated
       files:

@@ -90,6 +90,47 @@ add wave -noupdate -group MX-Encoder -label {Exponent Valid} -color Yellow -heig
 add wave -noupdate -group MX-Encoder -label {Exponent Ready} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_exp_ready
 # MX Exponent Stream
 add wave -noupdate -group MX-Exponent-Stream -color Cyan -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/mx_exp_stream/*
+# MX Decoder Arbiter Debug
+add wave -noupdate -group MX-Decoder-Arbiter -label {MX Enable} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_enable
+add wave -noupdate -group MX-Decoder-Arbiter -label {FSM State (target_q)} -color Red -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/mx_dec_target_q
+add wave -noupdate -group MX-Decoder-Arbiter -label {Group Counter} -color Red -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/mx_dec_group_cnt_q
+add wave -noupdate -group MX-Decoder-Arbiter -label {X Request} -color Cyan -height $MinHeight $Testbench/$TopLevelPath/x_req
+add wave -noupdate -group MX-Decoder-Arbiter -label {W Request} -color Cyan -height $MinHeight $Testbench/$TopLevelPath/w_req
+add wave -noupdate -group MX-Decoder-Arbiter -label {Owner} -color Orange -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/mx_dec_owner
+add wave -noupdate -group MX-Decoder-Arbiter -label {Owner is X} -color Orange -height $MinHeight $Testbench/$TopLevelPath/owner_is_x
+add wave -noupdate -group MX-Decoder-Arbiter -label {Owner is W} -color Orange -height $MinHeight $Testbench/$TopLevelPath/owner_is_w
+# MX Decoder Input Handshake
+add wave -noupdate -group MX-Decoder-Input -label {Val Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/mx_dec_val_valid
+add wave -noupdate -group MX-Decoder-Input -label {Val Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/mx_dec_val_ready
+add wave -noupdate -group MX-Decoder-Input -label {Exp Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/mx_dec_exp_valid
+add wave -noupdate -group MX-Decoder-Input -label {Exp Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/mx_dec_exp_ready
+add wave -noupdate -group MX-Decoder-Input -label {Val Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/mx_dec_val_data
+add wave -noupdate -group MX-Decoder-Input -label {Exp Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/mx_dec_exp_data
+add wave -noupdate -group MX-Decoder-Input -label {Vector Mode} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/mx_dec_vector_mode
+# MX Decoder Output Handshake
+add wave -noupdate -group MX-Decoder-Output -label {FP16 Valid} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/mx_dec_fp16_valid
+add wave -noupdate -group MX-Decoder-Output -label {FP16 Ready} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/mx_dec_fp16_ready
+add wave -noupdate -group MX-Decoder-Output -label {FP16 Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/mx_dec_fp16_data
+add wave -noupdate -group MX-Decoder-Output -label {X FP16 Valid} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/x_mx_fp16_valid
+add wave -noupdate -group MX-Decoder-Output -label {W FP16 Valid} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/w_mx_fp16_valid
+add wave -noupdate -group MX-Decoder-Output -label {X FP16 Ready} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/x_mx_fp16_ready
+add wave -noupdate -group MX-Decoder-Output -label {W FP16 Ready} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/w_mx_fp16_ready
+# X Input Streams
+add wave -noupdate -group X-Input-Streams -label {X Buffer Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_buffer_d.valid
+add wave -noupdate -group X-Input-Streams -label {X Buffer Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_buffer_d.ready
+add wave -noupdate -group X-Input-Streams -label {X Buffer Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_buffer_d.data
+add wave -noupdate -group X-Input-Streams -label {X Exp Valid} -color Green -height $MinHeight $Testbench/x_mx_exp_stream.valid
+add wave -noupdate -group X-Input-Streams -label {X Exp Ready} -color Green -height $MinHeight $Testbench/x_mx_exp_stream.ready
+add wave -noupdate -group X-Input-Streams -label {X Exp Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/x_mx_exp_stream.data
+# W Input Streams
+add wave -noupdate -group W-Input-Streams -label {W Buffer Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_buffer_d.valid
+add wave -noupdate -group W-Input-Streams -label {W Buffer Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_buffer_d.ready
+add wave -noupdate -group W-Input-Streams -label {W Buffer Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_buffer_d.data
+add wave -noupdate -group W-Input-Streams -label {W Exp Valid} -color Green -height $MinHeight $Testbench/w_mx_exp_stream.valid
+add wave -noupdate -group W-Input-Streams -label {W Exp Ready} -color Green -height $MinHeight $Testbench/w_mx_exp_stream.ready
+add wave -noupdate -group W-Input-Streams -label {W Exp Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/w_mx_exp_stream.data
+# MX Decoder Internal
+add wave -noupdate -group MX-Decoder-Internal -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_mx_decoder_shared/*
 
 # Remove the hierarchial strip from signals
 config wave -signalnamewidth 1

@@ -145,7 +145,7 @@ flgs_scheduler_t  flgs_scheduler;
 
 // Register file binded from controller to FSM
 ctrl_regfile_t reg_file;
-flags_fifo_t   w_fifo_flgs, z_fifo_flgs;
+flags_fifo_t   x_fifo_flgs, w_fifo_flgs, z_fifo_flgs;
 cntrl_flags_t  cntrl_flags;
 
 /*--------------------------------------------------------------*/
@@ -208,70 +208,324 @@ redmule_streamer #(
 // MX decoder parameters
 localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements
 localparam int unsigned MX_NUM_LANES = Width;  // Process Width elements per cycle
+localparam int unsigned MX_INPUT_ELEM_WIDTH  = 8;
+localparam int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH;
+localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
+localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
 
 // X decoder signals
 logic x_mx_fp16_valid, x_mx_fp16_ready;
 logic [MX_NUM_LANES*BITW-1:0] x_mx_fp16_data;
-logic x_mx_val_ready;  // Backpressure from X decoder
 
 // W decoder signals  
 logic w_mx_fp16_valid, w_mx_fp16_ready;
 logic [MX_NUM_LANES*BITW-1:0] w_mx_fp16_data;
-logic w_mx_val_ready;  // Backpressure from W decoder
 
-// MX Decoder for X data (single broadcast shared exponent)
-redmule_mx_decoder_x #(
+typedef enum logic [1:0] {
+  MX_DEC_NONE,
+  MX_DEC_X,
+  MX_DEC_W
+} mx_dec_target_e;
+
+mx_dec_target_e mx_dec_target_q, mx_dec_target_d;
+
+// Group counter to track decoder progress
+localparam int unsigned MX_GROUP_CNT_W = (MX_INPUT_NUM_GROUPS > 1) ? $clog2(MX_INPUT_NUM_GROUPS) : 1;
+logic [MX_GROUP_CNT_W-1:0] mx_dec_group_cnt_q, mx_dec_group_cnt_d;
+
+// Latched input data for decoder
+logic [MX_DATA_W-1:0]       mx_dec_val_data_q, mx_dec_val_data_d;
+logic [MX_EXP_VECTOR_W-1:0] mx_dec_exp_data_q, mx_dec_exp_data_d;
+logic                       mx_dec_vector_mode_q, mx_dec_vector_mode_d;
+
+logic mx_dec_val_valid, mx_dec_val_ready;
+logic mx_dec_exp_valid, mx_dec_exp_ready;
+logic [MX_DATA_W-1:0]       mx_dec_val_data;
+logic [MX_EXP_VECTOR_W-1:0] mx_dec_exp_data;
+logic                       mx_dec_vector_mode;
+logic mx_dec_fp16_valid, mx_dec_fp16_ready;
+logic [MX_NUM_LANES*BITW-1:0] mx_dec_fp16_data;
+
+logic x_req, w_req;
+mx_dec_target_e mx_dec_owner;
+logic owner_is_x, owner_is_w;
+logic mx_dec_turn_q, mx_dec_turn_d; // Round-robin preference bit (0 -> X wins ties)
+logic both_streams_req;
+
+// Local slots decouple upstream handshakes from shared decoder arbitration
+logic                     x_slot_valid_q, x_slot_valid_d;
+logic                     x_slot_data_valid_q, x_slot_data_valid_d;
+logic                     x_slot_exp_valid_q,  x_slot_exp_valid_d;
+logic [MX_DATA_W-1:0]     x_slot_data_q,  x_slot_data_d;
+logic [7:0]               x_slot_exp_q,   x_slot_exp_d;
+logic                     w_slot_valid_q, w_slot_valid_d;
+logic                     w_slot_data_valid_q, w_slot_data_valid_d;
+logic                     w_slot_exp_valid_q,  w_slot_exp_valid_d;
+logic [MX_DATA_W-1:0]     w_slot_data_q,  w_slot_data_d;
+logic [MX_EXP_VECTOR_W-1:0] w_slot_exp_q, w_slot_exp_d;
+logic                     consume_x_slot, consume_w_slot;
+logic                     mx_dec_start_new;
+logic                     x_data_accept, x_exp_accept;
+logic                     w_data_accept, w_exp_accept;
+
+assign x_data_accept = mx_enable && x_buffer_d.valid && !x_slot_data_valid_q;
+assign x_exp_accept  = mx_enable && x_mx_exp_stream.valid && !x_slot_exp_valid_q;
+assign w_data_accept = mx_enable && w_buffer_d.valid && !w_slot_data_valid_q;
+assign w_exp_accept  = mx_enable && w_mx_exp_stream.valid && !w_slot_exp_valid_q;
+
+// FIFO flow control: check if target FIFO has space for a full block output
+// Each decode outputs NUM_GROUPS entries, FIFO depth is 4, so check if not full
+logic x_fifo_has_space, w_fifo_has_space;
+assign x_fifo_has_space = !x_fifo_flgs.full;
+assign w_fifo_has_space = !w_fifo_flgs.full;
+
+// Request signals now also consider FIFO space
+logic x_req_with_space, w_req_with_space;
+assign x_req_with_space = x_req && x_fifo_has_space;
+assign w_req_with_space = w_req && w_fifo_has_space;
+
+assign mx_dec_start_new = (mx_dec_target_q == MX_DEC_NONE) &&
+                          (mx_dec_owner != MX_DEC_NONE) &&
+                          ((mx_dec_owner == MX_DEC_X && x_req_with_space) ||
+                           (mx_dec_owner == MX_DEC_W && w_req_with_space));
+assign consume_x_slot = mx_dec_start_new && (mx_dec_owner == MX_DEC_X);
+assign consume_w_slot = mx_dec_start_new && (mx_dec_owner == MX_DEC_W);
+
+assign x_req = mx_enable && x_slot_valid_q;
+assign w_req = mx_enable && w_slot_valid_q;
+assign both_streams_req = x_req && w_req;
+
+// Arbitration considers FIFO space: if one FIFO is full, prefer the other
+always_comb begin
+  if (mx_dec_target_q == MX_DEC_NONE) begin
+    // Check which streams have space in their FIFOs
+    logic x_can_decode, w_can_decode;
+    x_can_decode = x_req && x_fifo_has_space;
+    w_can_decode = w_req && w_fifo_has_space;
+
+    unique case ({x_can_decode, w_can_decode})
+      2'b10: mx_dec_owner = MX_DEC_X;
+      2'b01: mx_dec_owner = MX_DEC_W;
+      2'b11: mx_dec_owner = mx_dec_turn_q ? MX_DEC_W : MX_DEC_X;
+      default: mx_dec_owner = MX_DEC_NONE;
+    endcase
+  end else begin
+    mx_dec_owner = mx_dec_target_q;
+  end
+end
+
+assign owner_is_x = (mx_dec_owner == MX_DEC_X);
+assign owner_is_w = (mx_dec_owner == MX_DEC_W);
+
+// Registered ownership for backpressure routing
+logic target_is_x, target_is_w;
+assign target_is_x = (mx_dec_target_q == MX_DEC_X);
+assign target_is_w = (mx_dec_target_q == MX_DEC_W);
+
+// Valid signals: asserted when owner is assigned (not MX_DEC_NONE)
+// Once ownership is acquired, keep valid high until decoder accepts
+assign mx_dec_val_valid = (mx_dec_target_q != MX_DEC_NONE) ||
+                          ((mx_dec_owner != MX_DEC_NONE) && (
+                            (mx_dec_owner == MX_DEC_X && x_req) ||
+                            (mx_dec_owner == MX_DEC_W && w_req)));
+assign mx_dec_exp_valid = mx_dec_val_valid;
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    mx_dec_target_q <= MX_DEC_NONE;
+    mx_dec_group_cnt_q <= '0;
+    mx_dec_val_data_q <= '0;
+    mx_dec_exp_data_q <= '0;
+    mx_dec_vector_mode_q <= 1'b0;
+    mx_dec_turn_q <= 1'b1;  // Start with W preference to match paper's W→X→W pattern
+    x_slot_valid_q <= 1'b0;
+    x_slot_data_valid_q <= 1'b0;
+    x_slot_exp_valid_q  <= 1'b0;
+    x_slot_data_q  <= '0;
+    x_slot_exp_q   <= '0;
+    w_slot_valid_q <= 1'b0;
+    w_slot_data_valid_q <= 1'b0;
+    w_slot_exp_valid_q  <= 1'b0;
+    w_slot_data_q  <= '0;
+    w_slot_exp_q   <= '0;
+  end else if (clear) begin
+    mx_dec_target_q <= MX_DEC_NONE;
+    mx_dec_group_cnt_q <= '0;
+    mx_dec_val_data_q <= '0;
+    mx_dec_exp_data_q <= '0;
+    mx_dec_vector_mode_q <= 1'b0;
+    mx_dec_turn_q <= 1'b1;  // Maintain W preference after clear
+    x_slot_valid_q <= 1'b0;
+    x_slot_data_valid_q <= 1'b0;
+    x_slot_exp_valid_q  <= 1'b0;
+    x_slot_data_q  <= '0;
+    x_slot_exp_q   <= '0;
+    w_slot_valid_q <= 1'b0;
+    w_slot_data_valid_q <= 1'b0;
+    w_slot_exp_valid_q  <= 1'b0;
+    w_slot_data_q  <= '0;
+    w_slot_exp_q   <= '0;
+  end else begin
+    mx_dec_target_q <= mx_dec_target_d;
+    mx_dec_group_cnt_q <= mx_dec_group_cnt_d;
+    mx_dec_val_data_q <= mx_dec_val_data_d;
+    mx_dec_exp_data_q <= mx_dec_exp_data_d;
+    mx_dec_vector_mode_q <= mx_dec_vector_mode_d;
+    mx_dec_turn_q <= mx_dec_turn_d;
+    x_slot_valid_q <= x_slot_valid_d;
+    x_slot_data_valid_q <= x_slot_data_valid_d;
+    x_slot_exp_valid_q  <= x_slot_exp_valid_d;
+    x_slot_data_q  <= x_slot_data_d;
+    x_slot_exp_q   <= x_slot_exp_d;
+    w_slot_valid_q <= w_slot_valid_d;
+    w_slot_data_valid_q <= w_slot_data_valid_d;
+    w_slot_exp_valid_q  <= w_slot_exp_valid_d;
+    w_slot_data_q  <= w_slot_data_d;
+    w_slot_exp_q   <= w_slot_exp_d;
+  end
+end
+
+always_comb begin
+  mx_dec_target_d = mx_dec_target_q;
+  mx_dec_group_cnt_d = mx_dec_group_cnt_q;
+  mx_dec_val_data_d = mx_dec_val_data_q;
+  mx_dec_exp_data_d = mx_dec_exp_data_q;
+  mx_dec_vector_mode_d = mx_dec_vector_mode_q;
+  mx_dec_turn_d = mx_dec_turn_q;
+  x_slot_valid_d = x_slot_valid_q;
+  x_slot_data_valid_d = x_slot_data_valid_q;
+  x_slot_exp_valid_d  = x_slot_exp_valid_q;
+  x_slot_data_d  = x_slot_data_q;
+  x_slot_exp_d   = x_slot_exp_q;
+  w_slot_valid_d = w_slot_valid_q;
+  w_slot_data_valid_d = w_slot_data_valid_q;
+  w_slot_exp_valid_d  = w_slot_exp_valid_q;
+  w_slot_data_d  = w_slot_data_q;
+  w_slot_exp_d   = w_slot_exp_q;
+
+  if (x_data_accept) begin
+    x_slot_data_valid_d = 1'b1;
+    x_slot_data_d = x_buffer_d.data[MX_DATA_W-1:0];
+  end
+  if (x_exp_accept) begin
+    x_slot_exp_valid_d = 1'b1;
+    x_slot_exp_d = x_mx_exp_stream.data[7:0];
+  end
+  if (!x_slot_valid_q && x_slot_data_valid_d && x_slot_exp_valid_d) begin
+    x_slot_valid_d = 1'b1;
+  end
+
+  if (w_data_accept) begin
+    w_slot_data_valid_d = 1'b1;
+    w_slot_data_d = w_buffer_d.data[MX_DATA_W-1:0];
+  end
+  if (w_exp_accept) begin
+    w_slot_exp_valid_d = 1'b1;
+    w_slot_exp_d = w_mx_exp_stream.data[MX_EXP_VECTOR_W-1:0];
+  end
+  if (!w_slot_valid_q && w_slot_data_valid_d && w_slot_exp_valid_d) begin
+    w_slot_valid_d = 1'b1;
+  end
+
+  if (consume_x_slot) begin
+    x_slot_valid_d = 1'b0;
+    x_slot_data_valid_d = 1'b0;
+    x_slot_exp_valid_d  = 1'b0;
+  end
+  if (consume_w_slot) begin
+    w_slot_valid_d = 1'b0;
+    w_slot_data_valid_d = 1'b0;
+    w_slot_exp_valid_d  = 1'b0;
+  end
+
+  unique case (mx_dec_target_q)
+    MX_DEC_NONE: begin
+      // Transition when we have a valid owner with valid inputs
+      // Don't wait for ready - decoder will accept on next cycle after we transition
+      if (mx_dec_start_new) begin
+        mx_dec_target_d = mx_dec_owner;
+        mx_dec_group_cnt_d = '0;  // Reset counter when starting new decode
+        // Latch input data on transition
+        mx_dec_val_data_d = (mx_dec_owner == MX_DEC_X) ? x_slot_data_q : w_slot_data_q;
+        mx_dec_exp_data_d = (mx_dec_owner == MX_DEC_X) ? {{(MX_EXP_VECTOR_W-8){1'b0}}, x_slot_exp_q} : w_slot_exp_q;
+        mx_dec_vector_mode_d = (mx_dec_owner == MX_DEC_W);
+        // Only flip turn when both streams COULD have been served (data + FIFO space)
+        if (x_req_with_space && w_req_with_space) begin
+          mx_dec_turn_d = ~mx_dec_turn_q;
+        end
+      end
+    end
+    default: begin
+      // Track decoder progress by counting output handshakes
+      if (mx_dec_fp16_valid && mx_dec_fp16_ready) begin
+        if (mx_dec_group_cnt_q == MX_INPUT_NUM_GROUPS - 1) begin
+          // Last group completed, release ownership
+          mx_dec_target_d = MX_DEC_NONE;
+          mx_dec_group_cnt_d = '0;
+        end else begin
+          // More groups to process
+          mx_dec_group_cnt_d = mx_dec_group_cnt_q + 1'b1;
+        end
+      end
+    end
+  endcase
+end
+
+// Use latched data when decoder is active, otherwise use combinational inputs
+assign mx_dec_val_data    = mx_dec_val_data_q;
+assign mx_dec_exp_data    = mx_dec_exp_data_q;
+assign mx_dec_vector_mode = mx_dec_vector_mode_q;
+
+redmule_mx_decoder #(
   .DATA_W    ( MX_DATA_W    ),
   .BITW      ( BITW         ),
   .NUM_LANES ( MX_NUM_LANES )
-) i_mx_decoder_x (
-  .clk_i          ( clk_i                        ),
-  .rst_ni         ( rst_ni                       ),
-  .mx_val_valid_i ( x_buffer_d.valid && mx_enable ),
-  .mx_val_ready_o ( x_mx_val_ready               ),
-  .mx_val_data_i  ( x_buffer_d.data[MX_DATA_W-1:0] ),
-  .mx_exp_valid_i ( x_mx_exp_stream.valid        ),
-  .mx_exp_ready_o ( x_mx_exp_stream.ready        ),
-  .mx_exp_data_i  ( x_mx_exp_stream.data[7:0]    ),
-  .fp16_valid_o   ( x_mx_fp16_valid              ),
-  .fp16_ready_i   ( x_mx_fp16_ready              ),
-  .fp16_data_o    ( x_mx_fp16_data               )
+) i_mx_decoder_shared (
+  .clk_i               ( clk_i             ),
+  .rst_ni              ( rst_ni            ),
+  .mx_val_valid_i      ( mx_dec_val_valid  ),
+  .mx_val_ready_o      ( mx_dec_val_ready  ),
+  .mx_val_data_i       ( mx_dec_val_data   ),
+  .mx_exp_valid_i      ( mx_dec_exp_valid  ),
+  .mx_exp_ready_o      ( mx_dec_exp_ready  ),
+  .mx_exp_data_i       ( mx_dec_exp_data   ),
+  .vector_shared_exp_i ( mx_dec_vector_mode ),
+  .fp16_valid_o        ( mx_dec_fp16_valid ),
+  .fp16_ready_i        ( mx_dec_fp16_ready ),
+  .fp16_data_o         ( mx_dec_fp16_data  )
 );
 
-// MX Decoder for W data (vector of per-group shared exponents)
-redmule_mx_decoder_w #(
-  .DATA_W    ( MX_DATA_W    ),
-  .BITW      ( BITW         ),
-  .NUM_LANES ( MX_NUM_LANES )
-) i_mx_decoder_w (
-  .clk_i          ( clk_i                              ),
-  .rst_ni         ( rst_ni                             ),
-  .mx_val_valid_i ( w_buffer_d.valid && mx_enable      ),
-  .mx_val_ready_o ( w_mx_val_ready                     ),
-  .mx_val_data_i  ( w_buffer_d.data[MX_DATA_W-1:0]     ),
-  .mx_exp_valid_i ( w_mx_exp_stream.valid              ),
-  .mx_exp_ready_o ( w_mx_exp_stream.ready              ),
-  .mx_exp_data_i  ( w_mx_exp_stream.data[MX_NUM_LANES*8-1:0] ),
-  .fp16_valid_o   ( w_mx_fp16_valid                    ),
-  .fp16_ready_i   ( w_mx_fp16_ready                    ),
-  .fp16_data_o    ( w_mx_fp16_data                     )
-);
+assign x_mx_fp16_valid = (mx_enable && mx_dec_target_q == MX_DEC_X) ? mx_dec_fp16_valid : 1'b0;
+assign w_mx_fp16_valid = (mx_enable && mx_dec_target_q == MX_DEC_W) ? mx_dec_fp16_valid : 1'b0;
+assign x_mx_fp16_data  = mx_dec_fp16_data;
+assign w_mx_fp16_data  = mx_dec_fp16_data;
+assign mx_dec_fp16_ready = (mx_dec_target_q == MX_DEC_X) ? x_mx_fp16_ready :
+                           (mx_dec_target_q == MX_DEC_W) ? w_mx_fp16_ready : 1'b0;
 
 // MX input mux for X data: Select between MX decoded and direct bypass
 // When MX disabled: pass through x_buffer_d directly
-// When MX enabled: use decoded FP16 output, pack into DATAW_ALIGN width
-assign x_buffer_muxed.valid = mx_enable ? x_mx_fp16_valid : x_buffer_d.valid;
+// When MX enabled and we're the owner: use decoded FP16 output
+// When MX enabled but not owner: invalid (block this path)
+assign x_buffer_muxed.valid = mx_enable ? (target_is_x ? x_mx_fp16_valid : 1'b0) : x_buffer_d.valid;
 assign x_buffer_muxed.data  = mx_enable ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, x_mx_fp16_data} : x_buffer_d.data;
 assign x_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : x_buffer_d.strb;
-assign x_buffer_d.ready     = mx_enable ? x_mx_val_ready : x_buffer_muxed.ready;  // Use decoder backpressure
-assign x_mx_fp16_ready      = x_buffer_muxed.ready;
+// Accept data when: (1) we're the owner and decoder is ready, OR (2) we're idle (NONE) and need to accept new data
+// When idle, always ready to accept data for arbitration
+assign x_buffer_d.ready     = mx_enable ? (!x_slot_data_valid_q) : x_buffer_muxed.ready;
+assign x_mx_fp16_ready      = target_is_x ? x_buffer_muxed.ready : 1'b0;
 
 // MX input mux for W data: Select between MX decoded and direct bypass
-assign w_buffer_muxed.valid = mx_enable ? w_mx_fp16_valid : w_buffer_d.valid;
+// When MX enabled and we're the owner: use decoded FP16 output
+// When MX enabled but not owner: invalid (block this path)
+assign w_buffer_muxed.valid = mx_enable ? (target_is_w ? w_mx_fp16_valid : 1'b0) : w_buffer_d.valid;
 assign w_buffer_muxed.data  = mx_enable ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, w_mx_fp16_data} : w_buffer_d.data;
 assign w_buffer_muxed.strb  = mx_enable ? {(DATAW_ALIGN/8){1'b1}} : w_buffer_d.strb;
-assign w_buffer_d.ready     = mx_enable ? w_mx_val_ready : w_buffer_muxed.ready;  // Use decoder backpressure
-assign w_mx_fp16_ready      = w_buffer_muxed.ready;
+assign w_buffer_d.ready     = mx_enable ? (!w_slot_data_valid_q) : w_buffer_muxed.ready;
+assign w_mx_fp16_ready      = target_is_w ? w_buffer_muxed.ready : 1'b0;
+
+// In bypass mode, drain exponent streams immediately (testbench expects this)
+assign x_mx_exp_stream.ready = mx_enable ? (!x_slot_exp_valid_q) : 1'b1;
+assign w_mx_exp_stream.ready = mx_enable ? (!w_slot_exp_valid_q) : 1'b1;
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
@@ -280,7 +534,7 @@ hwpe_stream_fifo #(
   .clk_i          ( clk_i           ),
   .rst_ni         ( rst_ni          ),
   .clear_i        ( clear           ),
-  .flags_o        (                 ),
+  .flags_o        ( x_fifo_flgs     ),
   .push_i         ( x_buffer_muxed  ),
   .pop_o          ( x_buffer_fifo   )
 );

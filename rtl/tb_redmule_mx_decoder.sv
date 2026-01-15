@@ -4,6 +4,8 @@ module tb_redmule_mx_decoder;
   localparam int unsigned BITW      = 16;
   localparam int unsigned NUM_ELEMS = DATA_W / 8;
   localparam int unsigned NUM_LANES = 4;
+  localparam int unsigned NUM_GROUPS = NUM_ELEMS / NUM_LANES;
+  localparam int unsigned MX_EXP_WIDTH = NUM_GROUPS * 8;
   string VECTOR_FILE = "../golden-model/MX/mx_decoder_vectors_mxfp8_e4m3.txt"; 
   
   //Signals
@@ -16,7 +18,7 @@ module tb_redmule_mx_decoder;
 
   logic                   mx_exp_valid_i;
   logic                   mx_exp_ready_o;
-  logic [7:0]             mx_exp_data_i;
+  logic [MX_EXP_WIDTH-1:0] mx_exp_data_i;
 
   logic                   fp16_valid_o;
   logic                   fp16_ready_i;
@@ -46,6 +48,7 @@ module tb_redmule_mx_decoder;
     .mx_exp_valid_i(mx_exp_valid_i),
     .mx_exp_ready_o(mx_exp_ready_o),
     .mx_exp_data_i(mx_exp_data_i),
+    .vector_shared_exp_i(1'b0),
     .fp16_valid_o(fp16_valid_o),
     .fp16_ready_i(fp16_ready_i),
     .fp16_data_o(fp16_data_o)
@@ -77,7 +80,8 @@ module tb_redmule_mx_decoder;
       mx_val_data_i[8*i +: 8] = fp8_block[i];
     end
 
-    mx_exp_data_i  = shared_exp;
+    mx_exp_data_i  = '0;
+    mx_exp_data_i[7:0] = shared_exp;
     mx_val_valid_i = 1'b1;
     mx_exp_valid_i = 1'b1;
 
