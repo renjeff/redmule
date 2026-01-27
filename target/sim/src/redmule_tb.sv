@@ -26,10 +26,10 @@ module redmule_tb
 );
 
   // parameters
-  // MX test vector storage for data
-  logic [255:0] mx_x_data_mem [0:255];
-  logic [255:0] mx_w_data_mem [0:255];
-  
+  // MX test vector storage for data - NO LONGER NEEDED: data compiled from C headers
+  // logic [15:0] mx_x_data_mem [0:511];  // 512 16-bit words (1024 FP8 values packed)
+  // logic [15:0] mx_w_data_mem [0:511];  // 512 16-bit words (1024 FP8 values packed)
+
   localparam int unsigned NC = 1;
   localparam int unsigned ID = 10;
   localparam int unsigned DW = redmule_pkg::DATA_W;
@@ -40,6 +40,11 @@ module redmule_tb
   localparam int unsigned FPU = 0;
   localparam int unsigned PULP_ZFINX = 0;
   localparam logic [31:0] BASE_ADDR = 32'h1c000000;
+  localparam logic [31:0] DUMMY_DMEM_BASE = 32'h1c010000;
+  localparam logic [31:0] X_EXP_BASE_ADDR = BASE_ADDR + 32'h0002_0000;
+  localparam logic [31:0] W_EXP_BASE_ADDR = BASE_ADDR + 32'h0002_1000;
+  localparam int unsigned X_EXP_MEM_OFFSET = (X_EXP_BASE_ADDR - DUMMY_DMEM_BASE) >> 2;
+  localparam int unsigned W_EXP_MEM_OFFSET = (W_EXP_BASE_ADDR - DUMMY_DMEM_BASE) >> 2;
   localparam logic [31:0] HWPE_ADDR_BASE_BIT = 20;
   localparam bit          USE_ECC = 0;
   localparam int unsigned EW = (USE_ECC) ? 72 : DEFAULT_EW;
@@ -60,6 +65,7 @@ module redmule_tb
 
   // global signals
   string stim_instr, stim_data, stack_init;
+  string x_exp_file, w_exp_file;
   string mx_dir_resolved; // Directory for MX vectors, derived from stim_data
   logic test_mode;
   logic [31:0] core_boot_addr;
@@ -67,11 +73,34 @@ module redmule_tb
   logic core_sleep;
   int errors;
 
+  task automatic load_exponent_file(string path, int base_word_offset);
+    int fd;
+    int idx;
+    int byte_val;
+    fd = $fopen(path, "r");
+    if (!fd) begin
+      $fatal(1, "[TB] Failed to open exponent file %s", path);
+    end
+    idx = 0;
+    while (!$feof(fd)) begin
+      if ($fscanf(fd, "%h\n", byte_val) != 1) begin
+        break;
+      end
+      for (int k = 0; k < 16; k++) begin
+        i_dummy_dmemory.memory[base_word_offset + idx*16 + k] = 32'h0;
+      end
+      i_dummy_dmemory.memory[base_word_offset + idx*16] = {24'h0, byte_val[7:0]};
+      idx++;
+    end
+    $fclose(fd);
+  endtask
+
   // ---------------------------------------------------------------------------
   // Performance counters
   // ---------------------------------------------------------------------------
   bit perf_enable;
   logic perf_active;
+  logic perf_seen_busy; // Track if we've seen busy_o high during this measurement
   longint unsigned perf_total_cycles;
   longint unsigned perf_busy_cycles;
   longint unsigned perf_encoder_blocks;
@@ -83,28 +112,80 @@ module redmule_tb
     end
   end
 
+  // Performance counters measure full accelerator execution including MX encoding/decoding
+  // Start: busy_o rises OR first TCDM request OR first MX encoder/decoder activity
+  // Stop: Timeout after last activity (busy, TCDM, or MX encoder/decoder)
+
+  logic accel_active; // Combined activity signal
+  int idle_count;     // Count idle cycles for timeout
+  localparam int IDLE_TIMEOUT = 10; // Cycles of inactivity before stopping measurement
+
+  // Debug counters for stream completions
+  int x_stream_done_count;
+  int w_stream_done_count;
+  int z_stream_done_count;
+
+  assign accel_active = i_dut.i_redmule_top.busy_o ||
+                        redmule_tcdm.req ||
+                        (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) ||
+                        (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready);
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       perf_active         <= 1'b0;
+      perf_seen_busy      <= 1'b0;
       perf_total_cycles   <= '0;
       perf_busy_cycles    <= '0;
       perf_encoder_blocks <= '0;
       perf_decoder_blocks <= '0;
+      idle_count          <= 0;
+      x_stream_done_count <= 0;
+      w_stream_done_count <= 0;
+      z_stream_done_count <= 0;
     end else begin
-      if (perf_enable && !perf_active && fetch_enable_i) begin
-        perf_active <= 1'b1;
-      end
+      if (perf_enable) begin
+        // Track stream completions using hci_streamer_flags_t.done field
+        if (i_dut.i_redmule_top.flgs_streamer.x_stream_source_flags.done)
+          x_stream_done_count <= x_stream_done_count + 1;
+        if (i_dut.i_redmule_top.flgs_streamer.w_stream_source_flags.done)
+          w_stream_done_count <= w_stream_done_count + 1;
+        if (i_dut.i_redmule_top.flgs_streamer.z_stream_sink_flags.done)
+          z_stream_done_count <= z_stream_done_count + 1;
 
-      if (perf_active) begin
-        perf_total_cycles <= perf_total_cycles + 1;
-        if (i_dut.i_redmule_top.busy_o) begin
-          perf_busy_cycles <= perf_busy_cycles + 1;
-        end
-        if (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) begin
-          perf_encoder_blocks <= perf_encoder_blocks + 1;
-        end
-        if (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready) begin
-          perf_decoder_blocks <= perf_decoder_blocks + 1;
+        if (!perf_active) begin
+          // Start measurement on first activity after fetch_enable
+          if (fetch_enable_i && accel_active) begin
+            perf_active <= 1'b1;
+            idle_count <= 0;
+          end
+        end else begin
+          // Measurement active: track cycles and activity
+          perf_total_cycles <= perf_total_cycles + 1;
+
+          if (i_dut.i_redmule_top.busy_o) begin
+            perf_busy_cycles <= perf_busy_cycles + 1;
+            perf_seen_busy <= 1'b1;
+          end
+
+          if (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) begin
+            perf_encoder_blocks <= perf_encoder_blocks + 1;
+          end
+
+          if (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready) begin
+            perf_decoder_blocks <= perf_decoder_blocks + 1;
+          end
+
+          // Timeout logic: stop after IDLE_TIMEOUT cycles of no activity
+          if (accel_active) begin
+            idle_count <= 0;
+          end else begin
+            idle_count <= idle_count + 1;
+            if (idle_count >= IDLE_TIMEOUT && perf_seen_busy) begin
+              perf_active <= 1'b0;
+              perf_seen_busy <= 1'b0;
+              idle_count <= 0;
+            end
+          end
         end
       end
 
@@ -137,190 +218,7 @@ module redmule_tb
   // MX exponent stream interface (encoder output)
   hwpe_stream_intf_stream #(.DATA_WIDTH(32)) mx_exp_stream (.clk(clk_i));
   
-  // Simple exponent sink: always ready to accept exponents
-  assign mx_exp_stream.ready = 1'b1;
-  
-  // MX exponent stream interfaces (decoder inputs for X and W)
-  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) x_mx_exp_stream (.clk(clk_i));
-  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) w_mx_exp_stream (.clk(clk_i));
-
-  // MX test vector storage (increased size for large tests)
-  logic [31:0] mx_x_exp_mem [0:19999];
-  logic [31:0] mx_w_exp_mem [0:19999];
-  integer mx_x_exp_idx = 0;
-  integer mx_w_exp_idx = 0;
-  logic [31:0] x_exp_data_reg, w_exp_data_reg;
-  logic x_exp_valid_reg, w_exp_valid_reg;
-  logic [31:0] x_exp_data_q, x_exp_data_d;
-  logic [31:0] w_exp_data_q, w_exp_data_d;
-  integer mx_x_exp_idx_q, mx_x_exp_idx_d;
-  integer mx_w_exp_idx_q, mx_w_exp_idx_d;
-  logic x_exp_valid_d, w_exp_valid_d;
-  logic mx_enable_q;
-  
-  // stream output registers
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      x_exp_data_q    <= 32'h0;
-      w_exp_data_q    <= 32'h0;
-      x_exp_valid_reg <= 1'b0;
-      w_exp_valid_reg <= 1'b0;
-      mx_x_exp_idx_q  <= 0;
-      mx_w_exp_idx_q  <= 0;
-      mx_enable_q     <= 1'b0;
-    end else begin
-      x_exp_data_q    <= x_exp_data_d;
-      w_exp_data_q    <= w_exp_data_d;
-      x_exp_valid_reg <= x_exp_valid_d;
-      w_exp_valid_reg <= w_exp_valid_d;
-      mx_x_exp_idx_q  <= mx_x_exp_idx_d;
-      mx_w_exp_idx_q  <= mx_w_exp_idx_d;
-      mx_enable_q     <= mx_enable;
-    end
-  end
-
-  // Combinational next-state logic for exponent streams
-  always_comb begin
-    // X exponent stream
-    x_exp_data_d   = x_exp_data_q;
-    mx_x_exp_idx_d = mx_x_exp_idx_q;
-    x_exp_valid_d  = x_exp_valid_reg;
-    if (!x_exp_valid_reg) begin
-      // Initial load after reset or after stream exhausted
-      if (mx_enable && (mx_x_exp_idx_q < $size(mx_x_exp_mem))) begin
-        x_exp_data_d  = mx_x_exp_mem[mx_x_exp_idx_q];
-        x_exp_valid_d = 1'b1;
-      end else if (!mx_enable) begin
-        x_exp_data_d  = 32'h0000_007f;
-        x_exp_valid_d = 1'b1;
-      end else begin
-        x_exp_data_d  = 32'h0;
-        x_exp_valid_d = 1'b0;
-      end
-    end else if (x_exp_valid_reg && x_mx_exp_stream.ready) begin
-      // Handshake: advance index and load next data if available
-      // Check if we just transitioned from bypass to MX mode
-      if (mx_enable && !mx_enable_q) begin
-        // Rising edge of mx_enable: reset index and load first element
-        mx_x_exp_idx_d = 0;
-        if ($size(mx_x_exp_mem) > 0) begin
-          x_exp_data_d   = mx_x_exp_mem[0];
-          x_exp_valid_d  = 1'b1;
-        end else begin
-          x_exp_data_d   = 32'h0;
-          x_exp_valid_d  = 1'b0;
-        end
-      end else if (mx_enable && (mx_x_exp_idx_q+1 < $size(mx_x_exp_mem))) begin
-        // Normal advance: load next element
-        mx_x_exp_idx_d = mx_x_exp_idx_q + 1;
-        x_exp_data_d   = mx_x_exp_mem[mx_x_exp_idx_q + 1];
-        x_exp_valid_d  = 1'b1;
-      end else begin
-        x_exp_data_d   = 32'h0;
-        x_exp_valid_d  = 1'b0;
-      end
-    end
-
-    // W exponent stream
-    w_exp_data_d   = w_exp_data_q;
-    mx_w_exp_idx_d = mx_w_exp_idx_q;
-    w_exp_valid_d  = w_exp_valid_reg;
-    if (!w_exp_valid_reg) begin
-      if (mx_enable && (mx_w_exp_idx_q < $size(mx_w_exp_mem))) begin
-        w_exp_data_d  = mx_w_exp_mem[mx_w_exp_idx_q];
-        w_exp_valid_d = 1'b1;
-      end else if (!mx_enable) begin
-        w_exp_data_d  = 32'h7f7f_7f7f;
-        w_exp_valid_d = 1'b1;
-      end else begin
-        w_exp_data_d  = 32'h0;
-        w_exp_valid_d = 1'b0;
-      end
-    end else if (w_exp_valid_reg && w_mx_exp_stream.ready) begin
-      // Handshake: advance index and load next data if available
-      // Check if we just transitioned from bypass to MX mode
-      if (mx_enable && !mx_enable_q) begin
-        // Rising edge of mx_enable: reset index and load first element
-        mx_w_exp_idx_d = 0;
-        if ($size(mx_w_exp_mem) > 0) begin
-          w_exp_data_d   = mx_w_exp_mem[0];
-          w_exp_valid_d  = 1'b1;
-        end else begin
-          w_exp_data_d   = 32'h0;
-          w_exp_valid_d  = 1'b0;
-        end
-      end else if (mx_enable && (mx_w_exp_idx_q+1 < $size(mx_w_exp_mem))) begin
-        // Normal advance: load next element
-        mx_w_exp_idx_d = mx_w_exp_idx_q + 1;
-        w_exp_data_d   = mx_w_exp_mem[mx_w_exp_idx_q + 1];
-        w_exp_valid_d  = 1'b1;
-      end else begin
-        w_exp_data_d   = 32'h0;
-        w_exp_valid_d  = 1'b0;
-      end
-    end
-  end
-
-  // --- Protocol Assertions for Exponent Streams ---
-  // 1. Data must remain stable while valid=1 and ready=0
-  logic [31:0] x_exp_data_last, w_exp_data_last;
-  logic x_exp_stall_q, w_exp_stall_q;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      x_exp_data_last <= 32'h0;
-      w_exp_data_last <= 32'h0;
-      x_exp_stall_q   <= 1'b0;
-      w_exp_stall_q   <= 1'b0;
-    end else begin
-      if (x_mx_exp_stream.valid && !x_mx_exp_stream.ready)
-        x_exp_data_last <= x_mx_exp_stream.data;
-      if (w_mx_exp_stream.valid && !w_mx_exp_stream.ready)
-        w_exp_data_last <= w_mx_exp_stream.data;
-      x_exp_stall_q <= x_mx_exp_stream.valid && !x_mx_exp_stream.ready;
-      w_exp_stall_q <= w_mx_exp_stream.valid && !w_mx_exp_stream.ready;
-    end
-  end
-
-  // Assert data is stable while valid=1 and ready=0
-  always_ff @(posedge clk_i) begin
-    if((x_mx_exp_stream.valid && !x_mx_exp_stream.ready) && x_exp_stall_q)
-      assert(x_mx_exp_stream.data == x_exp_data_last)
-        else $error("[TB][ASSERT] x_mx_exp_stream.data changed while valid=1 and ready=0");
-    if ((w_mx_exp_stream.valid && !w_mx_exp_stream.ready) && w_exp_stall_q)
-      assert(w_mx_exp_stream.data == w_exp_data_last)
-        else $error("[TB][ASSERT] w_mx_exp_stream.data changed while valid=1 and ready=0");
-  end
-
-  // 2. Index must not overrun vector length
-  always_ff @(posedge clk_i) begin
-    if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready)
-      assert(mx_x_exp_idx < $size(mx_x_exp_mem))
-        else $error("[TB][ASSERT] mx_x_exp_idx overran mx_x_exp_mem size");
-    if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready)
-      assert(mx_w_exp_idx < $size(mx_w_exp_mem))
-        else $error("[TB][ASSERT] mx_w_exp_idx overran mx_w_exp_mem size");
-  end
-
-  // 3. Only increment index on handshake (already implemented in always_ff)
-  // 4. No multiple drivers: all assignments are in this always_ff and assign blocks
-
-  // Connect registered outputs to interface
-  assign x_mx_exp_stream.valid = x_exp_valid_reg;
-  assign x_mx_exp_stream.data  = x_exp_data_q;
-  assign x_mx_exp_stream.strb  = 4'hf;
-
-  assign w_mx_exp_stream.valid = w_exp_valid_reg;
-  assign w_mx_exp_stream.data  = w_exp_data_q;
-  assign w_mx_exp_stream.strb  = 4'hf;
-  
-  // Optional: Monitor exponent stream for debugging
-  // always_ff @(posedge clk_i) begin
-  //   if (mx_exp_stream.valid && mx_exp_stream.ready) begin
-  //     $display("[%0t] MX Exponent: 0x%02h", $time, mx_exp_stream.data[7:0]);
-  //   end
-  // end
-
-  logic [NC-1:0][1:0]  evt;
+    logic [NC-1:0][1:0]  evt;
   logic [MP-1:0]       tcdm_gnt;
   logic [MP-1:0][31:0] tcdm_r_data;
   logic [MP-1:0]       tcdm_r_valid;
@@ -549,9 +447,7 @@ module redmule_tb
     .core_data_rsp_i    ( core_data_rsp    ),
     .core_data_req_o    ( core_data_req    ),
     .tcdm               ( redmule_tcdm     ),
-    .mx_exp_stream      ( mx_exp_stream    ),
-    .x_mx_exp_stream    ( x_mx_exp_stream  ),
-    .w_mx_exp_stream    ( w_mx_exp_stream  )
+    .mx_exp_stream      ( mx_exp_stream    )
   );
 
   integer f_x, f_W, f_y, f_tau;
@@ -578,6 +474,8 @@ module redmule_tb
     if (!$value$plusargs("STIM_INSTR=%s", stim_instr)) stim_instr = "";
     if (!$value$plusargs("STIM_DATA=%s", stim_data)) stim_data = "";
     if (!$value$plusargs("STACK_INIT=%s", stack_init)) stack_init = "";
+    if (!$value$plusargs("X_EXP_FILE=%s", x_exp_file)) x_exp_file = "";
+    if (!$value$plusargs("W_EXP_FILE=%s", w_exp_file)) w_exp_file = "";
     $display("Please find STIM_INSTR loaded from %s", stim_instr);
     $display("Please find STIM_DATA loaded from %s", stim_data);
     $display("Please find STACK_INIT loaded from %s", stack_init);
@@ -587,22 +485,19 @@ module redmule_tb
       // derive MX directory from stim_data absolute path
       mx_dir_resolved = dirname(stim_data);
       $display("[TB] MX dir derived from STIM_DATA: %s", mx_dir_resolved);
-
-      // clear
-      for (int i = 0; i < $size(mx_x_data_mem); i++) begin
-        mx_x_data_mem[i] = '0;
-        mx_w_data_mem[i] = '0;
+      if (x_exp_file == "" || w_exp_file == "") begin
+        string repo_root;
+        string exp_dir;
+        repo_root = dirname(mx_dir_resolved); // /sw/build -> /sw
+        repo_root = dirname(repo_root);       // /sw -> project root
+        exp_dir   = {repo_root, "/golden-model/MX"};
+        if (x_exp_file == "") x_exp_file = {exp_dir, "/mx_x_exp_packed.txt"};
+        if (w_exp_file == "") w_exp_file = {exp_dir, "/mx_w_exp_packed.txt"};
       end
-      for (int i = 0; i < $size(mx_x_exp_mem); i++) begin
-        mx_x_exp_mem[i] = '0;
-        mx_w_exp_mem[i] = '0;
-      end
+      $display("[TB] X exponent file : %s", x_exp_file);
+      $display("[TB] W exponent file : %s", w_exp_file);
 
-      // load from same folder as stim_data.txt
-      $readmemh({mx_dir_resolved, "/mx_x_data.txt"}, mx_x_data_mem);
-      $readmemh({mx_dir_resolved, "/mx_w_data.txt"}, mx_w_data_mem);
-      $readmemh({mx_dir_resolved, "/mx_x_exp.txt"},  mx_x_exp_mem);
-      $readmemh({mx_dir_resolved, "/mx_w_exp.txt"},  mx_w_exp_mem);
+      // MX exponent files are loaded directly into TCDM via load_exponent_file
     end
 
     test_mode = 1'b0;
@@ -612,6 +507,10 @@ module redmule_tb
     $readmemh(stim_instr, redmule_tb.i_dummy_imemory.memory);
     $readmemh(stim_data,  redmule_tb.i_dummy_dmemory.memory);
     $readmemh(stack_init, redmule_tb.i_dummy_stack_memory.memory);
+    if (mx_enable) begin
+      load_exponent_file(x_exp_file, X_EXP_MEM_OFFSET);
+      load_exponent_file(w_exp_file, W_EXP_MEM_OFFSET);
+    end
 
 
 
@@ -655,8 +554,11 @@ module redmule_tb
       $display("[PERF] total cycles    : %0d", perf_total_cycles);
       $display("[PERF] busy cycles     : %0d", perf_busy_cycles);
       $display("[PERF] busy ratio      : %0.2f %%", busy_ratio);
-      $display("[PERF] MX blocks enc   : %0d", perf_encoder_blocks);
       $display("[PERF] MX blocks dec   : %0d", perf_decoder_blocks);
+      $display("[PERF] MX blocks enc   : %0d", perf_encoder_blocks);
+      $display("[PERF] X stream done   : %0d", x_stream_done_count);
+      $display("[PERF] W stream done   : %0d", w_stream_done_count);
+      $display("[PERF] Z stream done   : %0d", z_stream_done_count);
     end
     if(errors != 0) begin
       $display("[TB] - Fail!");

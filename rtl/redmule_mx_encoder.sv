@@ -366,10 +366,13 @@ end
                         group_idx_d = 1;
                         next_state = SCAN;
                     end
+                end else begin
+                    next_state  = IDLE;
+                    group_idx_d = '0;
                 end
             end
-        
-         
+
+ 
             SCAN: begin
                 fp16_ready_o = 1'b1;
 
@@ -404,6 +407,8 @@ end
                     end else begin
                         group_idx_d = group_idx_q + 1;
                     end
+                end else begin
+                    next_state = SCAN;
                 end
             end
 
@@ -456,4 +461,3 @@ end
 
 
 endmodule : redmule_mx_encoder
-

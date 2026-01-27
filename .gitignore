@@ -13,4 +13,8 @@ sw/inc/
 rtl/vsim.wlf
 target/sim
 golden-model/common/
+golden-model/mxfp-main-asap25-linear/**
+golden-model/mxfp-main-golden-Gamze/**
 work
+
+**.md

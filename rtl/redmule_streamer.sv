@@ -28,6 +28,9 @@ module redmule_streamer
   hwpe_stream_intf_stream.source w_stream_o,
   // Engine Y input + HS signals (output for the streamer)
   hwpe_stream_intf_stream.source y_stream_o,
+  // MX exponent streams (output for the streamer)
+  hwpe_stream_intf_stream.source x_exp_stream_o,
+  hwpe_stream_intf_stream.source w_exp_stream_o,
   // Engine Z output + HS signals (intput for the streamer)
   hwpe_stream_intf_stream.sink   z_stream_i,
   // TCDM interface between the streamer and the memory
@@ -366,6 +369,8 @@ hci_package::hci_streamer_flags_t [NumStreamSources-1:0] source_flags;
 assign source_ctrl[XsourceStreamId]      = ctrl_i.x_stream_source_ctrl;
 assign source_ctrl[WsourceStreamId]      = ctrl_i.w_stream_source_ctrl;
 assign source_ctrl[YsourceStreamId]      = ctrl_i.y_stream_source_ctrl;
+assign source_ctrl[XExpSourceStreamId]   = ctrl_i.x_exp_stream_source_ctrl;
+assign source_ctrl[WExpSourceStreamId]   = ctrl_i.w_exp_stream_source_ctrl;
 
 for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
 
@@ -389,22 +394,25 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
   );
 
   // Load cast unit
-  // This unit uses only the data bus of the TCDM interface. The other buses
-  // are assigned manually.
-  redmule_castin #(
-    .DATA_W       ( DW           ),
-    .FpFmtConfig  ( FpFmtConfig  ),
-    .IntFmtConfig ( IntFmtConfig ),
-    .DstFormat    ( FPFORMAT     )
-  ) i_load_cast   (
-    .clk_i                                     ,
-    .rst_ni                                    ,
-    .clear_i                                   ,
-    .cast_i       ( cast                      ),
-    .src_i        ( load_fifo_q[i].r_data     ),
-    .src_fmt_i    ( ctrl_i.input_cast_src_fmt ),
-    .dst_o        ( tcdm_cast[i].r_data       )
-  );
+  // Exponent streams bypass the cast stage since they already carry raw bytes
+  if ((i == XExpSourceStreamId) || (i == WExpSourceStreamId)) begin : gen_exp_cast_bypass
+    assign tcdm_cast[i].r_data = load_fifo_q[i].r_data;
+  end else begin : gen_stream_cast
+    redmule_castin #(
+      .DATA_W       ( DW           ),
+      .FpFmtConfig  ( FpFmtConfig  ),
+      .IntFmtConfig ( IntFmtConfig ),
+      .DstFormat    ( FPFORMAT     )
+    ) i_load_cast (
+      .clk_i                                     ,
+      .rst_ni                                    ,
+      .clear_i                                   ,
+      .cast_i       ( cast                      ),
+      .src_i        ( load_fifo_q[i].r_data     ),
+      .src_fmt_i    ( ctrl_i.input_cast_src_fmt ),
+      .dst_o        ( tcdm_cast[i].r_data       )
+    );
+  end
 
   // Left TCDM buses assignment.
   assign load_fifo_q[i].req      = tcdm_cast[i].req;
@@ -448,6 +456,8 @@ end
 assign flags_o.x_stream_source_flags = source_flags[XsourceStreamId];
 assign flags_o.w_stream_source_flags = source_flags[WsourceStreamId];
 assign flags_o.y_stream_source_flags = source_flags[YsourceStreamId];
+assign flags_o.x_exp_stream_source_flags = source_flags[XExpSourceStreamId];
+assign flags_o.w_exp_stream_source_flags = source_flags[WExpSourceStreamId];
 
 // Assign resulting streams.
 hwpe_stream_assign i_xstream_assign ( .push_i( out_stream[XsourceStreamId] ) ,
@@ -458,5 +468,11 @@ hwpe_stream_assign i_wstream_assign ( .push_i( out_stream[WsourceStreamId] ) ,
 
 hwpe_stream_assign i_ystream_assign ( .push_i( out_stream[YsourceStreamId] ) ,
                                       .pop_o ( y_stream_o                  ) );
+
+hwpe_stream_assign i_x_expstream_assign ( .push_i( out_stream[XExpSourceStreamId] ) ,
+                                          .pop_o ( x_exp_stream_o                 ) );
+
+hwpe_stream_assign i_w_expstream_assign ( .push_i( out_stream[WExpSourceStreamId] ) ,
+                                          .pop_o ( w_exp_stream_o                 ) );
 
 endmodule : redmule_streamer

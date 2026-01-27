@@ -236,10 +236,12 @@ module redmule_ctrl
   assign cntrl_scheduler_o.rst        = current == REDMULE_FINISHED;
   assign cntrl_scheduler_o.finished   = current == REDMULE_FINISHED;
   assign latch_clear                  = current == REDMULE_LATCH_RST;
-  // Read MX enable from slave register file (before tiler) since MACFG is at slave index 5
+
+  // MX enable from MACFG register bit [16]
+  // When enabled: reads pre-encoded FP8 from memory (bandwidth savings!)
   // Only enable MX when FSM is actively running (not idle/reset) to avoid X propagation
-  assign cntrl_flags_o.mx_enable = (current != REDMULE_LATCH_RST && current != REDMULE_IDLE) 
-                                   ? reg_file_d.hwpe_params[MACFG][16] 
+  assign cntrl_flags_o.mx_enable = (current != REDMULE_LATCH_RST && current != REDMULE_IDLE)
+                                   ? reg_file_d.hwpe_params[MACFG][16]
                                    : 1'b0;
 
   always_comb begin : controller_fsm

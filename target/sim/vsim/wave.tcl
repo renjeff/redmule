@@ -119,16 +119,66 @@ add wave -noupdate -group MX-Decoder-Output -label {W FP16 Ready} -color Magenta
 add wave -noupdate -group X-Input-Streams -label {X Buffer Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_buffer_d.valid
 add wave -noupdate -group X-Input-Streams -label {X Buffer Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_buffer_d.ready
 add wave -noupdate -group X-Input-Streams -label {X Buffer Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_buffer_d.data
-add wave -noupdate -group X-Input-Streams -label {X Exp Valid} -color Green -height $MinHeight $Testbench/x_mx_exp_stream.valid
-add wave -noupdate -group X-Input-Streams -label {X Exp Ready} -color Green -height $MinHeight $Testbench/x_mx_exp_stream.ready
-add wave -noupdate -group X-Input-Streams -label {X Exp Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/x_mx_exp_stream.data
+add wave -noupdate -group X-Input-Streams -label {X Exp Stream Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_from_streamer.valid
+add wave -noupdate -group X-Input-Streams -label {X Exp Stream Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_from_streamer.ready
+add wave -noupdate -group X-Input-Streams -label {X Exp Stream Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_exp_from_streamer.data
+add wave -noupdate -group X-Input-Streams -label {X Data Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/x_data_accept
+add wave -noupdate -group X-Input-Streams -label {X Exp Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/x_exp_accept
 # W Input Streams
 add wave -noupdate -group W-Input-Streams -label {W Buffer Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_buffer_d.valid
 add wave -noupdate -group W-Input-Streams -label {W Buffer Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_buffer_d.ready
 add wave -noupdate -group W-Input-Streams -label {W Buffer Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_buffer_d.data
-add wave -noupdate -group W-Input-Streams -label {W Exp Valid} -color Green -height $MinHeight $Testbench/w_mx_exp_stream.valid
-add wave -noupdate -group W-Input-Streams -label {W Exp Ready} -color Green -height $MinHeight $Testbench/w_mx_exp_stream.ready
-add wave -noupdate -group W-Input-Streams -label {W Exp Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/w_mx_exp_stream.data
+add wave -noupdate -group W-Input-Streams -label {W Exp Stream Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_exp_from_streamer.valid
+add wave -noupdate -group W-Input-Streams -label {W Exp Stream Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/w_exp_from_streamer.ready
+add wave -noupdate -group W-Input-Streams -label {W Exp Stream Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_exp_from_streamer.data
+add wave -noupdate -group W-Input-Streams -label {W Data Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/w_data_accept
+add wave -noupdate -group W-Input-Streams -label {W Exp Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/w_exp_accept
+# X Slot FSM
+add wave -noupdate -group X-Slot-FSM -label {X Slot Valid} -color Red -height $MinHeight $Testbench/$TopLevelPath/x_slot_valid_q
+add wave -noupdate -group X-Slot-FSM -label {X Slot Data Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/x_slot_data_valid_q
+add wave -noupdate -group X-Slot-FSM -label {X Slot Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/x_slot_exp_valid_q
+add wave -noupdate -group X-Slot-FSM -label {X Slot Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_slot_data_q
+add wave -noupdate -group X-Slot-FSM -label {X Slot Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/x_slot_exp_q
+add wave -noupdate -group X-Slot-FSM -label {X Upper Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/x_upper_valid_q
+add wave -noupdate -group X-Slot-FSM -label {X Upper Exp Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/x_upper_exp_valid_q
+add wave -noupdate -group X-Slot-FSM -label {Consume X Slot} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/consume_x_slot
+# W Slot FSM
+add wave -noupdate -group W-Slot-FSM -label {W Slot Valid} -color Red -height $MinHeight $Testbench/$TopLevelPath/w_slot_valid_q
+add wave -noupdate -group W-Slot-FSM -label {W Slot Data Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_slot_data_valid_q
+add wave -noupdate -group W-Slot-FSM -label {W Slot Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_slot_exp_valid_q
+add wave -noupdate -group W-Slot-FSM -label {W Slot Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_slot_data_q
+add wave -noupdate -group W-Slot-FSM -label {W Slot Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/w_slot_exp_q
+add wave -noupdate -group W-Slot-FSM -label {W Upper Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/w_upper_valid_q
+add wave -noupdate -group W-Slot-FSM -label {W Upper Exp Valid} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/w_upper_exp_valid_q
+add wave -noupdate -group W-Slot-FSM -label {Consume W Slot} -color Magenta -height $MinHeight $Testbench/$TopLevelPath/consume_w_slot
+# X-Exp Stream from Streamer (TCDM source)
+add wave -noupdate -group Streamer -group X-Exp-Stream -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_streamer/gen_tcdm2stream\[3\]/i_load_tcdm_fifo/*
+# W-Exp Stream from Streamer (TCDM source)
+add wave -noupdate -group Streamer -group W-Exp-Stream -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_streamer/gen_tcdm2stream\[4\]/i_load_tcdm_fifo/*
+# MX exponent debug (single tab)
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp Stream Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_from_streamer.valid
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp Stream Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_from_streamer.ready
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp Stream Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_exp_from_streamer.data
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp FIFO Valid} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_stream_buf.valid
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp FIFO Ready} -color Green -height $MinHeight $Testbench/$TopLevelPath/x_exp_stream_buf.ready
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp FIFO Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/x_exp_stream_buf.data
+add wave -noupdate -group MX-Exponent-Debug -label {X Exp Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/x_exp_accept
+add wave -noupdate -group MX-Exponent-Debug -label {X Slot Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/x_slot_exp_valid_q
+add wave -noupdate -group MX-Exponent-Debug -label {X Upper Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/x_upper_exp_valid_q
+add wave -noupdate -group MX-Exponent-Debug -label {X Slot Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/x_slot_exp_q
+add wave -noupdate -group MX-Exponent-Debug -label {X Upper Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/x_upper_exp_q
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp Stream Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_exp_from_streamer.valid
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp Stream Ready} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_exp_from_streamer.ready
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp Stream Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_exp_from_streamer.data
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp FIFO Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_exp_stream_buf.valid
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp FIFO Ready} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_exp_stream_buf.ready
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp FIFO Data} -color Cyan -height $MinHeight -radix $WavesRadix $Testbench/$TopLevelPath/w_exp_stream_buf.data
+add wave -noupdate -group MX-Exponent-Debug -label {W Exp Accept} -color Yellow -height $MinHeight $Testbench/$TopLevelPath/w_exp_accept
+add wave -noupdate -group MX-Exponent-Debug -label {W Slot Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_slot_exp_valid_q
+add wave -noupdate -group MX-Exponent-Debug -label {W Upper Exp Valid} -color Orange -height $MinHeight $Testbench/$TopLevelPath/w_upper_exp_valid_q
+add wave -noupdate -group MX-Exponent-Debug -label {W Slot Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/w_slot_exp_q
+add wave -noupdate -group MX-Exponent-Debug -label {W Upper Exp} -color Cyan -height $MinHeight -radix unsigned $Testbench/$TopLevelPath/w_upper_exp_q
+
 # MX Decoder Internal
 add wave -noupdate -group MX-Decoder-Internal -color {} -height $MinHeight -max $MaxHeight -radix $WavesRadix $Testbench/$TopLevelPath/i_mx_decoder_shared/*
 

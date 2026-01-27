@@ -54,6 +54,10 @@ sources:
     - rtl/redmule_mx_fifo.sv
     - rtl/redmule_mx_encoder.sv
     - rtl/redmule_mx_decoder.sv
+    - rtl/redmule_mx_slot_buffer.sv
+    - rtl/redmule_mx_arbiter.sv
+    - rtl/redmule_mx_input_mux.sv
+    - rtl/redmule_mx_output_stage.sv
 
     - target: redmule_deprecated
       files:

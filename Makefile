@@ -58,6 +58,12 @@ ifeq ($(debug),1)
 	FLAGS += -DDEBUG
 endif
 
+# MX format enable flag
+MX_ENABLE ?= 0
+ifeq ($(MX_ENABLE),1)
+	FLAGS += -DMX_ENABLE
+endif
+
 # Include directories
 INC += -I$(SW)
 INC += -I$(SW)/inc
@@ -81,6 +87,18 @@ STIM_INSTR=$(BUILD_DIR)/stim_instr.txt
 STIM_DATA=$(BUILD_DIR)/stim_data.txt
 STACK_INIT=$(BUILD_DIR)/stack_init.txt
 
+# MX header generation variables (must be defined before $(OBJ) rule)
+MX_GEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_test_vectors.py
+MX_NUM_LANES  := 32
+MX_BLOCK_SIZE := 32
+X_INPUT_H   := $(SW)/inc/x_input.h
+W_INPUT_H   := $(SW)/inc/w_input.h
+X_MX_H      := $(SW)/inc/x_input_mx.h
+W_MX_H      := $(SW)/inc/w_input_mx.h
+X_EXP_MX_H  := $(SW)/inc/x_exp_mx.h
+W_EXP_MX_H  := $(SW)/inc/w_exp_mx.h
+GOLDEN_MX_H := $(SW)/inc/golden_mx.h
+
 # Build implicit rules
 $(STIM_INSTR) $(STIM_DATA) $(STACK_INIT): $(BIN)
 	objcopy --srec-len 1 --output-target=srec $(BIN) $(BIN).s19
@@ -94,16 +112,58 @@ $(BIN): $(CRT) $(OBJ)
 $(CRT): $(BUILD_DIR)
 	$(CC) $(CC_OPTS) -c $(BOOTSCRIPT) -o $(CRT)
 
-$(OBJ): $(TEST_SRCS)
+# When MX_ENABLE=1, object file depends on MX headers being generated first
+ifeq ($(MX_ENABLE),1)
+$(OBJ): $(BUILD_DIR) $(TEST_SRCS) $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H)
 	$(CC) $(CC_OPTS) -c $(TEST_SRCS) $(FLAGS) $(INC) -o $(OBJ)
+else
+$(OBJ): $(BUILD_DIR) $(TEST_SRCS)
+	$(CC) $(CC_OPTS) -c $(TEST_SRCS) $(FLAGS) $(INC) -o $(OBJ)
+endif
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 SHELL := /bin/bash
 
+# MX header generation rules
+$(X_MX_H) $(X_EXP_MX_H) $(GOLDEN_MX_H): $(X_INPUT_H) $(MX_GEN_SCRIPT)
+	@echo "[MX] Generating MX-encoded X matrix headers..."
+	$(PYTHON) $(MX_GEN_SCRIPT) \
+		--input $(X_INPUT_H) \
+		--output-mx-header $(X_MX_H) \
+		--output-exp-header $(X_EXP_MX_H) \
+		--mx-array-name x_inp \
+		--exp-array-name x_exp \
+		--num-lanes $(MX_NUM_LANES) \
+		--block-size $(MX_BLOCK_SIZE) \
+		--pack-fp8 \
+		--golden-input $(SW)/inc/golden.h \
+		--golden-output-header $(GOLDEN_MX_H) \
+		--golden-array-name golden_mx
+
+$(W_MX_H) $(W_EXP_MX_H): $(W_INPUT_H) $(MX_GEN_SCRIPT)
+	@echo "[MX] Generating MX-encoded W matrix headers..."
+	$(PYTHON) $(MX_GEN_SCRIPT) \
+		--input $(W_INPUT_H) \
+		--output-mx-header $(W_MX_H) \
+		--output-exp-header $(W_EXP_MX_H) \
+		--mx-array-name w_inp \
+		--exp-array-name w_exp \
+		--num-lanes $(MX_NUM_LANES) \
+		--block-size $(MX_BLOCK_SIZE) \
+		--pack-fp8
+
+mx-headers: $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H)
+	@echo "[MX] MX-encoded headers are up to date"
+
 # Generate instructions and data stimuli
+# Only generate MX headers when MX_ENABLE=1
+ifeq ($(MX_ENABLE),1)
+sw-build: mx-headers $(STIM_INSTR) $(STIM_DATA) $(STACK_INIT) dis
+else
 sw-build: $(STIM_INSTR) $(STIM_DATA) $(STACK_INIT) dis
+endif
 
 $(SIM_DIR):
 	mkdir -p $(SIM_DIR)
@@ -117,6 +177,7 @@ synth-ips:
 
 sw-clean:
 	rm -rf $(BUILD_DIR)
+	rm -f $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H)
 
 dis:
 	$(OBJDUMP) -d $(BIN) > $(DUMP)

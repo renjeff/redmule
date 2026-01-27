@@ -39,6 +39,24 @@ module redmule_memory_scheduler
 
   logic [$clog2(W):0] num_x_reads;
 
+  logic [15:0] m_size, n_size, k_size;
+  logic [31:0] total_x_values, total_w_values;
+  logic [31:0] x_exp_beats, w_exp_beats;
+
+  assign m_size = reg_file_i.hwpe_params[MCFIG0][15:0];
+  assign k_size = reg_file_i.hwpe_params[MCFIG0][31:16];
+  assign n_size = reg_file_i.hwpe_params[MCFIG1][15:0];
+
+  assign total_x_values = m_size * k_size;
+  assign total_w_values = n_size * k_size;
+
+  // Exponent beats should match data beats: 1 exponent per 512-bit data beat
+  // Each data beat produces 2 MX blocks that share the same exponent
+  // For proper sync, exponent tot_len must equal data tot_len exactly
+  // Use the same length calculation as data streams to ensure perfect matching
+  assign x_exp_beats = reg_file_i.hwpe_params[TOT_X_READ];  // Match X total data beats
+  assign w_exp_beats = reg_file_i.hwpe_params[W_TOT_LEN];   // Match W total data beats
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : x_cols_iters_register
     if (~rst_ni) begin
         x_cols_iters_q <= '0;
@@ -175,10 +193,38 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d2_stride = reg_file_i.hwpe_params[Z_D2_STRIDE];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 
+  // MX exponent streams (linear addressing, enabled only when MX mode is active)
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+      cntrl_scheduler_i.first_load && flgs_streamer_i.x_exp_stream_source_flags.ready_start;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.base_addr =
+      reg_file_i.hwpe_params[X_EXP_ADDR];
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.tot_len = x_exp_beats;
+  // Treat each 64B exponent beat as its own dimension to avoid mid-request jumps
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d0_len = 32'd1;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d0_stride = 32'd0;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d1_len = x_exp_beats;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = 32'd64;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d2_stride = 32'd0;
+  // Only two dimensions (d0 then d1) required for exponent beats
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
+
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+      cntrl_scheduler_i.first_load && flgs_streamer_i.w_exp_stream_source_flags.ready_start;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.base_addr =
+      reg_file_i.hwpe_params[W_EXP_ADDR];
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.tot_len = w_exp_beats;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d0_len = 32'd1;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d0_stride = 32'd0;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_len = w_exp_beats;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = 32'd64;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d2_stride = 32'd0;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
+
   assign cntrl_streamer_o.input_cast_src_fmt  = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][15:13]);
   assign cntrl_streamer_o.input_cast_dst_fmt  = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][12:10]);
   assign cntrl_streamer_o.output_cast_src_fmt = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][12:10]);
   assign cntrl_streamer_o.output_cast_dst_fmt = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][15:13]);
 
+  assign cntrl_streamer_o.mx_enable = cntrl_flags_i.mx_enable;
   assign cntrl_streamer_o.z_priority = z_priority_i;
 endmodule : redmule_memory_scheduler

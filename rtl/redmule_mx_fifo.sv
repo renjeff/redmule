@@ -10,11 +10,11 @@ module redmule_mx_fifo #(
   
   input  logic                    push_i,
   output logic                    grant_o,
-  input  logic [DATA_WIDTH-1:0][BITW-1:0] data_i,
+  input  logic [NUM_LANES-1:0][BITW-1:0] data_i,
   
   input  logic                    pop_i,
   output logic                    valid_o,
-  output logic [DATA_WIDTH-1:0][BITW-1:0]   data_o
+  output logic [NUM_LANES-1:0][BITW-1:0]   data_o
 );
   
   // Internal storage - 2D array

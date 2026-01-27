@@ -10,11 +10,23 @@
 #include "archi_redmule.h"
 #include "hal_redmule.h"
 
-#include "x_input.h"
-#include "w_input.h"
+// Conditional MX format data includes
+#ifdef MX_ENABLE
+  #include "x_input_mx.h"  // Packed FP8 data
+  #include "w_input_mx.h"
+  #include "x_exp_mx.h"    // Shared exponents
+  #include "w_exp_mx.h"
+#else
+  #include "x_input.h"     // Normal FP16 data
+  #include "w_input.h"
+#endif
+
 #include "y_input.h"
 #include "z_output.h"
 #include "golden.h"
+#ifdef MX_ENABLE
+#include "golden_mx.h"
+#endif
 
 int main() {
 
@@ -24,10 +36,17 @@ int main() {
   uint16_t n_size = N_SIZE;
   uint16_t k_size = K_SIZE;
 
-  uint8_t *x = x_inp;
-  uint8_t *w = w_inp;
-  uint8_t *y = y_inp;
-  uint8_t *z = z_oup; // golden_out //1c010000
+  uint16_t *x = x_inp;
+  uint16_t *w = w_inp;
+  uint16_t *y = y_inp;
+  uint16_t *z = z_oup; // golden_out //1c010000
+#ifdef MX_ENABLE
+  uint8_t *x_exp_ptr = x_exp;
+  uint8_t *w_exp_ptr = w_exp;
+#else
+  uint8_t *x_exp_ptr = NULL;
+  uint8_t *w_exp_ptr = NULL;
+#endif
 
   volatile int errors = 0;
 
@@ -81,7 +100,12 @@ int main() {
 
   asm volatile("wfi" ::: "memory");
 
+#ifdef MX_ENABLE
+  errors = redmule8_compare_int((uint32_t *)y, (uint32_t *)golden_mx,
+                                m_size * k_size / 4);
+#else
   errors = redmule16_compare_int(y, golden, m_size * k_size / 2);
+#endif
 
 #else // COMPLEX_OFFLOADER not defined
 
@@ -104,8 +128,9 @@ int main() {
   while ((offload_id_tmp = hwpe_acquire_job()) < 0)
     ;
 
-  redmule_cfg((unsigned int)x, (unsigned int)w, (unsigned int)y, m_size, n_size, k_size,
-              (uint8_t)gemm_ops, float_fmt);
+  redmule_cfg((unsigned int)x, (unsigned int)w, (unsigned int)y,
+              (unsigned int)x_exp_ptr, (unsigned int)w_exp_ptr,
+              m_size, n_size, k_size, (uint8_t)gemm_ops, float_fmt);
 
   // Start RedMulE operation and sleeping until the end of computation
   printf("Triggering accelerator and going to sleep...\n");
@@ -119,10 +144,15 @@ int main() {
   // Disable RedMulE
   hwpe_cg_disable();
 
+#ifdef MX_ENABLE
+  errors = redmule8_compare_int((uint32_t *)y, (uint32_t *)golden_mx,
+                                m_size * k_size / 4);
+#else
   if (float_fmt == Float16 || float_fmt == Float16Alt)
-    errors = redmule16_compare_int(y, golden, m_size * k_size / 2);
+    errors = redmule16_compare_int((uint32_t *)y, (uint32_t *)golden, m_size * k_size / 2);
   else if (float_fmt == Float8 || float_fmt == Float8Alt)
-    errors = redmule8_compare_int(y, golden, m_size * k_size / 4);
+    errors = redmule8_compare_int((uint32_t *)y, (uint32_t *)golden, m_size * k_size / 4);
+#endif
 
 #endif // #ifded COMPLEX_OFFLOADER
 

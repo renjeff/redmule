@@ -16,7 +16,7 @@ package redmule_pkg;
   parameter int unsigned            NumByte      = MemDw/8;
   parameter int unsigned            ADDR_W       = hci_package::DEFAULT_AW;
   parameter int unsigned            DATAW        = DATA_W - MemDw;
-  parameter int unsigned            REDMULE_REGS = 22;
+  parameter int unsigned            REDMULE_REGS = 24;
   parameter int unsigned            N_CONTEXT    = 2;
   parameter fpnew_pkg::fp_format_e  FPFORMAT     = fpnew_pkg::FP16;
   parameter int unsigned            BITW         = fpnew_pkg::fp_width(FPFORMAT);
@@ -41,7 +41,7 @@ package redmule_pkg;
   ** Slave RF indexing **
   **********************/
   parameter int unsigned X_ADDR = 0; // 0x00 /* These do not change between slave and final */
-  parameter int unsigned W_ADDR = 1; // 0x04 /* These do not change between slave and final */
+  parameter int unsigned W_ADDR = 1; // 0x04 /* These do not change between slave and final */ 
   parameter int unsigned Z_ADDR = 2; // 0x08 /* These do not change between slave and final */
   parameter int unsigned MCFIG0 = 3; // 0x0C --> [31:16] -> K size, [15: 0] -> M size
   parameter int unsigned MCFIG1 = 4; // 0x10 --> [31: 0] -> N Size
@@ -86,6 +86,8 @@ package redmule_pkg;
   // [12:10] -> computing format
   // [0:0]   -> GEMM selection
   parameter int unsigned OP_SELECTION = 17; // 0x44
+  parameter int unsigned X_EXP_ADDR   = 18; // 0x48
+  parameter int unsigned W_EXP_ADDR   = 19; // 0x4C
 
   parameter int unsigned HCI_ECC_MASK = 4'b1001; // 0x90-0x9C
 
@@ -107,10 +109,12 @@ package redmule_pkg;
     CSR_REDMULE_MACFG  = 12'h805
   } redmule_csr_num_e;
 
-  parameter int unsigned NumStreamSources     = 3; // X, W, Y
+  parameter int unsigned NumStreamSources     = 5; // X, W, Y, X exp, W exp
   parameter int unsigned XsourceStreamId      = 0;
   parameter int unsigned WsourceStreamId      = 1;
   parameter int unsigned YsourceStreamId      = 2;
+  parameter int unsigned XExpSourceStreamId   = 3;
+  parameter int unsigned WExpSourceStreamId   = 4;
 
   typedef enum logic { LD_IN_FMP, LD_WEIGHT } source_sel_e;
   typedef enum logic { LOAD, STORE }          ld_st_sel_e;
@@ -120,18 +124,22 @@ package redmule_pkg;
     hci_package::hci_streamer_ctrl_t w_stream_source_ctrl;
     hci_package::hci_streamer_ctrl_t y_stream_source_ctrl;
     hci_package::hci_streamer_ctrl_t z_stream_sink_ctrl;
+    hci_package::hci_streamer_ctrl_t x_exp_stream_source_ctrl;
+    hci_package::hci_streamer_ctrl_t w_exp_stream_source_ctrl;
     fpnew_pkg::fp_format_e           input_cast_src_fmt;
     fpnew_pkg::fp_format_e           input_cast_dst_fmt;
     fpnew_pkg::fp_format_e           output_cast_src_fmt;
     fpnew_pkg::fp_format_e           output_cast_dst_fmt;
     logic                            z_priority;
-    logic                           mx_enable;
+    logic                            mx_enable;  // MX enable: 0=FP16, 1=pre-encoded FP8 input
   } cntrl_streamer_t;
 
   typedef struct packed {
     hci_package::hci_streamer_flags_t x_stream_source_flags;
     hci_package::hci_streamer_flags_t w_stream_source_flags;
     hci_package::hci_streamer_flags_t y_stream_source_flags;
+    hci_package::hci_streamer_flags_t x_exp_stream_source_flags;
+    hci_package::hci_streamer_flags_t w_exp_stream_source_flags;
     hci_package::hci_streamer_flags_t z_stream_sink_flags;
   } flgs_streamer_t;
 
@@ -234,6 +242,8 @@ package redmule_pkg;
     logic [31:0] x_addr;
     logic [31:0] w_addr;
     logic [31:0] z_addr;
+    logic [31:0] x_exp_addr;
+    logic [31:0] w_exp_addr;
     logic [15:0] m_size;
     logic [15:0] n_size;
     logic [15:0] k_size;
