@@ -83,6 +83,25 @@ logic                  w_upper_exp_valid_q, w_upper_exp_valid_d;
 logic [7:0]            x_upper_exp_q, x_upper_exp_d;
 logic [MX_EXP_VECTOR_W-1:0] w_upper_exp_q, w_upper_exp_d;
 
+// Pending beat storage (allows double buffering one extra 512-bit beat)
+logic                  x_pending_lower_valid_q, x_pending_lower_valid_d;
+logic                  x_pending_upper_valid_q, x_pending_upper_valid_d;
+logic [MX_DATA_W-1:0]  x_pending_lower_q, x_pending_lower_d;
+logic [MX_DATA_W-1:0]  x_pending_upper_q, x_pending_upper_d;
+logic                  x_pending_lower_exp_valid_q, x_pending_lower_exp_valid_d;
+logic                  x_pending_upper_exp_valid_q, x_pending_upper_exp_valid_d;
+logic [7:0]            x_pending_lower_exp_q, x_pending_lower_exp_d;
+logic [7:0]            x_pending_upper_exp_q, x_pending_upper_exp_d;
+
+logic                  w_pending_lower_valid_q, w_pending_lower_valid_d;
+logic                  w_pending_upper_valid_q, w_pending_upper_valid_d;
+logic [MX_DATA_W-1:0]  w_pending_lower_q, w_pending_lower_d;
+logic [MX_DATA_W-1:0]  w_pending_upper_q, w_pending_upper_d;
+logic                  w_pending_lower_exp_valid_q, w_pending_lower_exp_valid_d;
+logic                  w_pending_upper_exp_valid_q, w_pending_upper_exp_valid_d;
+logic [MX_EXP_VECTOR_W-1:0] w_pending_lower_exp_q, w_pending_lower_exp_d;
+logic [MX_EXP_VECTOR_W-1:0] w_pending_upper_exp_q, w_pending_upper_exp_d;
+
 // Unpacked data
 logic [MX_DATA_W-1:0] x_unpacked_lower, x_unpacked_upper;
 logic [MX_DATA_W-1:0] w_unpacked_lower, w_unpacked_upper;
@@ -108,21 +127,39 @@ always_comb begin
 end
 
 // Accept logic
-assign x_data_accept = mx_enable_i && x_data_i.valid &&
-                       !x_slot_data_valid_q && !x_upper_valid_q;
-// Accept exponent when slot OR upper exp register needs one (prefetch allowed)
-assign x_exp_accept  = mx_enable_i && x_exp_valid_i &&
-                       (!x_slot_exp_valid_q || !x_upper_exp_valid_q);
+logic x_primary_free, x_pending_free;
+logic w_primary_free, w_pending_free;
+assign x_primary_free = !x_slot_data_valid_q && !x_upper_valid_q;
+assign x_pending_free = !x_pending_lower_valid_q && !x_pending_upper_valid_q;
+assign w_primary_free = !w_slot_data_valid_q && !w_upper_valid_q;
+assign w_pending_free = !w_pending_lower_valid_q && !w_pending_upper_valid_q;
 
-assign w_data_accept = mx_enable_i && w_data_i.valid &&
-                       !w_slot_data_valid_q && !w_upper_valid_q;
-// Accept exponent when slot OR upper exp register needs one (prefetch allowed)
-assign w_exp_accept  = mx_enable_i && w_exp_valid_i &&
-                       (!w_slot_exp_valid_q || !w_upper_exp_valid_q);
+assign x_data_accept = mx_enable_i && x_data_i.valid && (x_primary_free || x_pending_free);
+assign w_data_accept = mx_enable_i && w_data_i.valid && (w_primary_free || w_pending_free);
+
+logic x_slot_need_exp, x_upper_need_exp, x_pending_lower_need_exp, x_pending_upper_need_exp;
+logic w_slot_need_exp, w_upper_need_exp, w_pending_lower_need_exp, w_pending_upper_need_exp;
+
+assign x_slot_need_exp = x_slot_data_valid_q && !x_slot_exp_valid_q;
+assign x_upper_need_exp = x_upper_valid_q && !x_upper_exp_valid_q;
+assign x_pending_lower_need_exp = x_pending_lower_valid_q && !x_pending_lower_exp_valid_q;
+assign x_pending_upper_need_exp = x_pending_upper_valid_q && !x_pending_upper_exp_valid_q;
+
+assign w_slot_need_exp = w_slot_data_valid_q && !w_slot_exp_valid_q;
+assign w_upper_need_exp = w_upper_valid_q && !w_upper_exp_valid_q;
+assign w_pending_lower_need_exp = w_pending_lower_valid_q && !w_pending_lower_exp_valid_q;
+assign w_pending_upper_need_exp = w_pending_upper_valid_q && !w_pending_upper_exp_valid_q;
+
+assign x_exp_accept = mx_enable_i && x_exp_valid_i && !consume_x_slot_i &&
+                      (x_slot_need_exp || x_upper_need_exp ||
+                       x_pending_lower_need_exp || x_pending_upper_need_exp);
+assign w_exp_accept = mx_enable_i && w_exp_valid_i && !consume_w_slot_i &&
+                      (w_slot_need_exp || w_upper_need_exp ||
+                       w_pending_lower_need_exp || w_pending_upper_need_exp);
 
 // Ready signals for data streams
-assign x_data_i.ready = mx_enable_i ? (!x_slot_data_valid_q && !x_upper_valid_q) : 1'b1;
-assign w_data_i.ready = mx_enable_i ? (!w_slot_data_valid_q && !w_upper_valid_q) : 1'b1;
+assign x_data_i.ready = mx_enable_i ? (x_primary_free || x_pending_free) : 1'b1;
+assign w_data_i.ready = mx_enable_i ? (w_primary_free || w_pending_free) : 1'b1;
 
 // Consume signals for exponent buffers (pulse when accepting)
 assign x_exp_consume_o = x_exp_accept;
@@ -157,6 +194,22 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_upper_buffer_q <= '0;
     w_upper_exp_valid_q <= 1'b0;
     w_upper_exp_q <= '0;
+    x_pending_lower_valid_q <= 1'b0;
+    x_pending_upper_valid_q <= 1'b0;
+    x_pending_lower_q <= '0;
+    x_pending_upper_q <= '0;
+    x_pending_lower_exp_valid_q <= 1'b0;
+    x_pending_upper_exp_valid_q <= 1'b0;
+    x_pending_lower_exp_q <= '0;
+    x_pending_upper_exp_q <= '0;
+    w_pending_lower_valid_q <= 1'b0;
+    w_pending_upper_valid_q <= 1'b0;
+    w_pending_lower_q <= '0;
+    w_pending_upper_q <= '0;
+    w_pending_lower_exp_valid_q <= 1'b0;
+    w_pending_upper_exp_valid_q <= 1'b0;
+    w_pending_lower_exp_q <= '0;
+    w_pending_upper_exp_q <= '0;
   end else if (clear_i) begin
     x_slot_valid_q <= 1'b0;
     x_slot_data_valid_q <= 1'b0;
@@ -176,6 +229,22 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_upper_buffer_q <= '0;
     w_upper_exp_valid_q <= 1'b0;
     w_upper_exp_q <= '0;
+    x_pending_lower_valid_q <= 1'b0;
+    x_pending_upper_valid_q <= 1'b0;
+    x_pending_lower_q <= '0;
+    x_pending_upper_q <= '0;
+    x_pending_lower_exp_valid_q <= 1'b0;
+    x_pending_upper_exp_valid_q <= 1'b0;
+    x_pending_lower_exp_q <= '0;
+    x_pending_upper_exp_q <= '0;
+    w_pending_lower_valid_q <= 1'b0;
+    w_pending_upper_valid_q <= 1'b0;
+    w_pending_lower_q <= '0;
+    w_pending_upper_q <= '0;
+    w_pending_lower_exp_valid_q <= 1'b0;
+    w_pending_upper_exp_valid_q <= 1'b0;
+    w_pending_lower_exp_q <= '0;
+    w_pending_upper_exp_q <= '0;
   end else begin
     x_slot_valid_q <= x_slot_valid_d;
     x_slot_data_valid_q <= x_slot_data_valid_d;
@@ -195,21 +264,37 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_upper_buffer_q <= w_upper_buffer_d;
     w_upper_exp_valid_q <= w_upper_exp_valid_d;
     w_upper_exp_q <= w_upper_exp_d;
+    x_pending_lower_valid_q <= x_pending_lower_valid_d;
+    x_pending_upper_valid_q <= x_pending_upper_valid_d;
+    x_pending_lower_q <= x_pending_lower_d;
+    x_pending_upper_q <= x_pending_upper_d;
+    x_pending_lower_exp_valid_q <= x_pending_lower_exp_valid_d;
+    x_pending_upper_exp_valid_q <= x_pending_upper_exp_valid_d;
+    x_pending_lower_exp_q <= x_pending_lower_exp_d;
+    x_pending_upper_exp_q <= x_pending_upper_exp_d;
+    w_pending_lower_valid_q <= w_pending_lower_valid_d;
+    w_pending_upper_valid_q <= w_pending_upper_valid_d;
+    w_pending_lower_q <= w_pending_lower_d;
+    w_pending_upper_q <= w_pending_upper_d;
+    w_pending_lower_exp_valid_q <= w_pending_lower_exp_valid_d;
+    w_pending_upper_exp_valid_q <= w_pending_upper_exp_valid_d;
+    w_pending_lower_exp_q <= w_pending_lower_exp_d;
+    w_pending_upper_exp_q <= w_pending_upper_exp_d;
   end
 end
 
 // Combinational logic
 always_comb begin
-  x_slot_valid_d = x_slot_valid_q;
   x_slot_data_valid_d = x_slot_data_valid_q;
   x_slot_exp_valid_d  = x_slot_exp_valid_q;
   x_slot_data_d  = x_slot_data_q;
   x_slot_exp_d   = x_slot_exp_q;
-  w_slot_valid_d = w_slot_valid_q;
+  x_slot_valid_d = x_slot_data_valid_q && x_slot_exp_valid_q;
   w_slot_data_valid_d = w_slot_data_valid_q;
   w_slot_exp_valid_d  = w_slot_exp_valid_q;
   w_slot_data_d  = w_slot_data_q;
   w_slot_exp_d   = w_slot_exp_q;
+  w_slot_valid_d = w_slot_data_valid_q && w_slot_exp_valid_q;
   x_upper_valid_d = x_upper_valid_q;
   x_upper_buffer_d = x_upper_buffer_q;
   x_upper_exp_valid_d = x_upper_exp_valid_q;
@@ -218,114 +303,160 @@ always_comb begin
   w_upper_buffer_d = w_upper_buffer_q;
   w_upper_exp_valid_d = w_upper_exp_valid_q;
   w_upper_exp_d = w_upper_exp_q;
+  x_pending_lower_valid_d = x_pending_lower_valid_q;
+  x_pending_upper_valid_d = x_pending_upper_valid_q;
+  x_pending_lower_d = x_pending_lower_q;
+  x_pending_upper_d = x_pending_upper_q;
+  x_pending_lower_exp_valid_d = x_pending_lower_exp_valid_q;
+  x_pending_upper_exp_valid_d = x_pending_upper_exp_valid_q;
+  x_pending_lower_exp_d = x_pending_lower_exp_q;
+  x_pending_upper_exp_d = x_pending_upper_exp_q;
+  w_pending_lower_valid_d = w_pending_lower_valid_q;
+  w_pending_upper_valid_d = w_pending_upper_valid_q;
+  w_pending_lower_d = w_pending_lower_q;
+  w_pending_upper_d = w_pending_upper_q;
+  w_pending_lower_exp_valid_d = w_pending_lower_exp_valid_q;
+  w_pending_upper_exp_valid_d = w_pending_upper_exp_valid_q;
+  w_pending_lower_exp_d = w_pending_lower_exp_q;
+  w_pending_upper_exp_d = w_pending_upper_exp_q;
 
   // X data acceptance
   if (x_data_accept) begin
-    x_slot_data_valid_d = 1'b1;
-    x_slot_data_d = x_unpacked_lower;
-    x_upper_valid_d = 1'b1;
-    x_upper_buffer_d = x_unpacked_upper;
+    if (x_primary_free) begin
+      x_slot_data_valid_d = 1'b1;
+      x_slot_data_d = x_unpacked_lower;
+      x_slot_exp_valid_d = 1'b0;
+      x_upper_valid_d = 1'b1;
+      x_upper_buffer_d = x_unpacked_upper;
+      x_upper_exp_valid_d = 1'b0;
+    end else begin
+      x_pending_lower_valid_d = 1'b1;
+      x_pending_lower_d = x_unpacked_lower;
+      x_pending_lower_exp_valid_d = 1'b0;
+      x_pending_upper_valid_d = 1'b1;
+      x_pending_upper_d = x_unpacked_upper;
+      x_pending_upper_exp_valid_d = 1'b0;
+    end
   end
 
   // X exponent acceptance: route to slot or upper based on which needs it
   // Each 256-bit block (slot and upper) needs its own exponent
   if (x_exp_accept) begin
-    if (!x_slot_exp_valid_q) begin
-      // Slot needs exponent - fill it first
+    if (x_slot_need_exp) begin
       x_slot_exp_valid_d = 1'b1;
       x_slot_exp_d = x_exp_data_i;
-    end else if (!x_upper_exp_valid_q) begin
-      // Slot already has exp, upper needs one
+    end else if (x_upper_need_exp) begin
       x_upper_exp_valid_d = 1'b1;
       x_upper_exp_d = x_exp_data_i;
+    end else if (x_pending_lower_need_exp) begin
+      x_pending_lower_exp_valid_d = 1'b1;
+      x_pending_lower_exp_d = x_exp_data_i;
+    end else if (x_pending_upper_need_exp) begin
+      x_pending_upper_exp_valid_d = 1'b1;
+      x_pending_upper_exp_d = x_exp_data_i;
     end
   end
 
-  // Check if we have BOTH data and exp to form complete slot
-  if (!x_slot_valid_q && (x_slot_data_valid_d || x_slot_data_valid_q) &&
-      (x_slot_exp_valid_d || x_slot_exp_valid_q)) begin
-    x_slot_valid_d = 1'b1;
-  end
+  x_slot_valid_d = x_slot_data_valid_d && x_slot_exp_valid_d;
 
   // W data acceptance
   if (w_data_accept) begin
-    w_slot_data_valid_d = 1'b1;
-    w_slot_data_d = w_unpacked_lower;
-    w_upper_valid_d = 1'b1;
-    w_upper_buffer_d = w_unpacked_upper;
+    if (w_primary_free) begin
+      w_slot_data_valid_d = 1'b1;
+      w_slot_data_d = w_unpacked_lower;
+      w_slot_exp_valid_d = 1'b0;
+      w_upper_valid_d = 1'b1;
+      w_upper_buffer_d = w_unpacked_upper;
+      w_upper_exp_valid_d = 1'b0;
+    end else begin
+      w_pending_lower_valid_d = 1'b1;
+      w_pending_lower_d = w_unpacked_lower;
+      w_pending_lower_exp_valid_d = 1'b0;
+      w_pending_upper_valid_d = 1'b1;
+      w_pending_upper_d = w_unpacked_upper;
+      w_pending_upper_exp_valid_d = 1'b0;
+    end
   end
 
   // W exponent acceptance: route to slot or upper based on which needs it
   // Each 256-bit block (slot and upper) needs its own exponent
   if (w_exp_accept) begin
-    if (!w_slot_exp_valid_q) begin
-      // Slot needs exponent - fill it first
+    if (w_slot_need_exp) begin
       w_slot_exp_valid_d = 1'b1;
       w_slot_exp_d = w_exp_data_i;
-    end else if (!w_upper_exp_valid_q) begin
-      // Slot already has exp, upper needs one
+    end else if (w_upper_need_exp) begin
       w_upper_exp_valid_d = 1'b1;
       w_upper_exp_d = w_exp_data_i;
+    end else if (w_pending_lower_need_exp) begin
+      w_pending_lower_exp_valid_d = 1'b1;
+      w_pending_lower_exp_d = w_exp_data_i;
+    end else if (w_pending_upper_need_exp) begin
+      w_pending_upper_exp_valid_d = 1'b1;
+      w_pending_upper_exp_d = w_exp_data_i;
     end
   end
 
-  // Check if we have BOTH data and exp to form complete slot
-  if (!w_slot_valid_q && (w_slot_data_valid_d || w_slot_data_valid_q) &&
-      (w_slot_exp_valid_d || w_slot_exp_valid_q)) begin
-    w_slot_valid_d = 1'b1;
-  end
+  w_slot_valid_d = w_slot_data_valid_d && w_slot_exp_valid_d;
 
   // Slot consumption from arbiter
   // When slot consumed, move upper to slot if available (including its exponent)
   if (consume_x_slot_i) begin
     if (x_upper_valid_q) begin
-      // Move upper data AND exponent to slot
       x_slot_data_valid_d = 1'b1;
       x_slot_data_d = x_upper_buffer_q;
+      x_slot_exp_valid_d = x_upper_exp_valid_q;
+      x_slot_exp_d = x_upper_exp_q;
       x_upper_valid_d = 1'b0;
-      // Move upper exponent to slot
-      if (x_upper_exp_valid_q) begin
-        x_slot_exp_valid_d = 1'b1;
-        x_slot_exp_d = x_upper_exp_q;
-        x_upper_exp_valid_d = 1'b0;
-        // Slot becomes valid immediately since it has both data and exp
-        x_slot_valid_d = 1'b1;
-      end else begin
-        // Upper has no exponent yet - wait for it
-        x_slot_valid_d = 1'b0;
-        x_slot_exp_valid_d = 1'b0;
-      end
+      x_upper_exp_valid_d = 1'b0;
+    end else if (x_pending_lower_valid_q) begin
+      x_slot_data_valid_d = 1'b1;
+      x_slot_data_d = x_pending_lower_q;
+      x_slot_exp_valid_d = x_pending_lower_exp_valid_q;
+      x_slot_exp_d = x_pending_lower_exp_q;
+      x_pending_lower_valid_d = 1'b0;
+      x_pending_lower_exp_valid_d = 1'b0;
+      x_upper_valid_d = x_pending_upper_valid_q;
+      x_upper_buffer_d = x_pending_upper_q;
+      x_upper_exp_valid_d = x_pending_upper_exp_valid_q;
+      x_upper_exp_d = x_pending_upper_exp_q;
+      x_pending_upper_valid_d = 1'b0;
+      x_pending_upper_exp_valid_d = 1'b0;
     end else begin
-      x_slot_valid_d = 1'b0;
       x_slot_data_valid_d = 1'b0;
       x_slot_exp_valid_d  = 1'b0;
     end
   end
 
+  x_slot_valid_d = x_slot_data_valid_d && x_slot_exp_valid_d;
+
   if (consume_w_slot_i) begin
     if (w_upper_valid_q) begin
-      // Move upper data AND exponent to slot
       w_slot_data_valid_d = 1'b1;
       w_slot_data_d = w_upper_buffer_q;
+      w_slot_exp_valid_d = w_upper_exp_valid_q;
+      w_slot_exp_d = w_upper_exp_q;
       w_upper_valid_d = 1'b0;
-      // Move upper exponent to slot
-      if (w_upper_exp_valid_q) begin
-        w_slot_exp_valid_d = 1'b1;
-        w_slot_exp_d = w_upper_exp_q;
-        w_upper_exp_valid_d = 1'b0;
-        // Slot becomes valid immediately since it has both data and exp
-        w_slot_valid_d = 1'b1;
-      end else begin
-        // Upper has no exponent yet - wait for it
-        w_slot_valid_d = 1'b0;
-        w_slot_exp_valid_d = 1'b0;
-      end
+      w_upper_exp_valid_d = 1'b0;
+    end else if (w_pending_lower_valid_q) begin
+      w_slot_data_valid_d = 1'b1;
+      w_slot_data_d = w_pending_lower_q;
+      w_slot_exp_valid_d = w_pending_lower_exp_valid_q;
+      w_slot_exp_d = w_pending_lower_exp_q;
+      w_pending_lower_valid_d = 1'b0;
+      w_pending_lower_exp_valid_d = 1'b0;
+      w_upper_valid_d = w_pending_upper_valid_q;
+      w_upper_buffer_d = w_pending_upper_q;
+      w_upper_exp_valid_d = w_pending_upper_exp_valid_q;
+      w_upper_exp_d = w_pending_upper_exp_q;
+      w_pending_upper_valid_d = 1'b0;
+      w_pending_upper_exp_valid_d = 1'b0;
     end else begin
-      w_slot_valid_d = 1'b0;
       w_slot_data_valid_d = 1'b0;
       w_slot_exp_valid_d  = 1'b0;
     end
   end
+
+  w_slot_valid_d = w_slot_data_valid_d && w_slot_exp_valid_d;
 end
 
 endmodule : redmule_mx_slot_buffer

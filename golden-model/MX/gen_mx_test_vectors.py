@@ -174,6 +174,8 @@ def main():
     parser.add_argument('--golden-array-name', default='golden_mx', help='Array name for MX golden header')
     parser.add_argument('--exp-format', choices=['padded', 'compact-8bit', 'compact-32bit'], default='padded',
                         help='Exponent output format: padded (old 2/beat), compact-8bit (64/beat for X), compact-32bit (16/beat for W)')
+    parser.add_argument('--total-blocks', type=int,
+                        help='Force generation of this many MX blocks (pads FP16 input with zeros if needed)')
     args = parser.parse_args()
 
     # Validate: need at least one output format
@@ -185,6 +187,16 @@ def main():
     fp16_vals = parse_fp16_header(args.input)
     mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
     num_blocks = len(exp_blocks)
+
+    if args.total_blocks is not None and args.total_blocks > 0:
+        target_blocks = max(args.total_blocks, num_blocks)
+        total_vals_needed = target_blocks * args.block_size
+        if len(fp16_vals) < total_vals_needed:
+            fp16_vals.extend([0] * (total_vals_needed - len(fp16_vals)))
+        elif len(fp16_vals) > total_vals_needed:
+            fp16_vals = fp16_vals[:total_vals_needed]
+        mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
+        num_blocks = len(exp_blocks)
 
     # Output MX data
     if args.pack_fp8:

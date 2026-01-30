@@ -174,8 +174,10 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_q         ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_fifo      ( .clk( clk_i ) );
 
 // X,W exponent interfaces: streaming input from streamer
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_from_streamer ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_from_streamer ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_from_streamer   ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_from_streamer   ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_stream_buffered ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_stream_buffered ( .clk( clk_i ) );
 
 // X,W exponent buffer outputs: direct register access (decoupled from streaming)
 logic [7:0]  x_exp_buf_data;
@@ -242,6 +244,31 @@ assign w_buffer_raw.data   = w_buffer_d.data;
 assign w_buffer_raw.strb   = w_buffer_d.strb;
 assign w_buffer_d.ready    = mx_mode_active ? w_buffer_slot.ready : w_buffer_raw.ready;
 
+// Dedicated exponent FIFOs decouple streamer backpressure from the deep buffers
+hwpe_stream_fifo #(
+  .DATA_WIDTH ( DATAW_ALIGN ),
+  .FIFO_DEPTH ( 2           )
+) i_x_exp_stream_fifo (
+  .clk_i   ( clk_i                 ),
+  .rst_ni  ( rst_ni                ),
+  .clear_i ( clear                 ),
+  .flags_o ( x_exp_fifo_flgs       ),
+  .push_i  ( x_exp_from_streamer   ),
+  .pop_o   ( x_exp_stream_buffered )
+);
+
+hwpe_stream_fifo #(
+  .DATA_WIDTH ( DATAW_ALIGN ),
+  .FIFO_DEPTH ( 2           )
+) i_w_exp_stream_fifo (
+  .clk_i   ( clk_i                 ),
+  .rst_ni  ( rst_ni                ),
+  .clear_i ( clear                 ),
+  .flags_o ( w_exp_fifo_flgs       ),
+  .push_i  ( w_exp_from_streamer   ),
+  .pop_o   ( w_exp_stream_buffered )
+);
+
 // X exponent buffer: extracts 8-bit exponents from compact 512-bit beats
 // 512/8 = 64 exponents per beat, buffer depth 512 = enough for many blocks
 redmule_exp_buffer #(
@@ -252,7 +279,7 @@ redmule_exp_buffer #(
   .clk_i      ( clk_i                ),
   .rst_ni     ( rst_ni               ),
   .clear_i    ( clear                ),
-  .stream_i   ( x_exp_from_streamer  ),
+  .stream_i   ( x_exp_stream_buffered ),
   .data_o     ( x_exp_buf_data       ),
   .valid_o    ( x_exp_buf_valid      ),
   .consume_i  ( x_exp_buf_consume    )
@@ -268,7 +295,7 @@ redmule_exp_buffer #(
   .clk_i      ( clk_i                ),
   .rst_ni     ( rst_ni               ),
   .clear_i    ( clear                ),
-  .stream_i   ( w_exp_from_streamer  ),
+  .stream_i   ( w_exp_stream_buffered ),
   .data_o     ( w_exp_buf_data       ),
   .valid_o    ( w_exp_buf_valid      ),
   .consume_i  ( w_exp_buf_consume    )
