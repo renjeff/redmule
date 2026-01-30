@@ -90,7 +90,7 @@ void redmule_cfg(unsigned int x, unsigned int w, unsigned int z,
   uint16_t n_size_cfg = n_size;
 
 #ifdef MX_ENABLE
-  // Packed FP8: two elements per 16-bit word ⇒ halve dimensions (ceil) for streamer
+  // Packed FP8: two elements per 16-bit word 
   m_size_cfg = (m_size + 1) >> 1;
   n_size_cfg = (n_size + 1) >> 1;
 #endif

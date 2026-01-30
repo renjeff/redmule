@@ -52,6 +52,7 @@ sources:
     - rtl/redmule_complex.sv
 
     - rtl/redmule_mx_fifo.sv
+    - rtl/redmule_exp_buffer.sv
     - rtl/redmule_mx_encoder.sv
     - rtl/redmule_mx_decoder.sv
     - rtl/redmule_mx_slot_buffer.sv

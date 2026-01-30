@@ -22,13 +22,17 @@ module redmule_mx_slot_buffer
   input  logic clear_i,
   input  logic mx_enable_i,
 
-  // Data streams from streamer
+  // Data streams from streamer (streaming interfaces)
   hwpe_stream_intf_stream.sink x_data_i,
   hwpe_stream_intf_stream.sink w_data_i,
 
-  // Exponent streams (from exponent FIFOs)
-  hwpe_stream_intf_stream.sink x_exp_i,
-  hwpe_stream_intf_stream.sink w_exp_i,
+  // Exponent inputs: direct register access from prefetch buffers (NO streaming protocol)
+  input  logic [7:0]                x_exp_data_i,
+  input  logic                      x_exp_valid_i,
+  output logic                      x_exp_consume_o,
+  input  logic [MX_EXP_VECTOR_W-1:0] w_exp_data_i,
+  input  logic                      w_exp_valid_i,
+  output logic                      w_exp_consume_o,
 
   // Slot outputs
   output logic x_slot_valid_o,
@@ -106,17 +110,23 @@ end
 // Accept logic
 assign x_data_accept = mx_enable_i && x_data_i.valid &&
                        !x_slot_data_valid_q && !x_upper_valid_q;
-assign x_exp_accept  = mx_enable_i && x_exp_i.valid && !x_slot_valid_q;
+// Accept exponent when slot OR upper exp register needs one (prefetch allowed)
+assign x_exp_accept  = mx_enable_i && x_exp_valid_i &&
+                       (!x_slot_exp_valid_q || !x_upper_exp_valid_q);
 
 assign w_data_accept = mx_enable_i && w_data_i.valid &&
                        !w_slot_data_valid_q && !w_upper_valid_q;
-assign w_exp_accept  = mx_enable_i && w_exp_i.valid && !w_slot_valid_q;
+// Accept exponent when slot OR upper exp register needs one (prefetch allowed)
+assign w_exp_accept  = mx_enable_i && w_exp_valid_i &&
+                       (!w_slot_exp_valid_q || !w_upper_exp_valid_q);
 
-// Ready signals
+// Ready signals for data streams
 assign x_data_i.ready = mx_enable_i ? (!x_slot_data_valid_q && !x_upper_valid_q) : 1'b1;
-assign x_exp_i.ready  = mx_enable_i ? (!x_slot_exp_valid_q && !x_upper_exp_valid_q) : 1'b1;
 assign w_data_i.ready = mx_enable_i ? (!w_slot_data_valid_q && !w_upper_valid_q) : 1'b1;
-assign w_exp_i.ready  = mx_enable_i ? (!w_slot_exp_valid_q && !w_upper_exp_valid_q) : 1'b1;
+
+// Consume signals for exponent buffers (pulse when accepting)
+assign x_exp_consume_o = x_exp_accept;
+assign w_exp_consume_o = w_exp_accept;
 
 // Output assignments
 assign x_slot_valid_o = x_slot_valid_q;
@@ -217,20 +227,24 @@ always_comb begin
     x_upper_buffer_d = x_unpacked_upper;
   end
 
-  // X exponent acceptance
+  // X exponent acceptance: route to slot or upper based on which needs it
+  // Each 256-bit block (slot and upper) needs its own exponent
   if (x_exp_accept) begin
-    x_slot_exp_valid_d = 1'b1;
-    x_slot_exp_d = x_exp_i.data[7:0];
+    if (!x_slot_exp_valid_q) begin
+      // Slot needs exponent - fill it first
+      x_slot_exp_valid_d = 1'b1;
+      x_slot_exp_d = x_exp_data_i;
+    end else if (!x_upper_exp_valid_q) begin
+      // Slot already has exp, upper needs one
+      x_upper_exp_valid_d = 1'b1;
+      x_upper_exp_d = x_exp_data_i;
+    end
   end
 
-  // Check if we have BOTH data and exp
+  // Check if we have BOTH data and exp to form complete slot
   if (!x_slot_valid_q && (x_slot_data_valid_d || x_slot_data_valid_q) &&
       (x_slot_exp_valid_d || x_slot_exp_valid_q)) begin
     x_slot_valid_d = 1'b1;
-    if (x_upper_valid_d && !x_upper_exp_valid_d) begin
-      x_upper_exp_d = x_slot_exp_d;
-      x_upper_exp_valid_d = 1'b1;
-    end
   end
 
   // W data acceptance
@@ -241,32 +255,46 @@ always_comb begin
     w_upper_buffer_d = w_unpacked_upper;
   end
 
-  // W exponent acceptance
+  // W exponent acceptance: route to slot or upper based on which needs it
+  // Each 256-bit block (slot and upper) needs its own exponent
   if (w_exp_accept) begin
-    w_slot_exp_valid_d = 1'b1;
-    w_slot_exp_d = w_exp_i.data[MX_EXP_VECTOR_W-1:0];
-  end
-
-  // Check if we have BOTH data and exp
-  if (!w_slot_valid_q && (w_slot_data_valid_d || w_slot_data_valid_q) &&
-      (w_slot_exp_valid_d || w_slot_exp_valid_q)) begin
-    w_slot_valid_d = 1'b1;
-    if (w_upper_valid_d && !w_upper_exp_valid_d) begin
-      w_upper_exp_d = w_slot_exp_d;
+    if (!w_slot_exp_valid_q) begin
+      // Slot needs exponent - fill it first
+      w_slot_exp_valid_d = 1'b1;
+      w_slot_exp_d = w_exp_data_i;
+    end else if (!w_upper_exp_valid_q) begin
+      // Slot already has exp, upper needs one
       w_upper_exp_valid_d = 1'b1;
+      w_upper_exp_d = w_exp_data_i;
     end
   end
 
+  // Check if we have BOTH data and exp to form complete slot
+  if (!w_slot_valid_q && (w_slot_data_valid_d || w_slot_data_valid_q) &&
+      (w_slot_exp_valid_d || w_slot_exp_valid_q)) begin
+    w_slot_valid_d = 1'b1;
+  end
+
   // Slot consumption from arbiter
+  // When slot consumed, move upper to slot if available (including its exponent)
   if (consume_x_slot_i) begin
     if (x_upper_valid_q) begin
-      x_slot_valid_d = 1'b1;
+      // Move upper data AND exponent to slot
       x_slot_data_valid_d = 1'b1;
-      x_slot_exp_valid_d  = x_upper_exp_valid_q;
       x_slot_data_d = x_upper_buffer_q;
-      x_slot_exp_d  = x_upper_exp_q;
       x_upper_valid_d = 1'b0;
-      x_upper_exp_valid_d = 1'b0;
+      // Move upper exponent to slot
+      if (x_upper_exp_valid_q) begin
+        x_slot_exp_valid_d = 1'b1;
+        x_slot_exp_d = x_upper_exp_q;
+        x_upper_exp_valid_d = 1'b0;
+        // Slot becomes valid immediately since it has both data and exp
+        x_slot_valid_d = 1'b1;
+      end else begin
+        // Upper has no exponent yet - wait for it
+        x_slot_valid_d = 1'b0;
+        x_slot_exp_valid_d = 1'b0;
+      end
     end else begin
       x_slot_valid_d = 1'b0;
       x_slot_data_valid_d = 1'b0;
@@ -276,13 +304,22 @@ always_comb begin
 
   if (consume_w_slot_i) begin
     if (w_upper_valid_q) begin
-      w_slot_valid_d = 1'b1;
+      // Move upper data AND exponent to slot
       w_slot_data_valid_d = 1'b1;
-      w_slot_exp_valid_d  = w_upper_exp_valid_q;
       w_slot_data_d = w_upper_buffer_q;
-      w_slot_exp_d  = w_upper_exp_q;
       w_upper_valid_d = 1'b0;
-      w_upper_exp_valid_d = 1'b0;
+      // Move upper exponent to slot
+      if (w_upper_exp_valid_q) begin
+        w_slot_exp_valid_d = 1'b1;
+        w_slot_exp_d = w_upper_exp_q;
+        w_upper_exp_valid_d = 1'b0;
+        // Slot becomes valid immediately since it has both data and exp
+        w_slot_valid_d = 1'b1;
+      end else begin
+        // Upper has no exponent yet - wait for it
+        w_slot_valid_d = 1'b0;
+        w_slot_exp_valid_d = 1'b0;
+      end
     end else begin
       w_slot_valid_d = 1'b0;
       w_slot_data_valid_d = 1'b0;

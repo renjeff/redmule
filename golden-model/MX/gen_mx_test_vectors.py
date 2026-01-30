@@ -54,25 +54,56 @@ def pack_fp8_to_32bit_words(fp8_values):
         packed.append(word)
     return packed
 
+def pack_exponents_compact_8bit(exp_blocks):
+    """Pack 8-bit exponents compactly into 32-bit words (4 exponents per word).
+
+    Hardware buffer extracts 64 exponents per 512-bit beat (no padding).
+    Memory format: 32-bit words, each containing 4 consecutive 8-bit exponents.
+    - word[7:0]   = exp[i+0]
+    - word[15:8]  = exp[i+1]
+    - word[23:16] = exp[i+2]
+    - word[31:24] = exp[i+3]
+    """
+    words = []
+    for i in range(0, len(exp_blocks), 4):
+        word = 0
+        for j in range(4):
+            exp_val = exp_blocks[i+j] if (i+j) < len(exp_blocks) else 0
+            word |= (exp_val & 0xFF) << (8 * j)
+        words.append(word)
+    return words
+
+def pack_exponents_compact_32bit(exp_blocks):
+    """Pack 32-bit exponent vectors compactly (1 exponent per 32-bit word).
+
+    Hardware buffer extracts 16 exponent vectors per 512-bit beat (no padding).
+    For W in vector mode, each exponent is already a 32-bit vector.
+    """
+    # Exponents are already 32-bit values, just return them as-is
+    # If they're 8-bit, need to expand to 32-bit (replicate across 4 groups)
+    words = []
+    for exp in exp_blocks:
+        if isinstance(exp, int) and exp < 256:
+            # 8-bit exponent - replicate across all 4 groups for vector mode
+            word = (exp & 0xFF) | ((exp & 0xFF) << 8) | ((exp & 0xFF) << 16) | ((exp & 0xFF) << 24)
+        else:
+            word = exp & 0xFFFFFFFF
+        words.append(word)
+    return words
+
 def pad_exponents_to_64_bytes(exp_blocks):
-    """Pad exponents to match hardware memory layout: 2 exponents per 64-byte block.
+    """OLD FORMAT - Pad exponents to 2 per 64-byte block (DEPRECATED).
 
-    Hardware extracts 2 exponents per TCDM beat (64 bytes), so we pad:
-    [exp0, exp1, 0x00...00 (62 bytes)], [exp2, exp3, 0x00...00 (62 bytes)], ...
-
-    This creates proper rate matching: 1 TCDM beat = 2 exponents = 2 MX blocks.
+    This function is kept for backward compatibility but should not be used
+    with the new compact exponent buffer architecture.
     """
     padded = []
     for i in range(0, len(exp_blocks), 2):
-        # Get 2 exponents (or pad if odd number)
         exp0 = exp_blocks[i] if i < len(exp_blocks) else 0
         exp1 = exp_blocks[i+1] if i+1 < len(exp_blocks) else 0
-
-        # Create 64-byte block: [exp0, exp1, 62 bytes of padding]
         padded.append(exp0)
         padded.append(exp1)
-        padded.extend([0] * 62)  # 62 bytes of padding
-
+        padded.extend([0] * 62)
     return padded
 
 def write_c_header(filename, array_name, values, elem_type='uint16_t', values_per_line=8):
@@ -141,6 +172,8 @@ def main():
     parser.add_argument('--golden-input', help='Optional FP16 golden result header to encode to MX')
     parser.add_argument('--golden-output-header', help='Output C header for MX golden result (requires --golden-input)')
     parser.add_argument('--golden-array-name', default='golden_mx', help='Array name for MX golden header')
+    parser.add_argument('--exp-format', choices=['padded', 'compact-8bit', 'compact-32bit'], default='padded',
+                        help='Exponent output format: padded (old 2/beat), compact-8bit (64/beat for X), compact-32bit (16/beat for W)')
     args = parser.parse_args()
 
     # Validate: need at least one output format
@@ -184,16 +217,35 @@ def main():
             # For unpacked, we'd need to decide on representation - not commonly used
             print('Warning: C header output for unpacked format not implemented')
 
-    # Output exponents with padding (2 exponents per 64-byte block)
-    padded_exp = pad_exponents_to_64_bytes(exp_blocks)
+    # Output exponents in selected format
+    if args.exp_format == 'compact-8bit':
+        # Compact format: 4 exponents per 32-bit word (for X stream)
+        exp_words = pack_exponents_compact_8bit(exp_blocks)
+        if args.output_exp:
+            write_hex_lines(args.output_exp, exp_words, width=8)  # 32-bit words
+            print(f'Wrote {num_blocks} exponents as {len(exp_words)} compact 32-bit words (4 exp/word) to {args.output_exp}')
+        if args.output_exp_header:
+            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t')
+            print(f'Wrote C header with {len(exp_words)} uint32_t compact words to {args.output_exp_header}')
 
-    if args.output_exp:
-        write_hex_lines(args.output_exp, padded_exp, width=2)
-        print(f'Wrote {num_blocks} exponents ({len(padded_exp)} bytes with padding) to {args.output_exp}')
+    elif args.exp_format == 'compact-32bit':
+        # Compact format: 1 exponent vector per 32-bit word (for W stream in vector mode)
+        exp_words = pack_exponents_compact_32bit(exp_blocks)
+        if args.output_exp:
+            write_hex_lines(args.output_exp, exp_words, width=8)  # 32-bit words
+            print(f'Wrote {num_blocks} exponent vectors as {len(exp_words)} compact 32-bit words to {args.output_exp}')
+        if args.output_exp_header:
+            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t')
+            print(f'Wrote C header with {len(exp_words)} uint32_t exponent vectors to {args.output_exp_header}')
 
-    if args.output_exp_header:
-        write_c_header(args.output_exp_header, args.exp_array_name, padded_exp, elem_type='uint8_t')
-        print(f'Wrote C header with {len(padded_exp)} uint8_t values ({num_blocks} exponents with padding) to {args.output_exp_header}')
+    else:  # 'padded' - old format
+        padded_exp = pad_exponents_to_64_bytes(exp_blocks)
+        if args.output_exp:
+            write_hex_lines(args.output_exp, padded_exp, width=2)
+            print(f'Wrote {num_blocks} exponents ({len(padded_exp)} bytes with padding) to {args.output_exp}')
+        if args.output_exp_header:
+            write_c_header(args.output_exp_header, args.exp_array_name, padded_exp, elem_type='uint8_t')
+            print(f'Wrote C header with {len(padded_exp)} uint8_t values ({num_blocks} exponents with padding) to {args.output_exp_header}')
 
     if args.golden_output_header or args.golden_input:
         if not args.golden_input or not args.golden_output_header:

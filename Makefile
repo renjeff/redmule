@@ -128,7 +128,7 @@ SHELL := /bin/bash
 
 # MX header generation rules
 $(X_MX_H) $(X_EXP_MX_H) $(GOLDEN_MX_H): $(X_INPUT_H) $(MX_GEN_SCRIPT)
-	@echo "[MX] Generating MX-encoded X matrix headers..."
+	@echo "[MX] Generating MX-encoded X matrix headers (compact 8-bit exponents)..."
 	$(PYTHON) $(MX_GEN_SCRIPT) \
 		--input $(X_INPUT_H) \
 		--output-mx-header $(X_MX_H) \
@@ -138,12 +138,13 @@ $(X_MX_H) $(X_EXP_MX_H) $(GOLDEN_MX_H): $(X_INPUT_H) $(MX_GEN_SCRIPT)
 		--num-lanes $(MX_NUM_LANES) \
 		--block-size $(MX_BLOCK_SIZE) \
 		--pack-fp8 \
+		--exp-format compact-8bit \
 		--golden-input $(SW)/inc/golden.h \
 		--golden-output-header $(GOLDEN_MX_H) \
 		--golden-array-name golden_mx
 
 $(W_MX_H) $(W_EXP_MX_H): $(W_INPUT_H) $(MX_GEN_SCRIPT)
-	@echo "[MX] Generating MX-encoded W matrix headers..."
+	@echo "[MX] Generating MX-encoded W matrix headers (compact 32-bit exponents)..."
 	$(PYTHON) $(MX_GEN_SCRIPT) \
 		--input $(W_INPUT_H) \
 		--output-mx-header $(W_MX_H) \
@@ -152,7 +153,8 @@ $(W_MX_H) $(W_EXP_MX_H): $(W_INPUT_H) $(MX_GEN_SCRIPT)
 		--exp-array-name w_exp \
 		--num-lanes $(MX_NUM_LANES) \
 		--block-size $(MX_BLOCK_SIZE) \
-		--pack-fp8
+		--pack-fp8 \
+		--exp-format compact-32bit
 
 mx-headers: $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H)
 	@echo "[MX] MX-encoded headers are up to date"

@@ -76,23 +76,24 @@ module redmule_tb
   task automatic load_exponent_file(string path, int base_word_offset);
     int fd;
     int idx;
-    int byte_val;
+    int word_val;
     fd = $fopen(path, "r");
     if (!fd) begin
       $fatal(1, "[TB] Failed to open exponent file %s", path);
     end
     idx = 0;
+    // Compact format: read 32-bit words directly (no padding)
+    // Each line in the file is one 32-bit word in hex
     while (!$feof(fd)) begin
-      if ($fscanf(fd, "%h\n", byte_val) != 1) begin
+      if ($fscanf(fd, "%h\n", word_val) != 1) begin
         break;
       end
-      for (int k = 0; k < 16; k++) begin
-        i_dummy_dmemory.memory[base_word_offset + idx*16 + k] = 32'h0;
-      end
-      i_dummy_dmemory.memory[base_word_offset + idx*16] = {24'h0, byte_val[7:0]};
+      // Store directly as 32-bit word - streamer will read 512-bit beats (16 words)
+      i_dummy_dmemory.memory[base_word_offset + idx] = word_val;
       idx++;
     end
     $fclose(fd);
+    $display("[TB] Loaded %0d exponent words from %s", idx, path);
   endtask
 
   // ---------------------------------------------------------------------------
@@ -217,6 +218,9 @@ module redmule_tb
   
   // MX exponent stream interface (encoder output)
   hwpe_stream_intf_stream #(.DATA_WIDTH(32)) mx_exp_stream (.clk(clk_i));
+
+  // Drive ready to always accept encoder exponent outputs
+  assign mx_exp_stream.ready = 1'b1;
   
     logic [NC-1:0][1:0]  evt;
   logic [MP-1:0]       tcdm_gnt;

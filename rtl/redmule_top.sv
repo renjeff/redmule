@@ -173,11 +173,17 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) y_buffer_fifo      ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_q         ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_fifo      ( .clk( clk_i ) );
 
-// X,W exponent interfaces + FIFOs
+// X,W exponent interfaces: streaming input from streamer
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_from_streamer ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_from_streamer ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_stream_buf   ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_stream_buf   ( .clk( clk_i ) );
+
+// X,W exponent buffer outputs: direct register access (decoupled from streaming)
+logic [7:0]  x_exp_buf_data;
+logic        x_exp_buf_valid;
+logic        x_exp_buf_consume;
+logic [31:0] w_exp_buf_data;  // W vector exponent is 32 bits
+logic        w_exp_buf_valid;
+logic        w_exp_buf_consume;
 
 // MX output stage signals
 logic fifo_grant;  
@@ -236,28 +242,36 @@ assign w_buffer_raw.data   = w_buffer_d.data;
 assign w_buffer_raw.strb   = w_buffer_d.strb;
 assign w_buffer_d.ready    = mx_mode_active ? w_buffer_slot.ready : w_buffer_raw.ready;
 
-hwpe_stream_fifo #(
-  .DATA_WIDTH     ( DATAW_ALIGN ),
-  .FIFO_DEPTH     ( 2           )
-) i_x_exp_stream_fifo (
-  .clk_i          ( clk_i              ),
-  .rst_ni         ( rst_ni             ),
-  .clear_i        ( clear              ),
-  .flags_o        ( x_exp_fifo_flgs    ),
-  .push_i         ( x_exp_from_streamer ),
-  .pop_o          ( x_exp_stream_buf   )
+// X exponent buffer: extracts 8-bit exponents from compact 512-bit beats
+// 512/8 = 64 exponents per beat, buffer depth 512 = enough for many blocks
+redmule_exp_buffer #(
+  .EXP_WIDTH     ( 8           ),  // 8-bit exponents for X
+  .BUFFER_DEPTH  ( 512         ),  // Large buffer to hold all exponents
+  .BEAT_WIDTH    ( DATAW_ALIGN )
+) i_x_exp_buffer (
+  .clk_i      ( clk_i                ),
+  .rst_ni     ( rst_ni               ),
+  .clear_i    ( clear                ),
+  .stream_i   ( x_exp_from_streamer  ),
+  .data_o     ( x_exp_buf_data       ),
+  .valid_o    ( x_exp_buf_valid      ),
+  .consume_i  ( x_exp_buf_consume    )
 );
 
-hwpe_stream_fifo #(
-  .DATA_WIDTH     ( DATAW_ALIGN ),
-  .FIFO_DEPTH     ( 2           )
-) i_w_exp_stream_fifo (
-  .clk_i          ( clk_i              ),
-  .rst_ni         ( rst_ni             ),
-  .clear_i        ( clear              ),
-  .flags_o        ( w_exp_fifo_flgs    ),
-  .push_i         ( w_exp_from_streamer ),
-  .pop_o          ( w_exp_stream_buf   )
+// W exponent buffer: extracts 32-bit exponent vectors from compact 512-bit beats
+// 512/32 = 16 exponent vectors per beat, buffer depth 1024 = 4 KB for 1024×1024 weight tiles
+redmule_exp_buffer #(
+  .EXP_WIDTH     ( 32          ),  // 32-bit exponent vectors for W
+  .BUFFER_DEPTH  ( 1024        ),  // 4 KB buffer for up to 1024 weight blocks
+  .BEAT_WIDTH    ( DATAW_ALIGN )
+) i_w_exp_buffer (
+  .clk_i      ( clk_i                ),
+  .rst_ni     ( rst_ni               ),
+  .clear_i    ( clear                ),
+  .stream_i   ( w_exp_from_streamer  ),
+  .data_o     ( w_exp_buf_data       ),
+  .valid_o    ( w_exp_buf_valid      ),
+  .consume_i  ( w_exp_buf_consume    )
 );
 
 /*---------------------------------------------------------------*/
@@ -315,8 +329,12 @@ redmule_mx_slot_buffer #(
   .mx_enable_i      ( cntrl_flags.mx_enable   ),
   .x_data_i         ( x_buffer_slot          ),
   .w_data_i         ( w_buffer_slot         ),
-  .x_exp_i          ( x_exp_stream_buf   ),
-  .w_exp_i          ( w_exp_stream_buf   ),
+  .x_exp_data_i     ( x_exp_buf_data         ),
+  .x_exp_valid_i    ( x_exp_buf_valid        ),
+  .x_exp_consume_o  ( x_exp_buf_consume      ),
+  .w_exp_data_i     ( w_exp_buf_data         ),
+  .w_exp_valid_i    ( w_exp_buf_valid        ),
+  .w_exp_consume_o  ( w_exp_buf_consume      ),
   .x_slot_valid_o   ( x_slot_valid       ),
   .w_slot_valid_o   ( w_slot_valid       ),
   .x_slot_data_o    ( x_slot_data        ),
