@@ -37,6 +37,10 @@ module redmule_memory_scheduler
 
   logic [15:0]        tot_x_read_d, tot_x_read_q;
 
+  // MX mode: latch addresses at first_load to survive regfile clearing
+  logic [31:0]        x_addr_latched_q, w_addr_latched_q, z_addr_latched_q;
+  logic [31:0]        x_exp_addr_latched_q, w_exp_addr_latched_q;
+
   logic [$clog2(W):0] num_x_reads;
 
   logic [15:0] m_size, n_size, k_size;
@@ -50,12 +54,19 @@ module redmule_memory_scheduler
   assign total_x_values = m_size * k_size;
   assign total_w_values = n_size * k_size;
 
-  // Exponent beats should match data beats: 1 exponent per 512-bit data beat
-  // Each data beat produces 2 MX blocks that share the same exponent
-  // For proper sync, exponent tot_len must equal data tot_len exactly
-  // Use the same length calculation as data streams to ensure perfect matching
-  assign x_exp_beats = reg_file_i.hwpe_params[TOT_X_READ];  // Match X total data beats
-  assign w_exp_beats = reg_file_i.hwpe_params[W_TOT_LEN];   // Match W total data beats
+  // Calculate exponent beats based on actual matrix dimensions
+  // X exponents: 1 byte per block, blocks = (M*K)/32
+  logic [31:0] x_blocks, w_blocks;
+  logic [31:0] x_exp_bytes, w_exp_bytes;
+  
+  assign x_blocks = (total_x_values + 31) >> 5;  // ceil(M*K / 32)
+  assign w_blocks = (total_w_values + 31) >> 5;  // ceil(N*K / 32)
+  
+  assign x_exp_bytes = x_blocks;              // 1 byte per X block
+  assign w_exp_bytes = w_blocks << 2;         // 4 bytes per W block (vector exponent)
+  
+  assign x_exp_beats = (x_exp_bytes + 63) >> 6;  // ceil(x_exp_bytes / 64)
+  assign w_exp_beats = (w_exp_bytes + 63) >> 6;  // ceil(w_exp_bytes / 64)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : x_cols_iters_register
     if (~rst_ni) begin

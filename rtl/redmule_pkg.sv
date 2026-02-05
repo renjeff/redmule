@@ -230,6 +230,7 @@ package redmule_pkg;
   typedef struct packed {
     logic idle;
     logic mx_enable;
+    logic mx_output_ready;  // First MX encoded output available (or not in MX mode)
   } cntrl_flags_t;
 
   typedef enum logic [2:0] { MATMUL=3'h0, GEMM=3'h1, ADDMAX=3'h2, ADDMIN=3'h3, MULMAX=3'h4, MULMIN=3'h5, MAXMIN=3'h6, MINMAX=3'h7 } gemm_op_e;

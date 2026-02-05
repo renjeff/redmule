@@ -22,9 +22,11 @@ module redmule_mx_arbiter
   input  logic clear_i,
   input  logic mx_enable_i,
 
-  // Slot inputs from slot buffer
+  // Slot inputs from slot buffer (mantissa valid + exponent valid per stream)
   input  logic x_slot_valid_i,
+  input  logic x_slot_exp_valid_i,
   input  logic w_slot_valid_i,
+  input  logic w_slot_exp_valid_i,
   input  logic [MX_DATA_W-1:0] x_slot_data_i,
   input  logic [MX_DATA_W-1:0] w_slot_data_i,
   input  logic [7:0] x_slot_exp_i,
@@ -79,6 +81,7 @@ logic mx_dec_turn_q, mx_dec_turn_d;
 
 // Internal signals
 logic x_req, w_req;
+logic x_slot_ready, w_slot_ready;
 mx_dec_target_e mx_dec_owner;
 logic x_fifo_has_space, w_fifo_has_space;
 logic x_req_with_space, w_req_with_space;
@@ -88,9 +91,11 @@ logic mx_dec_start_new;
 assign x_fifo_has_space = !x_fifo_flgs_i.full;
 assign w_fifo_has_space = !w_fifo_flgs_i.full;
 
-// Request signals
-assign x_req = mx_enable_i && x_slot_valid_i;
-assign w_req = mx_enable_i && w_slot_valid_i;
+// Request signals (only assert once mantissa and exponent are both present)
+assign x_slot_ready = x_slot_valid_i && x_slot_exp_valid_i;
+assign w_slot_ready = w_slot_valid_i && w_slot_exp_valid_i;
+assign x_req = mx_enable_i && x_slot_ready;
+assign w_req = mx_enable_i && w_slot_ready;
 
 // Request signals with FIFO space
 assign x_req_with_space = x_req && x_fifo_has_space;
@@ -111,13 +116,25 @@ always_comb begin
   if (mx_dec_target_q == MX_DEC_NONE) begin
     // Check which streams have space in their FIFOs
     logic x_can_decode, w_can_decode;
+    logic w_needs_priority;
     x_can_decode = x_req && x_fifo_has_space;
     w_can_decode = w_req && w_fifo_has_space;
+    
+    // Priority logic: W gets priority if its FIFO is empty
+    // This prevents scheduler stalls waiting for W data
+    w_needs_priority = w_fifo_flgs_i.empty;
 
     unique case ({x_can_decode, w_can_decode})
       2'b10: mx_dec_owner = MX_DEC_X;
       2'b01: mx_dec_owner = MX_DEC_W;
-      2'b11: mx_dec_owner = mx_dec_turn_q ? MX_DEC_W : MX_DEC_X;
+      2'b11: begin
+        // If W FIFO is empty, prioritize W to prevent scheduler stalls
+        // Otherwise use round-robin
+        if (w_needs_priority)
+          mx_dec_owner = MX_DEC_W;
+        else
+          mx_dec_owner = mx_dec_turn_q ? MX_DEC_W : MX_DEC_X;
+      end
       default: mx_dec_owner = MX_DEC_NONE;
     endcase
   end else begin
@@ -125,12 +142,11 @@ always_comb begin
   end
 end
 
-// Valid signals: asserted when owner is assigned
-assign mx_dec_val_valid_o = (mx_dec_target_q != MX_DEC_NONE) ||
-                            ((mx_dec_owner != MX_DEC_NONE) && (
-                              (mx_dec_owner == MX_DEC_X && x_req) ||
-                              (mx_dec_owner == MX_DEC_W && w_req)));
-assign mx_dec_exp_valid_o = mx_dec_val_valid_o;
+// Valid signals: ONLY asserted when we have latched data (target_q != NONE)
+// Do NOT assert valid during the transition cycle (when owner assigned but data not yet latched)
+// This prevents decoder from seeing valid=1 with stale data
+assign mx_dec_val_valid_o = (mx_dec_target_q != MX_DEC_NONE);
+assign mx_dec_exp_valid_o = (mx_dec_target_q != MX_DEC_NONE);
 
 // Output latched data
 assign mx_dec_val_data_o    = mx_dec_val_data_q;

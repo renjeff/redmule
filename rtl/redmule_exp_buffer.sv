@@ -43,32 +43,22 @@ module redmule_exp_buffer #(
   assign buffer_full  = (occupancy_q >= (BUFFER_DEPTH - EXPS_PER_BEAT));
   assign buffer_empty = (occupancy_q == 0);
 
-  // Registered ready signal to avoid protocol violations
-  // Ready can only change when transaction completes or valid is deasserted
-  logic ready_q, ready_d;
-  logic output_hold_q, output_hold_d;
-  logic [BEAT_WIDTH-1:0] data_hold_q, data_hold_d;
-  assign stream_i.ready = ready_q;
-
-  // Output: provide current exponent at read pointer
-  assign data_o  = output_hold_q ? data_hold_q : buffer[read_ptr_q];
-  assign valid_o = output_hold_q | !buffer_empty;
-
-  // Input acceptance
-  logic input_accept;
-  assign input_accept = stream_i.valid && ready_q;
+  // Output: provide current exponent at read pointer (simple direct access)
+  assign data_o  = buffer[read_ptr_q];
+  assign valid_o = !buffer_empty;
 
   // Write and read logic
   logic [PTR_WIDTH-1:0] write_ptr_d, read_ptr_d;
   logic [PTR_WIDTH:0]   occupancy_d;
 
+  // Input acceptance
+  logic input_accept;
+  assign input_accept = stream_i.valid && stream_i.ready;
+
   always_comb begin
     write_ptr_d = write_ptr_q;
     read_ptr_d  = read_ptr_q;
     occupancy_d = occupancy_q;
-    ready_d     = ready_q;
-    output_hold_d = output_hold_q;
-    data_hold_d   = data_hold_q;
 
     // Update pointers
     if (input_accept) begin
@@ -77,15 +67,8 @@ module redmule_exp_buffer #(
                     (write_ptr_q + EXPS_PER_BEAT);
     end
 
-    if (consume_i && !buffer_empty && !output_hold_q) begin
+    if (consume_i && !buffer_empty) begin
       read_ptr_d  = (read_ptr_q + 1 >= BUFFER_DEPTH) ? 0 : (read_ptr_q + 1);
-    end
-
-    if (!buffer_empty && !consume_i) begin
-      output_hold_d = 1'b1;
-      data_hold_d   = buffer[read_ptr_q];
-    end else if (consume_i) begin
-      output_hold_d = 1'b0;
     end
 
     // Calculate occupancy based on simultaneous operations
@@ -99,11 +82,12 @@ module redmule_exp_buffer #(
       // Only read
       occupancy_d = occupancy_q - 1;
     end
-
-    // Ready signal update: always update based on current/next occupancy
-    // This must be done every cycle to avoid deadlock when waiting state gains space
-    ready_d = (occupancy_d < (BUFFER_DEPTH - EXPS_PER_BEAT));
   end
+
+  // Ready signal: depends only on registered occupancy to prevent combinational glitches
+  // The buffer can accept when current occupancy plus one beat fits within capacity
+  // Use buffer_full signal which already has proper margin (BUFFER_DEPTH - EXPS_PER_BEAT)
+  assign stream_i.ready = !buffer_full;
 
   // Sequential logic
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -111,19 +95,14 @@ module redmule_exp_buffer #(
       write_ptr_q <= '0;
       read_ptr_q  <= '0;
       occupancy_q <= '0;
-      ready_q     <= 1'b1;  // Start ready (buffer empty)
     end else if (clear_i) begin
       write_ptr_q <= '0;
       read_ptr_q  <= '0;
       occupancy_q <= '0;
-      ready_q     <= 1'b1;  // Ready after clear
     end else begin
       write_ptr_q <= write_ptr_d;
       read_ptr_q  <= read_ptr_d;
       occupancy_q <= occupancy_d;
-      ready_q     <= ready_d;
-      output_hold_q <= output_hold_d;
-      data_hold_q   <= data_hold_d;
 
       // Write all exponents from the beat into buffer
       if (input_accept) begin

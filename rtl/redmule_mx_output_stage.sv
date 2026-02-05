@@ -126,19 +126,18 @@ assign mx_exp_valid_o   = mx_exp_valid;
 assign mx_exp_ready_o   = mx_exp_ready;
 assign mx_exp_data_o    = mx_exp_data;
 
-// Data stream handshake
-assign mx_val_ready = 1'b1;
+// Data stream handshake - provide backpressure when output register full
+logic mx_mux_valid_q;
+logic [DATAW_ALIGN-1:0] mx_mux_data_q;
+logic mx_mux_handshake_done;
+
+assign mx_val_ready = !mx_mux_valid_q || mx_mux_handshake_done;
 
 // MX encoder output packing
 logic [DATAW_ALIGN-1:0] mx_z_buffer_data;
 assign mx_z_buffer_data = {{(DATAW_ALIGN-256){1'b0}}, mx_val_data};
 
-// Handshake-safe MX mux logic
-// Hold valid AND data stable until ready is received
-logic mx_mux_valid_q;
-logic [DATAW_ALIGN-1:0] mx_mux_data_q;
-logic mx_mux_handshake_done;
-
+// Simple valid/data register - latch when encoder produces and we're ready
 assign mx_mux_handshake_done = z_muxed_o.valid && z_muxed_o.ready;
 
 always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -148,19 +147,19 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
   end else if (clear_i) begin
     mx_mux_valid_q <= 1'b0;
     mx_mux_data_q  <= '0;
+  end else if (mx_val_valid && mx_val_ready) begin
+    // Latch when encoder produces and we can accept
+    mx_mux_valid_q <= 1'b1;
+    mx_mux_data_q  <= mx_z_buffer_data;
   end else if (mx_mux_handshake_done) begin
     mx_mux_valid_q <= 1'b0;  // Clear after successful handshake
-  end else if (mx_enable_i && mx_val_valid && !mx_mux_valid_q) begin
-    mx_mux_valid_q <= 1'b1;  // Latch valid when MX encoder outputs
-    mx_mux_data_q  <= mx_z_buffer_data;  // Latch data too
   end
 end
 
-// MUX: Select between engine output (bypass) and MX encoder output
-assign z_muxed_o.data  = mx_enable_i ? (mx_mux_valid_q ? mx_mux_data_q : mx_z_buffer_data) :
-                                       z_engine_stream_i.data;
+// MUX: Select between latched MX output and engine bypass
+assign z_muxed_o.data  = mx_enable_i ? mx_mux_data_q : z_engine_stream_i.data;
 assign z_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : z_engine_stream_i.strb;
-assign z_muxed_o.valid = mx_enable_i ? (mx_val_valid || mx_mux_valid_q) : z_engine_stream_i.valid;
+assign z_muxed_o.valid = mx_enable_i ? mx_mux_valid_q : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
 assign z_engine_stream_i.ready = mx_enable_i ? 1'b1 : z_muxed_o.ready;

@@ -437,8 +437,8 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
   assign tcdm_cast[i].r_ecc      = load_fifo_q[i].r_ecc;
 
   hci_core_source       #(
-    // Exponent streams are naturally aligned → disable misalignment handling to avoid buggy internal FIFO
-    .MISALIGNED_ACCESSES   ( ((i == XExpSourceStreamId) || (i == WExpSourceStreamId)) ? 0 : REALIGN ),
+    // Enable misalignment FIFO for all streams to prevent internal protocol violations
+    .MISALIGNED_ACCESSES   ( REALIGN ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(ldst_tcdm) )
   ) i_stream_source      (
     .clk_i               ( clk_i           ),

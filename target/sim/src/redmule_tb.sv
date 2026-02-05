@@ -607,6 +607,14 @@ module redmule_tb
     $fclose(mx_fp16_file);
     $fclose(mx_fp8_file);
     $fclose(mx_exp_file);
+        // Add after simulation ends (near the end of the testbench)
+    $display("[TB DEBUG] Memory at y_inp (0x1c0103dc):");
+    for (int i = 0; i < 8; i++) begin
+      $display("  [%0d]: 0x%08x", i, i_dummy_dmemory.memory[(32'h1c0103dc - 32'h1c010000)/4 + i]);
+    end
+
+    $display("[TB DEBUG] Memory at z_oup (check address):");
+    // Adjust address based on where z_oup actually is
     $display("[TB] - MX encoder outputs written to mx_encoder_*.txt");
   end
 

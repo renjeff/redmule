@@ -46,12 +46,18 @@ tc_clk_gating i_tiler_clockg (
 assign config_d.x_addr          = reg_file_i.hwpe_params[X_ADDR];
 assign config_d.w_addr          = reg_file_i.hwpe_params[W_ADDR];
 assign config_d.z_addr          = reg_file_i.hwpe_params[Z_ADDR];
+assign config_d.x_exp_addr      = reg_file_i.hwpe_params[X_EXP_ADDR];
+assign config_d.w_exp_addr      = reg_file_i.hwpe_params[W_EXP_ADDR];
 assign config_d.m_size          = reg_file_i.hwpe_params[MCFIG0][15: 0];
 assign config_d.k_size          = reg_file_i.hwpe_params[MCFIG0][31:16];
 assign config_d.n_size          = reg_file_i.hwpe_params[MCFIG1][15: 0];
 assign config_d.gemm_ops        = gemm_op_e' (reg_file_i.hwpe_params[MACFG][12:10]);
 assign config_d.gemm_input_fmt  = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 7]);
 assign config_d.gemm_output_fmt = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 7]);
+
+// MX mode enable flag (bit 16 of MACFG/ARITH register)
+logic mx_enable;
+assign mx_enable = reg_file_i.hwpe_params[MACFG][16];
 
 // TILE size for iteration calculations
 // With ARRAY_HEIGHT=8 and PIPE_REGS=3: TILE = 8*4 = 32 (matches MX block size)
@@ -209,7 +215,7 @@ assign config_d.x_d1_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*x_cols_iter
 assign config_d.x_rows_offs = ARRAY_WIDTH*config_d.x_d1_stride;
 assign config_d.w_tot_len   = x_rows_by_w_cols_by_w_rows_iter[31:0];
 assign config_d.w_d0_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*w_cols_iter_nolftovr) + config_d.w_cols_lftovr);
-assign config_d.yz_tot_len  = ARRAY_WIDTH*x_rows_by_w_cols_iter[15:0];
+assign config_d.yz_tot_len  = mx_enable ? (ARRAY_WIDTH*x_rows_by_w_cols_iter[15:0]*2) : (ARRAY_WIDTH*x_rows_by_w_cols_iter[15:0]);
 assign config_d.yz_d0_stride = config_d.w_d0_stride;
 assign config_d.yz_d2_stride = ARRAY_WIDTH*config_d.w_d0_stride;
 assign config_d.tot_x_read   = x_rows_by_w_cols_by_x_cols_iter[31:0];
@@ -242,6 +248,8 @@ assign reg_file_o.hwpe_params[REGFILE_N_MAX_IO_REGS-1:REDMULE_REGS] = '0;
 assign reg_file_o.hwpe_params[      X_ADDR]        = config_d.x_addr; // do not register (these are straight from regfile)
 assign reg_file_o.hwpe_params[      W_ADDR]        = config_d.w_addr; // do not register (these are straight from regfile)
 assign reg_file_o.hwpe_params[      Z_ADDR]        = config_d.z_addr; // do not register (these are straight from regfile)
+assign reg_file_o.hwpe_params[  X_EXP_ADDR]        = config_d.x_exp_addr; // do not register (these are straight from regfile)
+assign reg_file_o.hwpe_params[  W_EXP_ADDR]        = config_d.w_exp_addr; // do not register (these are straight from regfile)
 assign reg_file_o.hwpe_params[     X_ITERS][31:16] = config_q.x_rows_iter;
 assign reg_file_o.hwpe_params[     X_ITERS][15: 0] = config_q.x_cols_iter;
 assign reg_file_o.hwpe_params[     W_ITERS][31:16] = config_q.w_rows_iter;

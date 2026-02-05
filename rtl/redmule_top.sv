@@ -247,7 +247,7 @@ assign w_buffer_d.ready    = mx_mode_active ? w_buffer_slot.ready : w_buffer_raw
 // Dedicated exponent FIFOs decouple streamer backpressure from the deep buffers
 hwpe_stream_fifo #(
   .DATA_WIDTH ( DATAW_ALIGN ),
-  .FIFO_DEPTH ( 2           )
+  .FIFO_DEPTH ( 64          )
 ) i_x_exp_stream_fifo (
   .clk_i   ( clk_i                 ),
   .rst_ni  ( rst_ni                ),
@@ -259,7 +259,7 @@ hwpe_stream_fifo #(
 
 hwpe_stream_fifo #(
   .DATA_WIDTH ( DATAW_ALIGN ),
-  .FIFO_DEPTH ( 2           )
+  .FIFO_DEPTH ( 64          )
 ) i_w_exp_stream_fifo (
   .clk_i   ( clk_i                 ),
   .rst_ni  ( rst_ni                ),
@@ -312,9 +312,11 @@ localparam int unsigned MX_INPUT_ELEM_WIDTH  = 8;
 localparam int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH;
 localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
 localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
+localparam int unsigned MX_SLOT_FIFO_DEPTH   = 64;  // Enough slots to cover long bursts
 
 // Slot buffer signals
 logic x_slot_valid, w_slot_valid;
+logic x_slot_exp_valid, w_slot_exp_valid;
 logic [MX_DATA_W-1:0] x_slot_data, w_slot_data;
 logic [7:0] x_slot_exp;
 logic [MX_EXP_VECTOR_W-1:0] w_slot_exp;
@@ -348,7 +350,8 @@ redmule_mx_slot_buffer #(
   .MX_DATA_W         ( MX_DATA_W         ),
   .MX_EXP_VECTOR_W   ( MX_EXP_VECTOR_W   ),
   .MX_INPUT_ELEM_WIDTH ( MX_INPUT_ELEM_WIDTH ),
-  .MX_INPUT_NUM_ELEMS  ( MX_INPUT_NUM_ELEMS  )
+  .MX_INPUT_NUM_ELEMS  ( MX_INPUT_NUM_ELEMS  ),
+  .SLOT_FIFO_DEPTH   ( MX_SLOT_FIFO_DEPTH )
 ) i_mx_slot_buffer (
   .clk_i            ( clk_i                   ),
   .rst_ni           ( rst_ni                  ),
@@ -363,7 +366,9 @@ redmule_mx_slot_buffer #(
   .w_exp_valid_i    ( w_exp_buf_valid        ),
   .w_exp_consume_o  ( w_exp_buf_consume      ),
   .x_slot_valid_o   ( x_slot_valid       ),
+  .x_slot_exp_valid_o ( x_slot_exp_valid ),
   .w_slot_valid_o   ( w_slot_valid       ),
+  .w_slot_exp_valid_o ( w_slot_exp_valid ),
   .x_slot_data_o    ( x_slot_data        ),
   .w_slot_data_o    ( w_slot_data        ),
   .x_slot_exp_o     ( x_slot_exp         ),
@@ -390,7 +395,9 @@ redmule_mx_arbiter #(
   .clear_i              ( clear                   ),
   .mx_enable_i          ( cntrl_flags.mx_enable   ),
   .x_slot_valid_i       ( x_slot_valid            ),
+  .x_slot_exp_valid_i   ( x_slot_exp_valid        ),
   .w_slot_valid_i       ( w_slot_valid       ),
+  .w_slot_exp_valid_i   ( w_slot_exp_valid   ),
   .x_slot_data_i        ( x_slot_data        ),
   .w_slot_data_i        ( w_slot_data        ),
   .x_slot_exp_i         ( x_slot_exp         ),
@@ -466,7 +473,7 @@ assign mx_dec_fp16_ready = target_is_x ? x_mx_fp16_ready :
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 4             )
+  .FIFO_DEPTH     ( 8             )  // Testing smaller depth
 ) i_x_buffer_fifo (
   .clk_i          ( clk_i           ),
   .rst_ni         ( rst_ni          ),
@@ -478,7 +485,7 @@ hwpe_stream_fifo #(
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 4             )
+  .FIFO_DEPTH     ( 8             )  // Testing smaller depth
 ) i_w_buffer_fifo (
   .clk_i          ( clk_i           ),
   .rst_ni         ( rst_ni          ),
@@ -721,6 +728,7 @@ hwpe_stream_fifo #(
 
 logic z_priority;
 assign z_priority = z_buffer_flgs.z_priority | !z_fifo_flgs.empty;
+
 redmule_memory_scheduler #(
   .DW (DATAW_ALIGN),
   .W  (Width),

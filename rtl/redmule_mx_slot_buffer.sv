@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 // MX Slot Buffer Module
-// Handles FP8 unpacking and slot buffering for X/W streams
+// Handles FP8 unpacking and slot buffering for X/W streams with independent
+// mantissa / exponent queues so prefetch can continue when one side stalls.
 
 `include "hci_helpers.svh"
 
@@ -15,7 +16,9 @@ module redmule_mx_slot_buffer
   parameter int unsigned MX_DATA_W       = 256,
   parameter int unsigned MX_EXP_VECTOR_W = 32,
   parameter int unsigned MX_INPUT_ELEM_WIDTH  = 8,
-  parameter int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH
+  parameter int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH,
+  // Number of 256-bit slots buffered per stream (must be >= two beats)
+  parameter int unsigned SLOT_FIFO_DEPTH = 4
 )(
   input  logic clk_i,
   input  logic rst_ni,
@@ -27,19 +30,21 @@ module redmule_mx_slot_buffer
   hwpe_stream_intf_stream.sink w_data_i,
 
   // Exponent inputs: direct register access from prefetch buffers (NO streaming protocol)
-  input  logic [7:0]                x_exp_data_i,
+  input  logic [7:0]                 x_exp_data_i,
   input  logic                      x_exp_valid_i,
   output logic                      x_exp_consume_o,
   input  logic [MX_EXP_VECTOR_W-1:0] w_exp_data_i,
   input  logic                      w_exp_valid_i,
   output logic                      w_exp_consume_o,
 
-  // Slot outputs
-  output logic x_slot_valid_o,
-  output logic w_slot_valid_o,
-  output logic [MX_DATA_W-1:0] x_slot_data_o,
-  output logic [MX_DATA_W-1:0] w_slot_data_o,
-  output logic [7:0] x_slot_exp_o,
+  // Slot outputs (data valid follows mantissa queue, exp valid follows exponent queue)
+  output logic                      x_slot_valid_o,
+  output logic                      x_slot_exp_valid_o,
+  output logic                      w_slot_valid_o,
+  output logic                      w_slot_exp_valid_o,
+  output logic [MX_DATA_W-1:0]      x_slot_data_o,
+  output logic [MX_DATA_W-1:0]      w_slot_data_o,
+  output logic [7:0]                x_slot_exp_o,
   output logic [MX_EXP_VECTOR_W-1:0] w_slot_exp_o,
 
   // Control from arbiter
@@ -60,57 +65,106 @@ function automatic logic [MX_DATA_W-1:0] mx_unpack_half(input logic [MX_DATA_W-1
   return unpacked;
 endfunction
 
-// Local slot registers
-logic                     x_slot_valid_q, x_slot_valid_d;
-logic                     x_slot_data_valid_q, x_slot_data_valid_d;
-logic                     x_slot_exp_valid_q,  x_slot_exp_valid_d;
-logic [MX_DATA_W-1:0]     x_slot_data_q,  x_slot_data_d;
-logic [7:0]               x_slot_exp_q,   x_slot_exp_d;
+localparam int unsigned SLOTS_PER_BEAT = 2;  // 512-bit beat -> two 256-bit slots
+localparam int unsigned SLOT_PTR_W     = (SLOT_FIFO_DEPTH > 1) ? $clog2(SLOT_FIFO_DEPTH) : 1;
+localparam int unsigned SLOT_CNT_W     = $clog2(SLOT_FIFO_DEPTH + 1);
+localparam logic [SLOT_CNT_W-1:0] SLOT_ACCEPT_LEVEL =
+    SLOT_FIFO_DEPTH - SLOTS_PER_BEAT;
 
-logic                     w_slot_valid_q, w_slot_valid_d;
-logic                     w_slot_data_valid_q, w_slot_data_valid_d;
-logic                     w_slot_exp_valid_q,  w_slot_exp_valid_d;
-logic [MX_DATA_W-1:0]     w_slot_data_q,  w_slot_data_d;
-logic [MX_EXP_VECTOR_W-1:0] w_slot_exp_q, w_slot_exp_d;
+localparam int unsigned X_EXP_FIFO_DEPTH = SLOT_FIFO_DEPTH + 2;  // room for pending beats
+localparam int unsigned X_EXP_PTR_W      = (X_EXP_FIFO_DEPTH > 1) ? $clog2(X_EXP_FIFO_DEPTH) : 1;
+localparam int unsigned X_EXP_CNT_W      = $clog2(X_EXP_FIFO_DEPTH + 1);
+localparam logic [X_EXP_CNT_W-1:0] X_EXP_DEPTH_CONST = X_EXP_FIFO_DEPTH;
 
-// Upper buffer registers (for second half of 512-bit beat)
-logic                  x_upper_valid_q, x_upper_valid_d;
-logic                  w_upper_valid_q, w_upper_valid_d;
-logic [MX_DATA_W-1:0]  x_upper_buffer_q, x_upper_buffer_d;
-logic [MX_DATA_W-1:0]  w_upper_buffer_q, w_upper_buffer_d;
-logic                  x_upper_exp_valid_q, x_upper_exp_valid_d;
-logic                  w_upper_exp_valid_q, w_upper_exp_valid_d;
-logic [7:0]            x_upper_exp_q, x_upper_exp_d;
-logic [MX_EXP_VECTOR_W-1:0] w_upper_exp_q, w_upper_exp_d;
+localparam int unsigned W_EXP_FIFO_DEPTH = SLOT_FIFO_DEPTH + 2;
+localparam int unsigned W_EXP_PTR_W      = (W_EXP_FIFO_DEPTH > 1) ? $clog2(W_EXP_FIFO_DEPTH) : 1;
+localparam int unsigned W_EXP_CNT_W      = $clog2(W_EXP_FIFO_DEPTH + 1);
+localparam logic [W_EXP_CNT_W-1:0] W_EXP_DEPTH_CONST = W_EXP_FIFO_DEPTH;
 
-// Pending beat storage (allows double buffering one extra 512-bit beat)
-logic                  x_pending_lower_valid_q, x_pending_lower_valid_d;
-logic                  x_pending_upper_valid_q, x_pending_upper_valid_d;
-logic [MX_DATA_W-1:0]  x_pending_lower_q, x_pending_lower_d;
-logic [MX_DATA_W-1:0]  x_pending_upper_q, x_pending_upper_d;
-logic                  x_pending_lower_exp_valid_q, x_pending_lower_exp_valid_d;
-logic                  x_pending_upper_exp_valid_q, x_pending_upper_exp_valid_d;
-logic [7:0]            x_pending_lower_exp_q, x_pending_lower_exp_d;
-logic [7:0]            x_pending_upper_exp_q, x_pending_upper_exp_d;
+initial begin
+  if (SLOT_FIFO_DEPTH < 2*SLOTS_PER_BEAT) begin
+    $fatal(1, "Slot buffer depth (%0d) must hold at least two beats", SLOT_FIFO_DEPTH);
+  end
+  if (SLOT_FIFO_DEPTH % SLOTS_PER_BEAT != 0) begin
+    $fatal(1, "Slot buffer depth (%0d) must be a multiple of %0d", SLOT_FIFO_DEPTH, SLOTS_PER_BEAT);
+  end
+end
 
-logic                  w_pending_lower_valid_q, w_pending_lower_valid_d;
-logic                  w_pending_upper_valid_q, w_pending_upper_valid_d;
-logic [MX_DATA_W-1:0]  w_pending_lower_q, w_pending_lower_d;
-logic [MX_DATA_W-1:0]  w_pending_upper_q, w_pending_upper_d;
-logic                  w_pending_lower_exp_valid_q, w_pending_lower_exp_valid_d;
-logic                  w_pending_upper_exp_valid_q, w_pending_upper_exp_valid_d;
-logic [MX_EXP_VECTOR_W-1:0] w_pending_lower_exp_q, w_pending_lower_exp_d;
-logic [MX_EXP_VECTOR_W-1:0] w_pending_upper_exp_q, w_pending_upper_exp_d;
+function automatic logic [SLOT_PTR_W-1:0] bump_slot_ptr(
+  input logic [SLOT_PTR_W-1:0] ptr,
+  input int unsigned inc
+);
+  logic [SLOT_PTR_W-1:0] tmp;
+  logic [SLOT_PTR_W-1:0] last_slot;
+  tmp = ptr;
+  last_slot = SLOT_FIFO_DEPTH-1;
+  for (int i = 0; i < inc; i++) begin
+    if (tmp == last_slot) begin
+      tmp = '0;
+    end else begin
+      tmp = tmp + 1'b1;
+    end
+  end
+  return tmp;
+endfunction
+
+function automatic logic [X_EXP_PTR_W-1:0] bump_xexp_ptr(
+  input logic [X_EXP_PTR_W-1:0] ptr,
+  input int unsigned inc
+);
+  logic [X_EXP_PTR_W-1:0] tmp;
+  logic [X_EXP_PTR_W-1:0] last_slot;
+  tmp = ptr;
+  last_slot = X_EXP_FIFO_DEPTH-1;
+  for (int i = 0; i < inc; i++) begin
+    if (tmp == last_slot) begin
+      tmp = '0;
+    end else begin
+      tmp = tmp + 1'b1;
+    end
+  end
+  return tmp;
+endfunction
+
+function automatic logic [W_EXP_PTR_W-1:0] bump_wexp_ptr(
+  input logic [W_EXP_PTR_W-1:0] ptr,
+  input int unsigned inc
+);
+  logic [W_EXP_PTR_W-1:0] tmp;
+  logic [W_EXP_PTR_W-1:0] last_slot;
+  tmp = ptr;
+  last_slot = W_EXP_FIFO_DEPTH-1;
+  for (int i = 0; i < inc; i++) begin
+    if (tmp == last_slot) begin
+      tmp = '0;
+    end else begin
+      tmp = tmp + 1'b1;
+    end
+  end
+  return tmp;
+endfunction
+
+// Storage for mantissas
+logic [MX_DATA_W-1:0] x_data_mem [SLOT_FIFO_DEPTH-1:0];
+logic [MX_DATA_W-1:0] w_data_mem [SLOT_FIFO_DEPTH-1:0];
+
+logic [SLOT_PTR_W-1:0] x_data_head_q, x_data_tail_q;
+logic [SLOT_PTR_W-1:0] w_data_head_q, w_data_tail_q;
+logic [SLOT_CNT_W-1:0] x_data_count_q, w_data_count_q;
+
+// Storage for exponents
+logic [7:0] x_exp_mem [X_EXP_FIFO_DEPTH-1:0];
+logic [MX_EXP_VECTOR_W-1:0] w_exp_mem [W_EXP_FIFO_DEPTH-1:0];
+
+logic [X_EXP_PTR_W-1:0] x_exp_head_q, x_exp_tail_q;
+logic [W_EXP_PTR_W-1:0] w_exp_head_q, w_exp_tail_q;
+logic [X_EXP_CNT_W-1:0] x_exp_count_q;
+logic [W_EXP_CNT_W-1:0] w_exp_count_q;
 
 // Unpacked data
 logic [MX_DATA_W-1:0] x_unpacked_lower, x_unpacked_upper;
 logic [MX_DATA_W-1:0] w_unpacked_lower, w_unpacked_upper;
 
-// Accept signals
-logic x_data_accept, x_exp_accept;
-logic w_data_accept, w_exp_accept;
-
-// Unpacking combinational logic
 always_comb begin
   if (mx_enable_i) begin
     x_unpacked_lower = mx_unpack_half(x_data_i.data[MX_DATA_W-1:0]);
@@ -118,7 +172,7 @@ always_comb begin
     w_unpacked_lower = mx_unpack_half(w_data_i.data[MX_DATA_W-1:0]);
     w_unpacked_upper = mx_unpack_half(w_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
   end else begin
-    // FP16 mode: pass through (no unpacking needed)
+    // FP16 mode: pass through lower half
     x_unpacked_lower = x_data_i.data[MX_DATA_W-1:0];
     x_unpacked_upper = '0;
     w_unpacked_lower = w_data_i.data[MX_DATA_W-1:0];
@@ -126,337 +180,184 @@ always_comb begin
   end
 end
 
-// Accept logic
-logic x_primary_free, x_pending_free;
-logic w_primary_free, w_pending_free;
-assign x_primary_free = !x_slot_data_valid_q && !x_upper_valid_q;
-assign x_pending_free = !x_pending_lower_valid_q && !x_pending_upper_valid_q;
-assign w_primary_free = !w_slot_data_valid_q && !w_upper_valid_q;
-assign w_pending_free = !w_pending_lower_valid_q && !w_pending_upper_valid_q;
+// Ready/accept logic for mantissas
+logic x_data_ready_for_beat, w_data_ready_for_beat;
+assign x_data_ready_for_beat = (x_data_count_q <= SLOT_ACCEPT_LEVEL);
+assign w_data_ready_for_beat = (w_data_count_q <= SLOT_ACCEPT_LEVEL);
 
-assign x_data_accept = mx_enable_i && x_data_i.valid && (x_primary_free || x_pending_free);
-assign w_data_accept = mx_enable_i && w_data_i.valid && (w_primary_free || w_pending_free);
+assign x_data_i.ready = mx_enable_i ? x_data_ready_for_beat : 1'b1;
+assign w_data_i.ready = mx_enable_i ? w_data_ready_for_beat : 1'b1;
 
-logic x_slot_need_exp, x_upper_need_exp, x_pending_lower_need_exp, x_pending_upper_need_exp;
-logic w_slot_need_exp, w_upper_need_exp, w_pending_lower_need_exp, w_pending_upper_need_exp;
+logic x_data_accept, w_data_accept;
+assign x_data_accept = mx_enable_i && x_data_i.valid && x_data_ready_for_beat;
+assign w_data_accept = mx_enable_i && w_data_i.valid && w_data_ready_for_beat;
 
-assign x_slot_need_exp = x_slot_data_valid_q && !x_slot_exp_valid_q;
-assign x_upper_need_exp = x_upper_valid_q && !x_upper_exp_valid_q;
-assign x_pending_lower_need_exp = x_pending_lower_valid_q && !x_pending_lower_exp_valid_q;
-assign x_pending_upper_need_exp = x_pending_upper_valid_q && !x_pending_upper_exp_valid_q;
+// Exponent acceptance: SYNCHRONIZED with data slots
+// Only accept exponents when we have corresponding data slots available
+// This prevents exp buffer from filling up while waiting for data
+logic x_exp_fifo_has_space, w_exp_fifo_has_space;
+assign x_exp_fifo_has_space = (x_exp_count_q < X_EXP_DEPTH_CONST);
+assign w_exp_fifo_has_space = (w_exp_count_q < W_EXP_DEPTH_CONST);
 
-assign w_slot_need_exp = w_slot_data_valid_q && !w_slot_exp_valid_q;
-assign w_upper_need_exp = w_upper_valid_q && !w_upper_exp_valid_q;
-assign w_pending_lower_need_exp = w_pending_lower_valid_q && !w_pending_lower_exp_valid_q;
-assign w_pending_upper_need_exp = w_pending_upper_valid_q && !w_pending_upper_exp_valid_q;
+// NEW: Only accept exps when data count >= exp count (keep them synchronized)
+// Allow exp to catch up fully since data arrives in bursts of SLOTS_PER_BEAT
+// and we want to maintain data_count - exp_count <= SLOTS_PER_BEAT
+logic x_data_ahead_or_equal, w_data_ahead_or_equal;
+assign x_data_ahead_or_equal = (x_data_count_q >= x_exp_count_q);
+assign w_data_ahead_or_equal = (w_data_count_q >= w_exp_count_q);
 
-assign x_exp_accept = mx_enable_i && x_exp_valid_i && !consume_x_slot_i &&
-                      (x_slot_need_exp || x_upper_need_exp ||
-                       x_pending_lower_need_exp || x_pending_upper_need_exp);
-assign w_exp_accept = mx_enable_i && w_exp_valid_i && !consume_w_slot_i &&
-                      (w_slot_need_exp || w_upper_need_exp ||
-                       w_pending_lower_need_exp || w_pending_upper_need_exp);
-
-// Ready signals for data streams
-assign x_data_i.ready = mx_enable_i ? (x_primary_free || x_pending_free) : 1'b1;
-assign w_data_i.ready = mx_enable_i ? (w_primary_free || w_pending_free) : 1'b1;
-
-// Consume signals for exponent buffers (pulse when accepting)
+logic x_exp_accept, w_exp_accept;
+assign x_exp_accept = mx_enable_i && x_exp_valid_i && x_exp_fifo_has_space && x_data_ahead_or_equal;
+assign w_exp_accept = mx_enable_i && w_exp_valid_i && w_exp_fifo_has_space && w_data_ahead_or_equal;
 assign x_exp_consume_o = x_exp_accept;
 assign w_exp_consume_o = w_exp_accept;
 
-// Output assignments
-assign x_slot_valid_o = x_slot_valid_q;
-assign w_slot_valid_o = w_slot_valid_q;
-assign x_slot_data_o  = x_slot_data_q;
-assign w_slot_data_o  = w_slot_data_q;
-assign x_slot_exp_o   = x_slot_exp_q;
-assign w_slot_exp_o   = w_slot_exp_q;
+// Slot valid flags
+assign x_slot_valid_o     = (x_data_count_q != '0);
+assign w_slot_valid_o     = (w_data_count_q != '0);
+assign x_slot_exp_valid_o = (x_exp_count_q != '0);
+assign w_slot_exp_valid_o = (w_exp_count_q != '0);
+
+assign x_slot_data_o = x_slot_valid_o ? x_data_mem[x_data_head_q] : '0;
+assign w_slot_data_o = w_slot_valid_o ? w_data_mem[w_data_head_q] : '0;
+assign x_slot_exp_o  = x_slot_exp_valid_o ? x_exp_mem[x_exp_head_q] : '0;
+assign w_slot_exp_o  = w_slot_exp_valid_o ? w_exp_mem[w_exp_head_q] : '0;
+
+logic x_slot_pair_ready, w_slot_pair_ready;
+assign x_slot_pair_ready = x_slot_valid_o && x_slot_exp_valid_o;
+assign w_slot_pair_ready = w_slot_valid_o && w_slot_exp_valid_o;
+
+logic x_slot_pop, w_slot_pop;
+assign x_slot_pop = consume_x_slot_i && x_slot_pair_ready;
+assign w_slot_pop = consume_w_slot_i && w_slot_pair_ready;
+
+// Next-state logic for pointers / counters
+logic [SLOT_PTR_W-1:0] x_data_head_d, x_data_tail_d;
+logic [SLOT_PTR_W-1:0] w_data_head_d, w_data_tail_d;
+logic [SLOT_CNT_W-1:0] x_data_count_d, w_data_count_d;
+logic [X_EXP_PTR_W-1:0] x_exp_head_d, x_exp_tail_d;
+logic [W_EXP_PTR_W-1:0] w_exp_head_d, w_exp_tail_d;
+logic [X_EXP_CNT_W-1:0] x_exp_count_d;
+logic [W_EXP_CNT_W-1:0] w_exp_count_d;
+
+always_comb begin
+  // Mantissa FIFO next state
+  x_data_head_d  = x_data_head_q;
+  x_data_tail_d  = x_data_tail_q;
+  x_data_count_d = x_data_count_q;
+  w_data_head_d  = w_data_head_q;
+  w_data_tail_d  = w_data_tail_q;
+  w_data_count_d = w_data_count_q;
+
+  if (x_data_accept) begin
+    x_data_tail_d  = bump_slot_ptr(x_data_tail_d, SLOTS_PER_BEAT);
+    x_data_count_d = x_data_count_d + SLOTS_PER_BEAT;
+  end
+  if (w_data_accept) begin
+    w_data_tail_d  = bump_slot_ptr(w_data_tail_d, SLOTS_PER_BEAT);
+    w_data_count_d = w_data_count_d + SLOTS_PER_BEAT;
+  end
+  if (x_slot_pop) begin
+    x_data_head_d  = bump_slot_ptr(x_data_head_d, 1);
+    x_data_count_d = x_data_count_d - 1'b1;
+  end
+  if (w_slot_pop) begin
+    w_data_head_d  = bump_slot_ptr(w_data_head_d, 1);
+    w_data_count_d = w_data_count_d - 1'b1;
+  end
+
+  // Exponent FIFO next state
+  x_exp_head_d  = x_exp_head_q;
+  x_exp_tail_d  = x_exp_tail_q;
+  x_exp_count_d = x_exp_count_q;
+  w_exp_head_d  = w_exp_head_q;
+  w_exp_tail_d  = w_exp_tail_q;
+  w_exp_count_d = w_exp_count_q;
+
+  if (x_exp_accept) begin
+    x_exp_tail_d  = bump_xexp_ptr(x_exp_tail_d, 1);
+    x_exp_count_d = x_exp_count_d + 1'b1;
+  end
+  if (w_exp_accept) begin
+    w_exp_tail_d  = bump_wexp_ptr(w_exp_tail_d, 1);
+    w_exp_count_d = w_exp_count_d + 1'b1;
+  end
+  if (x_slot_pop) begin
+    x_exp_head_d  = bump_xexp_ptr(x_exp_head_d, 1);
+    x_exp_count_d = x_exp_count_d - 1'b1;
+  end
+  if (w_slot_pop) begin
+    w_exp_head_d  = bump_wexp_ptr(w_exp_head_d, 1);
+    w_exp_count_d = w_exp_count_d - 1'b1;
+  end
+end
 
 // Sequential logic
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
-    x_slot_valid_q <= 1'b0;
-    x_slot_data_valid_q <= 1'b0;
-    x_slot_exp_valid_q  <= 1'b0;
-    x_slot_data_q  <= '0;
-    x_slot_exp_q   <= '0;
-    w_slot_valid_q <= 1'b0;
-    w_slot_data_valid_q <= 1'b0;
-    w_slot_exp_valid_q  <= 1'b0;
-    w_slot_data_q  <= '0;
-    w_slot_exp_q   <= '0;
-    x_upper_valid_q <= 1'b0;
-    x_upper_buffer_q <= '0;
-    x_upper_exp_valid_q <= 1'b0;
-    x_upper_exp_q <= '0;
-    w_upper_valid_q <= 1'b0;
-    w_upper_buffer_q <= '0;
-    w_upper_exp_valid_q <= 1'b0;
-    w_upper_exp_q <= '0;
-    x_pending_lower_valid_q <= 1'b0;
-    x_pending_upper_valid_q <= 1'b0;
-    x_pending_lower_q <= '0;
-    x_pending_upper_q <= '0;
-    x_pending_lower_exp_valid_q <= 1'b0;
-    x_pending_upper_exp_valid_q <= 1'b0;
-    x_pending_lower_exp_q <= '0;
-    x_pending_upper_exp_q <= '0;
-    w_pending_lower_valid_q <= 1'b0;
-    w_pending_upper_valid_q <= 1'b0;
-    w_pending_lower_q <= '0;
-    w_pending_upper_q <= '0;
-    w_pending_lower_exp_valid_q <= 1'b0;
-    w_pending_upper_exp_valid_q <= 1'b0;
-    w_pending_lower_exp_q <= '0;
-    w_pending_upper_exp_q <= '0;
+    x_data_head_q <= '0;
+    x_data_tail_q <= '0;
+    x_data_count_q <= '0;
+    w_data_head_q <= '0;
+    w_data_tail_q <= '0;
+    w_data_count_q <= '0;
+    x_exp_head_q <= '0;
+    x_exp_tail_q <= '0;
+    x_exp_count_q <= '0;
+    w_exp_head_q <= '0;
+    w_exp_tail_q <= '0;
+    w_exp_count_q <= '0;
   end else if (clear_i) begin
-    x_slot_valid_q <= 1'b0;
-    x_slot_data_valid_q <= 1'b0;
-    x_slot_exp_valid_q  <= 1'b0;
-    x_slot_data_q  <= '0;
-    x_slot_exp_q   <= '0;
-    w_slot_valid_q <= 1'b0;
-    w_slot_data_valid_q <= 1'b0;
-    w_slot_exp_valid_q  <= 1'b0;
-    w_slot_data_q  <= '0;
-    w_slot_exp_q   <= '0;
-    x_upper_valid_q <= 1'b0;
-    x_upper_buffer_q <= '0;
-    x_upper_exp_valid_q <= 1'b0;
-    x_upper_exp_q <= '0;
-    w_upper_valid_q <= 1'b0;
-    w_upper_buffer_q <= '0;
-    w_upper_exp_valid_q <= 1'b0;
-    w_upper_exp_q <= '0;
-    x_pending_lower_valid_q <= 1'b0;
-    x_pending_upper_valid_q <= 1'b0;
-    x_pending_lower_q <= '0;
-    x_pending_upper_q <= '0;
-    x_pending_lower_exp_valid_q <= 1'b0;
-    x_pending_upper_exp_valid_q <= 1'b0;
-    x_pending_lower_exp_q <= '0;
-    x_pending_upper_exp_q <= '0;
-    w_pending_lower_valid_q <= 1'b0;
-    w_pending_upper_valid_q <= 1'b0;
-    w_pending_lower_q <= '0;
-    w_pending_upper_q <= '0;
-    w_pending_lower_exp_valid_q <= 1'b0;
-    w_pending_upper_exp_valid_q <= 1'b0;
-    w_pending_lower_exp_q <= '0;
-    w_pending_upper_exp_q <= '0;
+    x_data_head_q <= '0;
+    x_data_tail_q <= '0;
+    x_data_count_q <= '0;
+    w_data_head_q <= '0;
+    w_data_tail_q <= '0;
+    w_data_count_q <= '0;
+    x_exp_head_q <= '0;
+    x_exp_tail_q <= '0;
+    x_exp_count_q <= '0;
+    w_exp_head_q <= '0;
+    w_exp_tail_q <= '0;
+    w_exp_count_q <= '0;
   end else begin
-    x_slot_valid_q <= x_slot_valid_d;
-    x_slot_data_valid_q <= x_slot_data_valid_d;
-    x_slot_exp_valid_q  <= x_slot_exp_valid_d;
-    x_slot_data_q  <= x_slot_data_d;
-    x_slot_exp_q   <= x_slot_exp_d;
-    w_slot_valid_q <= w_slot_valid_d;
-    w_slot_data_valid_q <= w_slot_data_valid_d;
-    w_slot_exp_valid_q  <= w_slot_exp_valid_d;
-    w_slot_data_q  <= w_slot_data_d;
-    w_slot_exp_q   <= w_slot_exp_d;
-    x_upper_valid_q <= x_upper_valid_d;
-    x_upper_buffer_q <= x_upper_buffer_d;
-    x_upper_exp_valid_q <= x_upper_exp_valid_d;
-    x_upper_exp_q <= x_upper_exp_d;
-    w_upper_valid_q <= w_upper_valid_d;
-    w_upper_buffer_q <= w_upper_buffer_d;
-    w_upper_exp_valid_q <= w_upper_exp_valid_d;
-    w_upper_exp_q <= w_upper_exp_d;
-    x_pending_lower_valid_q <= x_pending_lower_valid_d;
-    x_pending_upper_valid_q <= x_pending_upper_valid_d;
-    x_pending_lower_q <= x_pending_lower_d;
-    x_pending_upper_q <= x_pending_upper_d;
-    x_pending_lower_exp_valid_q <= x_pending_lower_exp_valid_d;
-    x_pending_upper_exp_valid_q <= x_pending_upper_exp_valid_d;
-    x_pending_lower_exp_q <= x_pending_lower_exp_d;
-    x_pending_upper_exp_q <= x_pending_upper_exp_d;
-    w_pending_lower_valid_q <= w_pending_lower_valid_d;
-    w_pending_upper_valid_q <= w_pending_upper_valid_d;
-    w_pending_lower_q <= w_pending_lower_d;
-    w_pending_upper_q <= w_pending_upper_d;
-    w_pending_lower_exp_valid_q <= w_pending_lower_exp_valid_d;
-    w_pending_upper_exp_valid_q <= w_pending_upper_exp_valid_d;
-    w_pending_lower_exp_q <= w_pending_lower_exp_d;
-    w_pending_upper_exp_q <= w_pending_upper_exp_d;
-  end
-end
+    x_data_head_q <= x_data_head_d;
+    x_data_tail_q <= x_data_tail_d;
+    x_data_count_q <= x_data_count_d;
+    w_data_head_q <= w_data_head_d;
+    w_data_tail_q <= w_data_tail_d;
+    w_data_count_q <= w_data_count_d;
+    x_exp_head_q <= x_exp_head_d;
+    x_exp_tail_q <= x_exp_tail_d;
+    x_exp_count_q <= x_exp_count_d;
+    w_exp_head_q <= w_exp_head_d;
+    w_exp_tail_q <= w_exp_tail_d;
+    w_exp_count_q <= w_exp_count_d;
 
-// Combinational logic
-always_comb begin
-  x_slot_data_valid_d = x_slot_data_valid_q;
-  x_slot_exp_valid_d  = x_slot_exp_valid_q;
-  x_slot_data_d  = x_slot_data_q;
-  x_slot_exp_d   = x_slot_exp_q;
-  x_slot_valid_d = x_slot_data_valid_q && x_slot_exp_valid_q;
-  w_slot_data_valid_d = w_slot_data_valid_q;
-  w_slot_exp_valid_d  = w_slot_exp_valid_q;
-  w_slot_data_d  = w_slot_data_q;
-  w_slot_exp_d   = w_slot_exp_q;
-  w_slot_valid_d = w_slot_data_valid_q && w_slot_exp_valid_q;
-  x_upper_valid_d = x_upper_valid_q;
-  x_upper_buffer_d = x_upper_buffer_q;
-  x_upper_exp_valid_d = x_upper_exp_valid_q;
-  x_upper_exp_d = x_upper_exp_q;
-  w_upper_valid_d = w_upper_valid_q;
-  w_upper_buffer_d = w_upper_buffer_q;
-  w_upper_exp_valid_d = w_upper_exp_valid_q;
-  w_upper_exp_d = w_upper_exp_q;
-  x_pending_lower_valid_d = x_pending_lower_valid_q;
-  x_pending_upper_valid_d = x_pending_upper_valid_q;
-  x_pending_lower_d = x_pending_lower_q;
-  x_pending_upper_d = x_pending_upper_q;
-  x_pending_lower_exp_valid_d = x_pending_lower_exp_valid_q;
-  x_pending_upper_exp_valid_d = x_pending_upper_exp_valid_q;
-  x_pending_lower_exp_d = x_pending_lower_exp_q;
-  x_pending_upper_exp_d = x_pending_upper_exp_q;
-  w_pending_lower_valid_d = w_pending_lower_valid_q;
-  w_pending_upper_valid_d = w_pending_upper_valid_q;
-  w_pending_lower_d = w_pending_lower_q;
-  w_pending_upper_d = w_pending_upper_q;
-  w_pending_lower_exp_valid_d = w_pending_lower_exp_valid_q;
-  w_pending_upper_exp_valid_d = w_pending_upper_exp_valid_q;
-  w_pending_lower_exp_d = w_pending_lower_exp_q;
-  w_pending_upper_exp_d = w_pending_upper_exp_q;
+    // Mantissa writes (use tail prior to update)
+    if (x_data_accept) begin
+      automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
+      idx0 = x_data_tail_q;
+      idx1 = bump_slot_ptr(x_data_tail_q, 1);
+      x_data_mem[idx0] <= x_unpacked_lower;
+      x_data_mem[idx1] <= x_unpacked_upper;
+    end
+    if (w_data_accept) begin
+      automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
+      idx0 = w_data_tail_q;
+      idx1 = bump_slot_ptr(w_data_tail_q, 1);
+      w_data_mem[idx0] <= w_unpacked_lower;
+      w_data_mem[idx1] <= w_unpacked_upper;
+    end
 
-  // X data acceptance
-  if (x_data_accept) begin
-    if (x_primary_free) begin
-      x_slot_data_valid_d = 1'b1;
-      x_slot_data_d = x_unpacked_lower;
-      x_slot_exp_valid_d = 1'b0;
-      x_upper_valid_d = 1'b1;
-      x_upper_buffer_d = x_unpacked_upper;
-      x_upper_exp_valid_d = 1'b0;
-    end else begin
-      x_pending_lower_valid_d = 1'b1;
-      x_pending_lower_d = x_unpacked_lower;
-      x_pending_lower_exp_valid_d = 1'b0;
-      x_pending_upper_valid_d = 1'b1;
-      x_pending_upper_d = x_unpacked_upper;
-      x_pending_upper_exp_valid_d = 1'b0;
+    // Exponent writes
+    if (x_exp_accept) begin
+      x_exp_mem[x_exp_tail_q] <= x_exp_data_i;
+    end
+    if (w_exp_accept) begin
+      w_exp_mem[w_exp_tail_q] <= w_exp_data_i;
     end
   end
-
-  // X exponent acceptance: route to slot or upper based on which needs it
-  // Each 256-bit block (slot and upper) needs its own exponent
-  if (x_exp_accept) begin
-    if (x_slot_need_exp) begin
-      x_slot_exp_valid_d = 1'b1;
-      x_slot_exp_d = x_exp_data_i;
-    end else if (x_upper_need_exp) begin
-      x_upper_exp_valid_d = 1'b1;
-      x_upper_exp_d = x_exp_data_i;
-    end else if (x_pending_lower_need_exp) begin
-      x_pending_lower_exp_valid_d = 1'b1;
-      x_pending_lower_exp_d = x_exp_data_i;
-    end else if (x_pending_upper_need_exp) begin
-      x_pending_upper_exp_valid_d = 1'b1;
-      x_pending_upper_exp_d = x_exp_data_i;
-    end
-  end
-
-  x_slot_valid_d = x_slot_data_valid_d && x_slot_exp_valid_d;
-
-  // W data acceptance
-  if (w_data_accept) begin
-    if (w_primary_free) begin
-      w_slot_data_valid_d = 1'b1;
-      w_slot_data_d = w_unpacked_lower;
-      w_slot_exp_valid_d = 1'b0;
-      w_upper_valid_d = 1'b1;
-      w_upper_buffer_d = w_unpacked_upper;
-      w_upper_exp_valid_d = 1'b0;
-    end else begin
-      w_pending_lower_valid_d = 1'b1;
-      w_pending_lower_d = w_unpacked_lower;
-      w_pending_lower_exp_valid_d = 1'b0;
-      w_pending_upper_valid_d = 1'b1;
-      w_pending_upper_d = w_unpacked_upper;
-      w_pending_upper_exp_valid_d = 1'b0;
-    end
-  end
-
-  // W exponent acceptance: route to slot or upper based on which needs it
-  // Each 256-bit block (slot and upper) needs its own exponent
-  if (w_exp_accept) begin
-    if (w_slot_need_exp) begin
-      w_slot_exp_valid_d = 1'b1;
-      w_slot_exp_d = w_exp_data_i;
-    end else if (w_upper_need_exp) begin
-      w_upper_exp_valid_d = 1'b1;
-      w_upper_exp_d = w_exp_data_i;
-    end else if (w_pending_lower_need_exp) begin
-      w_pending_lower_exp_valid_d = 1'b1;
-      w_pending_lower_exp_d = w_exp_data_i;
-    end else if (w_pending_upper_need_exp) begin
-      w_pending_upper_exp_valid_d = 1'b1;
-      w_pending_upper_exp_d = w_exp_data_i;
-    end
-  end
-
-  w_slot_valid_d = w_slot_data_valid_d && w_slot_exp_valid_d;
-
-  // Slot consumption from arbiter
-  // When slot consumed, move upper to slot if available (including its exponent)
-  if (consume_x_slot_i) begin
-    if (x_upper_valid_q) begin
-      x_slot_data_valid_d = 1'b1;
-      x_slot_data_d = x_upper_buffer_q;
-      x_slot_exp_valid_d = x_upper_exp_valid_q;
-      x_slot_exp_d = x_upper_exp_q;
-      x_upper_valid_d = 1'b0;
-      x_upper_exp_valid_d = 1'b0;
-    end else if (x_pending_lower_valid_q) begin
-      x_slot_data_valid_d = 1'b1;
-      x_slot_data_d = x_pending_lower_q;
-      x_slot_exp_valid_d = x_pending_lower_exp_valid_q;
-      x_slot_exp_d = x_pending_lower_exp_q;
-      x_pending_lower_valid_d = 1'b0;
-      x_pending_lower_exp_valid_d = 1'b0;
-      x_upper_valid_d = x_pending_upper_valid_q;
-      x_upper_buffer_d = x_pending_upper_q;
-      x_upper_exp_valid_d = x_pending_upper_exp_valid_q;
-      x_upper_exp_d = x_pending_upper_exp_q;
-      x_pending_upper_valid_d = 1'b0;
-      x_pending_upper_exp_valid_d = 1'b0;
-    end else begin
-      x_slot_data_valid_d = 1'b0;
-      x_slot_exp_valid_d  = 1'b0;
-    end
-  end
-
-  x_slot_valid_d = x_slot_data_valid_d && x_slot_exp_valid_d;
-
-  if (consume_w_slot_i) begin
-    if (w_upper_valid_q) begin
-      w_slot_data_valid_d = 1'b1;
-      w_slot_data_d = w_upper_buffer_q;
-      w_slot_exp_valid_d = w_upper_exp_valid_q;
-      w_slot_exp_d = w_upper_exp_q;
-      w_upper_valid_d = 1'b0;
-      w_upper_exp_valid_d = 1'b0;
-    end else if (w_pending_lower_valid_q) begin
-      w_slot_data_valid_d = 1'b1;
-      w_slot_data_d = w_pending_lower_q;
-      w_slot_exp_valid_d = w_pending_lower_exp_valid_q;
-      w_slot_exp_d = w_pending_lower_exp_q;
-      w_pending_lower_valid_d = 1'b0;
-      w_pending_lower_exp_valid_d = 1'b0;
-      w_upper_valid_d = w_pending_upper_valid_q;
-      w_upper_buffer_d = w_pending_upper_q;
-      w_upper_exp_valid_d = w_pending_upper_exp_valid_q;
-      w_upper_exp_d = w_pending_upper_exp_q;
-      w_pending_upper_valid_d = 1'b0;
-      w_pending_upper_exp_valid_d = 1'b0;
-    end else begin
-      w_slot_data_valid_d = 1'b0;
-      w_slot_exp_valid_d  = 1'b0;
-    end
-  end
-
-  w_slot_valid_d = w_slot_data_valid_d && w_slot_exp_valid_d;
 end
 
 endmodule : redmule_mx_slot_buffer
