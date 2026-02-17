@@ -62,12 +62,27 @@ assign mx_enable = reg_file_i.hwpe_params[MACFG][16];
 // TILE size for iteration calculations
 // With ARRAY_HEIGHT=8 and PIPE_REGS=3: TILE = 8*4 = 32 (matches MX block size)
 localparam int unsigned TILE = ARRAY_HEIGHT*(PIPE_REGS+1);
+localparam int unsigned MX_PACK_FACTOR = 2;  // FP8 packs 2x more slots per beat
+
+// Unpack m_size and n_size for X buffer and systolic control
+// FP8 packs 2 elements per word in memory, but X buffer pad and systolic need full dimensions
+logic [15:0] m_size_for_x_buffer;
+logic [15:0] n_size_for_systolic;
+assign m_size_for_x_buffer = mx_enable ? (config_d.m_size * MX_PACK_FACTOR) : config_d.m_size;
+assign n_size_for_systolic = mx_enable ? (config_d.n_size * MX_PACK_FACTOR) : config_d.n_size;
 
 // Calculating the number of iterations alng the two dimensions of the X matrix
+// X buffer iterations need UNPACKED sizes for correct buffer allocation
 logic [15:0] x_rows_iter_nolftovr;
 logic [15:0] x_cols_iter_nolftovr;
-assign x_rows_iter_nolftovr = config_d.m_size/ARRAY_WIDTH;
-assign x_cols_iter_nolftovr = config_d.n_size/TILE;
+assign x_rows_iter_nolftovr = m_size_for_x_buffer/ARRAY_WIDTH;  // Use unpacked m_size
+assign x_cols_iter_nolftovr = n_size_for_systolic/TILE;          // Use unpacked n_size
+
+// Memory iterations use PACKED sizes for correct TCDM fetch count
+logic [15:0] mem_x_rows_iter_nolftovr;
+logic [15:0] mem_x_cols_iter_nolftovr;
+assign mem_x_rows_iter_nolftovr = config_d.m_size/ARRAY_WIDTH;  // Use packed m_size for memory
+assign mem_x_cols_iter_nolftovr = config_d.n_size/TILE;          // Use packed n_size for memory
 
 // Calculating the number of iterations along the two dimensions of the W matrix
 logic [15:0] w_cols_iter_nolftovr;
@@ -75,23 +90,32 @@ logic [15:0] w_rows_iter_lftovr,
              w_rows_iter_nolftovr;
 assign w_cols_iter_nolftovr = config_d.k_size/TILE;
 assign w_rows_iter_lftovr = w_rows_iter_nolftovr + ARRAY_HEIGHT - config_d.w_rows_lftovr;
-assign w_rows_iter_nolftovr = config_d.n_size;
+assign w_rows_iter_nolftovr = n_size_for_systolic;  // Unpacked for systolic control
 
 // Calculating the residuals along the input dimensions
-assign config_d.x_rows_lftovr = config_d.m_size - (x_rows_iter_nolftovr*ARRAY_WIDTH);
-assign config_d.x_cols_lftovr = config_d.n_size - (x_cols_iter_nolftovr*TILE);
+// Use unpacked sizes for X buffer pad allocation (width and slots)
+assign config_d.x_rows_lftovr = m_size_for_x_buffer - (x_rows_iter_nolftovr*ARRAY_WIDTH);
+assign config_d.x_cols_lftovr = n_size_for_systolic - (x_cols_iter_nolftovr*TILE);
 
 // Calculating the residuals along the weight dimensions
-assign config_d.w_rows_lftovr = config_d.n_size - (ARRAY_HEIGHT*(config_d.n_size/ARRAY_HEIGHT));
+assign config_d.w_rows_lftovr = n_size_for_systolic - (ARRAY_HEIGHT*(n_size_for_systolic/ARRAY_HEIGHT));
 assign config_d.w_cols_lftovr = config_d.k_size - (w_cols_iter_nolftovr*TILE);
 
-// Calculate w_cols, x_cols, x_rows iterations
+// Calculate w_cols, x_cols, x_rows iterations (for X buffer control)
 assign config_d.w_cols_iter = config_d.w_cols_lftovr != '0 ? w_cols_iter_nolftovr + 1 : w_cols_iter_nolftovr;
 assign config_d.w_rows_iter = config_d.w_rows_lftovr != '0 ? w_rows_iter_lftovr       : w_rows_iter_nolftovr;
 assign config_d.x_cols_iter = config_d.x_cols_lftovr != '0 ? x_cols_iter_nolftovr + 1 : x_cols_iter_nolftovr;
 assign config_d.x_rows_iter = config_d.x_rows_lftovr != '0 ? x_rows_iter_nolftovr + 1 : x_rows_iter_nolftovr;
 
-// Sequential multiplier x_rows x w_cols
+// Calculate memory iterations using PACKED sizes for tot_x_read
+logic [7:0] mem_x_rows_lftovr, mem_x_cols_lftovr;
+logic [15:0] mem_x_rows_iter, mem_x_cols_iter;
+assign mem_x_rows_lftovr = config_d.m_size - (mem_x_rows_iter_nolftovr*ARRAY_WIDTH);
+assign mem_x_cols_lftovr = config_d.n_size - (mem_x_cols_iter_nolftovr*TILE);
+assign mem_x_rows_iter = mem_x_rows_lftovr != '0 ? mem_x_rows_iter_nolftovr + 1 : mem_x_rows_iter_nolftovr;
+assign mem_x_cols_iter = mem_x_cols_lftovr != '0 ? mem_x_cols_iter_nolftovr + 1 : mem_x_cols_iter_nolftovr;
+
+// Sequential multiplier x_rows x w_cols (for MEMORY addressing - uses packed sizes)
 logic [31:0] x_rows_by_w_cols_iter;
 logic        x_rows_by_w_cols_iter_valid, x_rows_by_w_cols_iter_valid_d, x_rows_by_w_cols_iter_valid_q;
 logic        x_rows_by_w_cols_iter_ready;
@@ -103,23 +127,49 @@ hwpe_ctrl_seq_mult #(
   .rst_ni   ( rst_ni                        ),
   .clear_i  ( clear_i | setback_i           ),
   .start_i  ( start_cfg_i                   ),
-  .a_i      ( config_d.x_rows_iter          ),
+  .a_i      ( mem_x_rows_iter               ),  // Use memory iterations (packed)
   .b_i      ( config_d.w_cols_iter          ),
   .invert_i ( 1'b0                          ),
   .valid_o  ( x_rows_by_w_cols_iter_valid_d ),
   .ready_o  ( x_rows_by_w_cols_iter_ready   ),
   .prod_o   ( x_rows_by_w_cols_iter         )
 );
+
+// Sequential multiplier for BUFFER sizing (uses unpacked X buffer iterations)
+logic [31:0] buf_x_rows_by_w_cols_iter;
+logic        buf_x_rows_by_w_cols_iter_valid_d, buf_x_rows_by_w_cols_iter_valid_q, buf_x_rows_by_w_cols_iter_valid;
+logic        buf_x_rows_by_w_cols_iter_ready;
+hwpe_ctrl_seq_mult #(
+  .AW ( 16 ),
+  .BW ( 16 )
+) i_buf_x_rows_by_w_cols_seqmult (
+  .clk_i    ( clk_i                               ),
+  .rst_ni   ( rst_ni                              ),
+  .clear_i  ( clear_i | setback_i                 ),
+  .start_i  ( start_cfg_i                         ),
+  .a_i      ( config_d.x_rows_iter                ),  // Use buffer iterations (unpacked)
+  .b_i      ( config_d.w_cols_iter                ),
+  .invert_i ( 1'b0                                ),
+  .valid_o  ( buf_x_rows_by_w_cols_iter_valid_d   ),
+  .ready_o  ( buf_x_rows_by_w_cols_iter_ready     ),
+  .prod_o   ( buf_x_rows_by_w_cols_iter           )
+);
 always_ff @(posedge clk_int or negedge rst_ni) begin
   if(~rst_ni) begin
     x_rows_by_w_cols_iter_valid_q <= '0;
     x_rows_by_w_cols_iter_valid <= '0;
+    buf_x_rows_by_w_cols_iter_valid_q <= '0;
+    buf_x_rows_by_w_cols_iter_valid <= '0;
   end else if(clear_i | setback_i) begin
     x_rows_by_w_cols_iter_valid_q <= '0;
     x_rows_by_w_cols_iter_valid <= '0;
+    buf_x_rows_by_w_cols_iter_valid_q <= '0;
+    buf_x_rows_by_w_cols_iter_valid <= '0;
   end else begin
     x_rows_by_w_cols_iter_valid_q <= x_rows_by_w_cols_iter_valid_d;
     x_rows_by_w_cols_iter_valid <= ~x_rows_by_w_cols_iter_valid_q & x_rows_by_w_cols_iter_valid_d;
+    buf_x_rows_by_w_cols_iter_valid_q <= buf_x_rows_by_w_cols_iter_valid_d;
+    buf_x_rows_by_w_cols_iter_valid <= ~buf_x_rows_by_w_cols_iter_valid_q & buf_x_rows_by_w_cols_iter_valid_d;
   end
 end
 
@@ -135,7 +185,7 @@ hwpe_ctrl_seq_mult #(
   .rst_ni   ( rst_ni                                ),
   .clear_i  ( clear_i | setback_i                   ),
   .start_i  ( x_rows_by_w_cols_iter_valid           ),
-  .a_i      ( config_d.x_cols_iter                  ),
+  .a_i      ( mem_x_cols_iter                       ),  // Use memory iterations (packed)
   .b_i      ( x_rows_by_w_cols_iter                 ),
   .invert_i ( 1'b0                                  ),
   .valid_o  ( x_rows_by_w_cols_by_x_cols_iter_valid ),
@@ -173,8 +223,8 @@ assign buffer_slots = config_d.x_cols_lftovr/ARRAY_HEIGHT;
 assign config_d.x_buffer_slots = ((config_d.x_cols_lftovr % ARRAY_HEIGHT != '0) ? buffer_slots + 1 :
                                                                                                 buffer_slots) * ARRAY_HEIGHT;
 
-// Calculating the number of total stores
-assign config_d.tot_stores = x_rows_by_w_cols_iter[15:0];
+// Calculating the number of total stores (uses buffer iterations for actual computations)
+assign config_d.tot_stores = buf_x_rows_by_w_cols_iter[15:0];
 
 assign config_d.stage_1_rnd_mode = config_d.gemm_ops == MATMUL ? RNE :
                                    config_d.gemm_ops == GEMM   ? RNE :
@@ -211,14 +261,21 @@ assign config_d.computing_format = config_d.gemm_output_fmt == Float16    ? FPU_
                                                                             FPU_FP8ALT;
 assign config_d.gemm_selection   = config_d.gemm_ops == MATMUL ? 1'b0 : 1'b1;
 
-assign config_d.x_d1_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*x_cols_iter_nolftovr) + config_d.x_cols_lftovr);
+assign config_d.x_d1_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*mem_x_cols_iter_nolftovr) + mem_x_cols_lftovr);  // Use memory iterations for X addressing
 assign config_d.x_rows_offs = ARRAY_WIDTH*config_d.x_d1_stride;
-assign config_d.w_tot_len   = x_rows_by_w_cols_by_w_rows_iter[31:0];
+logic [31:0] w_tot_len_raw;
+assign w_tot_len_raw = x_rows_by_w_cols_by_w_rows_iter[31:0];
+assign config_d.w_tot_len   = mx_enable ? ((w_tot_len_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
+                                        : w_tot_len_raw;
 assign config_d.w_d0_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*w_cols_iter_nolftovr) + config_d.w_cols_lftovr);
-assign config_d.yz_tot_len  = mx_enable ? (ARRAY_WIDTH*x_rows_by_w_cols_iter[15:0]*2) : (ARRAY_WIDTH*x_rows_by_w_cols_iter[15:0]);
+assign config_d.yz_tot_len  = ARRAY_WIDTH*buf_x_rows_by_w_cols_iter[15:0];  // Use buffer iterations for output
 assign config_d.yz_d0_stride = config_d.w_d0_stride;
 assign config_d.yz_d2_stride = ARRAY_WIDTH*config_d.w_d0_stride;
-assign config_d.tot_x_read   = x_rows_by_w_cols_by_x_cols_iter[31:0];
+// Calculate tot_x_read from sequential multipliers (now using memory iterations)
+logic [31:0] tot_x_read_raw;
+assign tot_x_read_raw = x_rows_by_w_cols_by_x_cols_iter[31:0];
+assign config_d.tot_x_read   = mx_enable ? ((tot_x_read_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
+                                         : tot_x_read_raw;
 assign config_d.x_tot_len    = '0; // not used
 
 // register configuration to avoid critical paths (maybe removable!)
@@ -227,8 +284,15 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
     config_q <= '0;
   else if (clear_i)
     config_q <= '0;
-  else if(x_rows_by_w_cols_by_w_rows_iter_valid & x_rows_by_w_cols_by_w_rows_iter_ready)
+  else if(x_rows_by_w_cols_by_w_rows_iter_valid & x_rows_by_w_cols_by_w_rows_iter_ready) begin
     config_q <= config_d;
+    $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d",
+             mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter);
+    $display("[DBG][TILER] m_size=%0d m_size_for_x_buffer=%0d x_rows_lftovr=%0d x_rows_iter=%0d",
+             config_d.m_size, m_size_for_x_buffer, config_d.x_rows_lftovr, config_d.x_rows_iter);
+    $display("[DBG][TILER] x_cols_lftovr=%0d x_buffer_slots=%0d x_cols_iter=%0d LEFTOVERS[31:24]=%0d",
+             config_d.x_cols_lftovr, config_d.x_buffer_slots, config_d.x_cols_iter, config_d.x_rows_lftovr);
+  end
 end
 
 // generate output valid

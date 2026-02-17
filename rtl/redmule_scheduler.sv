@@ -237,6 +237,13 @@ module redmule_scheduler
   assign w_rows_iter_en = current_state == LOAD_W && w_valid_i && ~stall_engine;
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
 
+  always @(posedge clk_i) begin
+    if (w_rows_iter_en) begin
+      $display("[DBG][SCHED] LOAD_W cycle: w_rows_iter_q=%0d -> %0d, W_ITERS[31:16]=%0d, x_shift_cnt=%0d",
+               w_rows_iter_q, w_rows_iter_d, reg_file_i.hwpe_params[W_ITERS][31:16], x_shift_cnt_q);
+    end
+  end
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_columns_iteration
     if(~rst_ni) begin
       w_cols_iter_q <= '0;

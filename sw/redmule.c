@@ -26,6 +26,7 @@
 #include "golden.h"
 #ifdef MX_ENABLE
 #include "golden_mx.h"
+#include "golden_mx_exp.h"  // MX golden exponents (for future exponent verification)
 #endif
 
 int main() {
@@ -41,33 +42,12 @@ int main() {
   uint16_t *y = y_inp;
   uint16_t *z = z_oup; // golden_out //1c010000
 #ifdef MX_ENABLE
-  // WORKAROUND: Use stack-allocated arrays with explicit initialization
-  // instead of relying on preloaded .data section which may not be initialized in sim
-  uint8_t x_exp_local[32];
-  uint32_t w_exp_local[16];  // Pad to 16 words (64 bytes = 512 bits)
+  // Use exponent data directly from Makefile-generated headers
+  // The Makefile's gen_mx_test_vectors.py generates x_exp[] and w_exp[] arrays
+  uint8_t *x_exp_ptr = x_exp;
+  uint8_t *w_exp_ptr = w_exp;
 
-  // Initialize X exponents (0x77 repeated)
-  for (int i = 0; i < 32; i++) {
-    x_exp_local[i] = 0x77;
-  }
-
-  // Initialize W exponents (0x77777777 for first 8 words, then 0x7f7f7f7f)
-  for (int i = 0; i < 8; i++) {
-    w_exp_local[i] = 0x77777777;
-  }
-  for (int i = 8; i < 12; i++) {
-    w_exp_local[i] = 0x7f7f7f7f;
-  }
-  w_exp_local[12] = 0x00007f7f;  // Last partial word
-  // Pad remaining words to avoid undefined data
-  w_exp_local[13] = 0x00000000;
-  w_exp_local[14] = 0x00000000;
-  w_exp_local[15] = 0x00000000;
-
-  uint8_t *x_exp_ptr = x_exp_local;
-  uint8_t *w_exp_ptr = (uint8_t*)w_exp_local;
-
-  printf("[DEBUG] X exp local addr: 0x%08x, W exp local addr: 0x%08x\n",
+  printf("[DEBUG] X exp addr: 0x%08x, W exp addr: 0x%08x\n",
          (unsigned int)x_exp_ptr, (unsigned int)w_exp_ptr);
 #else
   uint8_t *x_exp_ptr = NULL;
@@ -127,7 +107,7 @@ int main() {
   asm volatile("wfi" ::: "memory");
 
 #ifdef MX_ENABLE
-  errors = redmule8_compare_int((uint32_t *)y, (uint32_t *)golden_mx,
+  errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
 #else
   errors = redmule16_compare_int(y, golden, m_size * k_size / 2);

@@ -89,15 +89,38 @@ STACK_INIT=$(BUILD_DIR)/stack_init.txt
 
 # MX header generation variables (must be defined before $(OBJ) rule)
 MX_GEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_test_vectors.py
+MX_GOLDEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_golden.py
 MX_NUM_LANES  := 32
 MX_BLOCK_SIZE := 32
 X_INPUT_H   := $(SW)/inc/x_input.h
 W_INPUT_H   := $(SW)/inc/w_input.h
+Y_INPUT_H   := $(SW)/inc/y_input.h
 X_MX_H      := $(SW)/inc/x_input_mx.h
 W_MX_H      := $(SW)/inc/w_input_mx.h
 X_EXP_MX_H  := $(SW)/inc/x_exp_mx.h
 W_EXP_MX_H  := $(SW)/inc/w_exp_mx.h
 GOLDEN_MX_H := $(SW)/inc/golden_mx.h
+GOLDEN_MX_EXP_H := $(SW)/inc/golden_mx_exp.h
+MX_DIR      := $(RootDir)golden-model/MX
+X_EXP_TXT  := $(MX_DIR)/mx_x_exp.txt
+W_EXP_TXT  := $(MX_DIR)/mx_w_exp.txt
+
+# Track matrix dimensions to trigger header regeneration when they change
+MX_DIM_FILE := $(BUILD_DIR)/.mx_dimensions
+MX_CURRENT_DIMS := $(M)_$(N)_$(K)
+
+# Create/update dimension tracking file if dimensions changed
+# This rule always runs and updates timestamp if dimensions changed
+.PHONY: check-mx-dims
+check-mx-dims: | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
+	@if [ ! -f $(MX_DIM_FILE) ] || [ "$$(cat $(MX_DIM_FILE) 2>/dev/null)" != "$(MX_CURRENT_DIMS)" ]; then \
+		echo "[MX] Dimensions changed to M=$(M) N=$(N) K=$(K), forcing golden regeneration..."; \
+		echo "$(MX_CURRENT_DIMS)" > $(MX_DIM_FILE); \
+		touch $(MX_DIM_FILE); \
+	fi
+
+$(MX_DIM_FILE): check-mx-dims
 
 # Build implicit rules
 $(STIM_INSTR) $(STIM_DATA) $(STACK_INIT): $(BIN)
@@ -114,7 +137,7 @@ $(CRT): $(BUILD_DIR)
 
 # When MX_ENABLE=1, object file depends on MX headers being generated first
 ifeq ($(MX_ENABLE),1)
-$(OBJ): $(BUILD_DIR) $(TEST_SRCS) $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H)
+$(OBJ): $(BUILD_DIR) $(TEST_SRCS) $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 	$(CC) $(CC_OPTS) -c $(TEST_SRCS) $(FLAGS) $(INC) -o $(OBJ)
 else
 $(OBJ): $(BUILD_DIR) $(TEST_SRCS)
@@ -126,29 +149,29 @@ $(BUILD_DIR):
 
 SHELL := /bin/bash
 
-# MX header generation rules
-$(X_MX_H) $(X_EXP_MX_H) $(GOLDEN_MX_H): $(X_INPUT_H) $(MX_GEN_SCRIPT)
-	@echo "[MX] Generating MX-encoded X matrix headers (compact 8-bit exponents)..."
+# MX header generation rules - X and W matrices
+# Also generates .txt files used by the testbench to preload TCDM memory
+$(X_MX_H) $(X_EXP_MX_H) $(X_EXP_TXT): $(X_INPUT_H) $(MX_GEN_SCRIPT)
+	@echo "[MX] Generating MX-encoded X matrix headers and testbench files..."
 	$(PYTHON) $(MX_GEN_SCRIPT) \
 		--input $(X_INPUT_H) \
 		--output-mx-header $(X_MX_H) \
 		--output-exp-header $(X_EXP_MX_H) \
+		--output-exp $(X_EXP_TXT) \
 		--mx-array-name x_inp \
 		--exp-array-name x_exp \
 		--num-lanes $(MX_NUM_LANES) \
 		--block-size $(MX_BLOCK_SIZE) \
 		--pack-fp8 \
-		--exp-format compact-8bit \
-		--golden-input $(SW)/inc/golden.h \
-		--golden-output-header $(GOLDEN_MX_H) \
-		--golden-array-name golden_mx
+		--exp-format compact-8bit
 
-$(W_MX_H) $(W_EXP_MX_H): $(W_INPUT_H) $(MX_GEN_SCRIPT)
-	@echo "[MX] Generating MX-encoded W matrix headers (compact 32-bit exponents)..."
+$(W_MX_H) $(W_EXP_MX_H) $(W_EXP_TXT): $(W_INPUT_H) $(MX_GEN_SCRIPT)
+	@echo "[MX] Generating MX-encoded W matrix headers and testbench files..."
 	$(PYTHON) $(MX_GEN_SCRIPT) \
 		--input $(W_INPUT_H) \
 		--output-mx-header $(W_MX_H) \
 		--output-exp-header $(W_EXP_MX_H) \
+		--output-exp $(W_EXP_TXT) \
 		--mx-array-name w_inp \
 		--exp-array-name w_exp \
 		--num-lanes $(MX_NUM_LANES) \
@@ -156,7 +179,24 @@ $(W_MX_H) $(W_EXP_MX_H): $(W_INPUT_H) $(MX_GEN_SCRIPT)
 		--pack-fp8 \
 		--exp-format compact-32bit
 
-mx-headers: $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H)
+# MX golden generation - computes golden from MX inputs (includes quantization effects)
+# Depends on MX_DIM_FILE to regenerate when M, N, K change
+$(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H): $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(Y_INPUT_H) $(MX_GOLDEN_SCRIPT) $(MX_DIM_FILE)
+	@echo "[MX] Generating MX golden output (from MX inputs with bit-true GEMM)..."
+	$(PYTHON) $(MX_GOLDEN_SCRIPT) \
+		--x-mx-header $(X_MX_H) \
+		--x-exp-header $(X_EXP_MX_H) \
+		--w-mx-header $(W_MX_H) \
+		--w-exp-header $(W_EXP_MX_H) \
+		--y-header $(Y_INPUT_H) \
+		--output-mx-header $(GOLDEN_MX_H) \
+		--output-exp-header $(GOLDEN_MX_EXP_H) \
+		-M $(M) -N $(N) -K $(K) \
+		--block-size $(MX_BLOCK_SIZE) \
+		--x-exp-format 8bit \
+		--w-exp-format 32bit
+
+mx-headers: $(MX_DIM_FILE) $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(X_EXP_TXT) $(W_EXP_TXT) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 	@echo "[MX] MX-encoded headers are up to date"
 
 # Generate instructions and data stimuli
@@ -177,18 +217,21 @@ synth-ips:
 	$(synth_targs) $(synth_defs)   \
 	> ${compile_script_synth}
 
+# Convenience alias for sw-build
+sw: sw-build
+
 sw-clean:
 	rm -rf $(BUILD_DIR)
-	rm -f $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H)
+	rm -f $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 
 dis:
 	$(OBJDUMP) -d $(BIN) > $(DUMP)
 
 OP     ?= gemm
 fp_fmt ?= FP16
-M      ?= 12
-N      ?= 16
-K      ?= 16
+M      ?= 32
+N      ?= 32
+K      ?= 32
 
 golden: golden-clean
 	$(MAKE) -C golden-model $(OP) SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=$(fp_fmt)

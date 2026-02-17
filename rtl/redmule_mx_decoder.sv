@@ -155,6 +155,10 @@ module redmule_mx_decoder
       if (e16 == 5'b0 || e16 == 5'b11111) begin
         mx_scale_fp16 = val_fp16;
       end else begin
+        // MX scaling: shared_exp encodes the scale bias in E8M0 format (biased by 127)
+        // The fp8_e4m3_to_fp16 function already converted e8 to e16 by adding (BIAS_FP16-BIAS_FP8)=8
+        // So val_fp16 already has the correctly biased FP16 exponent from FP8
+        // Now we just need to apply the MX scale: add (shared_exp - 127) to the FP16 exponent
         delta   = int'(shared_exp) - 127;
         new_e16 = int'(e16) + delta;
         if (new_e16 <= 0) begin

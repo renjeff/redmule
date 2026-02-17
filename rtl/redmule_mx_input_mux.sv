@@ -43,7 +43,7 @@ module redmule_mx_input_mux
 // When MX enabled and decoder is outputting X: use decoded output
 // When MX enabled but not outputting X: invalid (block)
 assign x_muxed_o.valid = mx_enable_i ? (target_is_x_i ? x_decoded_valid_i : 1'b0) : x_raw_i.valid;
-assign x_muxed_o.data  = mx_enable_i ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, x_decoded_data_i} : x_raw_i.data;
+assign x_muxed_o.data  = mx_enable_i ? x_decoded_data_i : x_raw_i.data;
 assign x_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : x_raw_i.strb;
 
 // W mux logic
@@ -51,7 +51,7 @@ assign x_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : x_raw_i.strb;
 // When MX enabled and decoder is outputting W: use decoded output
 // When MX enabled but not outputting W: invalid (block)
 assign w_muxed_o.valid = mx_enable_i ? (target_is_w_i ? w_decoded_valid_i : 1'b0) : w_raw_i.valid;
-assign w_muxed_o.data  = mx_enable_i ? {{(DATAW_ALIGN-MX_NUM_LANES*BITW){1'b0}}, w_decoded_data_i} : w_raw_i.data;
+assign w_muxed_o.data  = mx_enable_i ? w_decoded_data_i : w_raw_i.data;
 assign w_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : w_raw_i.strb;
 
 // Ready signals

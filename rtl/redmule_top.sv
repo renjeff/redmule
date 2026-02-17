@@ -183,7 +183,7 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_stream_buffered (
 logic [7:0]  x_exp_buf_data;
 logic        x_exp_buf_valid;
 logic        x_exp_buf_consume;
-logic [31:0] w_exp_buf_data;  // W vector exponent is 32 bits
+logic [7:0] w_exp_buf_data;   // W exponent is 8 bits (unpacked from packed format)
 logic        w_exp_buf_valid;
 logic        w_exp_buf_consume;
 
@@ -269,11 +269,11 @@ hwpe_stream_fifo #(
   .pop_o   ( w_exp_stream_buffered )
 );
 
-// X exponent buffer: extracts 8-bit exponents from compact 512-bit beats
-// 512/8 = 64 exponents per beat, buffer depth 512 = enough for many blocks
+// X exponent buffer: extracts 8-bit exponents from compact 1024-bit beats
+// 1024/8 = 128 exponents per beat, buffer depth 1024 = enough for many blocks
 redmule_exp_buffer #(
   .EXP_WIDTH     ( 8           ),  // 8-bit exponents for X
-  .BUFFER_DEPTH  ( 512         ),  // Large buffer to hold all exponents
+  .BUFFER_DEPTH  ( 1024        ),  // Large buffer to hold all exponents
   .BEAT_WIDTH    ( DATAW_ALIGN )
 ) i_x_exp_buffer (
   .clk_i      ( clk_i                ),
@@ -285,11 +285,11 @@ redmule_exp_buffer #(
   .consume_i  ( x_exp_buf_consume    )
 );
 
-// W exponent buffer: extracts 32-bit exponent vectors from compact 512-bit beats
-// 512/32 = 16 exponent vectors per beat, buffer depth 1024 = 4 KB for 1024×1024 weight tiles
+// W exponent buffer: extracts 8-bit exponents from packed beats (same as X)
+// 512/8 = 64 exponents per beat, buffer depth 1024 for up to 1024 weight blocks
 redmule_exp_buffer #(
-  .EXP_WIDTH     ( 32          ),  // 32-bit exponent vectors for W
-  .BUFFER_DEPTH  ( 1024        ),  // 4 KB buffer for up to 1024 weight blocks
+  .EXP_WIDTH     ( 8           ),  // 8-bit exponents for W (unpacked from 32-bit packed words)
+  .BUFFER_DEPTH  ( 1024        ),  // Buffer for up to 1024 weight blocks
   .BEAT_WIDTH    ( DATAW_ALIGN )
 ) i_w_exp_buffer (
   .clk_i      ( clk_i                ),
@@ -693,6 +693,7 @@ redmule_mx_output_stage #(
   .rst_ni             ( rst_ni                  ),
   .clear_i            ( clear                   ),
   .mx_enable_i        ( cntrl_flags.mx_enable   ),
+  .reg_enable_i       ( reg_enable              ),  // Gate encoder on valid computation
   .z_engine_data_i    ( z_buffer_d              ),
   .z_engine_stream_i  ( z_buffer_q              ),
   .flgs_engine_i      ( flgs_engine             ),

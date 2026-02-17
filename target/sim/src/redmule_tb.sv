@@ -72,6 +72,8 @@ module redmule_tb
   logic redmule_busy;
   logic core_sleep;
   int errors;
+  integer f_engine_x, f_engine_w;
+  integer f_dec_fp16, f_dec_exp;
 
   task automatic load_exponent_file(string path, int base_word_offset);
     int fd;
@@ -107,9 +109,56 @@ module redmule_tb
   longint unsigned perf_encoder_blocks;
   longint unsigned perf_decoder_blocks;
 
+  // Optional MX debug dumping (enabled with +MX_DEBUG_DUMP)
+  bit mx_debug_dump;
+  integer mx_debug_fd;
+  initial begin
+    mx_debug_dump = 1'b1;
+    mx_debug_fd   = $fopen("mx_debug.log", "w");
+    if (mx_debug_fd == 0) begin
+      $display("[TB][MXDBG] Failed to open mx_debug.log, disabling dump");
+      mx_debug_dump = 1'b0;
+    end else begin
+      $display("[TB][MXDBG] Logging MX slot/decoder activity to mx_debug.log");
+      $fdisplay(mx_debug_fd,
+                "time,stage,target,data,exp");
+    end
+  end
+
+  final begin
+    if (mx_debug_dump) begin
+      $fclose(mx_debug_fd);
+    end
+    if (f_engine_x) $fclose(f_engine_x);
+    if (f_engine_w) $fclose(f_engine_w);
+    if (f_dec_fp16) $fclose(f_dec_fp16);
+    if (f_dec_exp) $fclose(f_dec_exp);
+    $writememh("y_oup_dump.mem", redmule_tb.i_dummy_dmemory.memory);
+  end
+
   initial begin
     if (!$value$plusargs("PERF_ENABLE=%0d", perf_enable)) begin
       perf_enable = 1'b1;
+    end
+  end
+
+  // Engine/decoder dump files
+  initial begin
+    f_engine_x = $fopen("engine_x_inputs.txt", "w");
+    if (f_engine_x == 0) begin
+      $fatal(1, "[TB] Failed to open engine_x_inputs.txt");
+    end
+    f_engine_w = $fopen("engine_w_inputs.txt", "w");
+    if (f_engine_w == 0) begin
+      $fatal(1, "[TB] Failed to open engine_w_inputs.txt");
+    end
+    f_dec_fp16 = $fopen("mx_decoder_fp16_outputs.txt", "w");
+    if (f_dec_fp16 == 0) begin
+      $fatal(1, "[TB] Failed to open mx_decoder_fp16_outputs.txt");
+    end
+    f_dec_exp = $fopen("mx_decoder_exponents.txt", "w");
+    if (f_dec_exp == 0) begin
+      $fatal(1, "[TB] Failed to open mx_decoder_exponents.txt");
     end
   end
 
@@ -174,6 +223,18 @@ module redmule_tb
 
           if (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready) begin
             perf_decoder_blocks <= perf_decoder_blocks + 1;
+            if (f_dec_fp16) begin
+              // mx_dec_fp16_data is a flat vector (NUM_LANES*BITW), so slice per lane
+              for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
+                $fwrite(f_dec_fp16,
+                        "%04h ",
+                        i_dut.i_redmule_top.mx_dec_fp16_data[lane*BITW +: BITW]);
+              end
+              $fwrite(f_dec_fp16, "\n");
+            end
+            if (f_dec_exp && i_dut.i_redmule_top.mx_dec_exp_valid && i_dut.i_redmule_top.mx_dec_exp_ready) begin
+              $fwrite(f_dec_exp, "%02h\n", i_dut.i_redmule_top.mx_dec_exp_data);
+            end
           end
 
           // Timeout logic: stop after IDLE_TIMEOUT cycles of no activity
@@ -455,7 +516,10 @@ module redmule_tb
   );
 
   integer f_x, f_W, f_y, f_tau;
+  integer f_engine_x, f_engine_w;
+  integer f_dec_fp16, f_dec_exp;
   logic start;
+  logic x_buf_read_q, w_buf_read_q;
 
 
   always_ff @(posedge clk_i)
@@ -467,6 +531,175 @@ module redmule_tb
     if((core_data_req.addr == 32'h80000004 ) &&
        (core_data_req.we & core_data_req.req == 1'b1)) begin
       $write("%c", core_data_req.data);
+    end
+  end
+
+  // Track buffer read strobes (one-cycle delayed output valid)
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      x_buf_read_q <= 1'b0;
+      w_buf_read_q <= 1'b0;
+    end else begin
+      x_buf_read_q <= i_dut.i_redmule_top.x_buffer_ctrl.h_shift;
+      w_buf_read_q <= i_dut.i_redmule_top.w_buffer_ctrl.shift;
+    end
+  end
+
+  // MX debug dump: capture slot buffer and decoder activity when enabled
+  always_ff @(posedge clk_i) begin
+    if (mx_debug_dump) begin
+      automatic string target_str;
+      logic slot_fire_x, slot_fire_w;
+      logic x_mux_push, w_mux_push;
+      logic x_fifo_pop, w_fifo_pop;
+      slot_fire_x = i_dut.i_redmule_top.consume_x_slot &&
+                    i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_valid_o &&
+                    i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_exp_valid_o;
+      slot_fire_w = i_dut.i_redmule_top.consume_w_slot &&
+                    i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_valid_o &&
+                    i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_exp_valid_o;
+      x_mux_push = i_dut.i_redmule_top.x_buffer_muxed.valid &&
+                   i_dut.i_redmule_top.x_buffer_muxed.ready;
+      w_mux_push = i_dut.i_redmule_top.w_buffer_muxed.valid &&
+                   i_dut.i_redmule_top.w_buffer_muxed.ready;
+      x_fifo_pop = i_dut.i_redmule_top.x_buffer_fifo.valid &&
+                   i_dut.i_redmule_top.x_buffer_fifo.ready;
+      w_fifo_pop = i_dut.i_redmule_top.w_buffer_fifo.valid &&
+                   i_dut.i_redmule_top.w_buffer_fifo.ready;
+
+      if (slot_fire_x) begin
+        $display("[TB][MXDBG][%0t] SLOT_X data=%h exp=%h",
+                 $time,
+                 i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_data_o,
+                 i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_exp_o);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,SLOT,X,%h,%h",
+                    $time,
+                    i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_data_o,
+                    i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_exp_o);
+      end
+
+      if (slot_fire_w) begin
+        $display("[TB][MXDBG][%0t] SLOT_W data=%h exp=%h",
+                 $time,
+                 i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_data_o,
+                 i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_exp_o);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,SLOT,W,%h,%h",
+                    $time,
+                    i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_data_o,
+                    i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_exp_o);
+      end
+
+      if (x_mux_push) begin
+        $display("[TB][MXDBG][%0t] XBUF data=%h",
+                 $time,
+                 i_dut.i_redmule_top.x_buffer_muxed.data);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,XBUF,%s,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.target_is_x ? "X" : "?",
+                    i_dut.i_redmule_top.x_buffer_muxed.data,
+                    "-");
+      end
+
+      if (w_mux_push) begin
+        $display("[TB][MXDBG][%0t] WBUF data=%h",
+                 $time,
+                 i_dut.i_redmule_top.w_buffer_muxed.data);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,WBUF,%s,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.target_is_w ? "W" : "?",
+                    i_dut.i_redmule_top.w_buffer_muxed.data,
+                    "-");
+      end
+
+      if (x_fifo_pop) begin
+        $display("[TB][MXDBG][%0t] XFIFO data=%h",
+                 $time,
+                 i_dut.i_redmule_top.x_buffer_fifo.data);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,XFIFO,X,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.x_buffer_fifo.data,
+                    "-");
+      end
+
+      if (w_fifo_pop) begin
+        $display("[TB][MXDBG][%0t] WFIFO data=%h",
+                 $time,
+                 i_dut.i_redmule_top.w_buffer_fifo.data);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,WFIFO,W,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.w_buffer_fifo.data,
+                    "-");
+      end
+
+      if (x_buf_read_q) begin
+        $display("[TB][MXDBG][%0t] XBUFQ row=%0d data=%h",
+                 $time,
+                 i_dut.i_redmule_top.i_x_buffer.h_index_r,
+                 i_dut.i_redmule_top.x_buffer_q);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,XBUFQ,X,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.x_buffer_q,
+                    "-");
+        if (f_engine_x) begin
+          for (int w_idx = 0; w_idx < ARRAY_WIDTH; w_idx++) begin
+            for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
+              $fwrite(f_engine_x, "%04h ",
+                      i_dut.i_redmule_top.x_buffer_q[w_idx][h_idx]);
+            end
+          end
+          $fwrite(f_engine_x, "\n");
+        end
+      end
+
+      if (w_buf_read_q) begin
+        $display("[TB][MXDBG][%0t] WBUFQ data=%h",
+                 $time,
+                 i_dut.i_redmule_top.w_buffer_q);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,WBUFQ,W,%h,%s",
+                    $time,
+                    i_dut.i_redmule_top.w_buffer_q,
+                    "-");
+        if (f_engine_w) begin
+          for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
+            $fwrite(f_engine_w, "%04h ",
+                    i_dut.i_redmule_top.w_buffer_q[h_idx]);
+          end
+          $fwrite(f_engine_w, "\n");
+        end
+      end
+
+      if (i_dut.i_redmule_top.mx_dec_fp16_valid &&
+          i_dut.i_redmule_top.mx_dec_fp16_ready) begin
+        target_str = i_dut.i_redmule_top.target_is_x ? "X" :
+                     i_dut.i_redmule_top.target_is_w ? "W" : "NONE";
+        $display("[TB][MXDBG][%0t] DEC_%s data=%h",
+                 $time,
+                 target_str,
+                 i_dut.i_redmule_top.mx_dec_fp16_data);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,DEC,%s,%h,%s",
+                    $time,
+                    target_str,
+                    i_dut.i_redmule_top.mx_dec_fp16_data,
+                    "-");
+      end
     end
   end
 
@@ -484,24 +717,11 @@ module redmule_tb
     $display("Please find STIM_DATA loaded from %s", stim_data);
     $display("Please find STACK_INIT loaded from %s", stack_init);
 
-    // MX: derive directory from stim_data
+    // MX: derive exponent file paths from stim_data
     if (mx_enable) begin
-      // derive MX directory from stim_data absolute path
       mx_dir_resolved = dirname(stim_data);
       $display("[TB] MX dir derived from STIM_DATA: %s", mx_dir_resolved);
-      if (x_exp_file == "" || w_exp_file == "") begin
-        string repo_root;
-        string exp_dir;
-        repo_root = dirname(mx_dir_resolved); // /sw/build -> /sw
-        repo_root = dirname(repo_root);       // /sw -> project root
-        exp_dir   = {repo_root, "/golden-model/MX"};
-        if (x_exp_file == "") x_exp_file = {exp_dir, "/mx_x_exp_packed.txt"};
-        if (w_exp_file == "") w_exp_file = {exp_dir, "/mx_w_exp_packed.txt"};
-      end
-      $display("[TB] X exponent file : %s", x_exp_file);
-      $display("[TB] W exponent file : %s", w_exp_file);
-
-      // MX exponent files are loaded directly into TCDM via load_exponent_file
+      $display("[TB] FW is responsible for loading MX exponent tables");
     end
 
     test_mode = 1'b0;
@@ -511,13 +731,7 @@ module redmule_tb
     $readmemh(stim_instr, redmule_tb.i_dummy_imemory.memory);
     $readmemh(stim_data,  redmule_tb.i_dummy_dmemory.memory);
     $readmemh(stack_init, redmule_tb.i_dummy_stack_memory.memory);
-    if (mx_enable) begin
-      load_exponent_file(x_exp_file, X_EXP_MEM_OFFSET);
-      load_exponent_file(w_exp_file, W_EXP_MEM_OFFSET);
-    end
-
-
-
+    // Firmware now loads MX exponent tables; no preload here
     // End: WFI + returned != -1 signals end-of-computation
     while(~core_sleep || errors==-1) begin
       // Feed MX data to X and W buffers if enabled

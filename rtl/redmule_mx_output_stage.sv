@@ -22,6 +22,7 @@ module redmule_mx_output_stage
   input  logic rst_ni,
   input  logic clear_i,
   input  logic mx_enable_i,
+  input  logic reg_enable_i,     // Engine is actively computing with valid inputs
 
   // Engine output
   input  logic [Width-1:0][BITW-1:0] z_engine_data_i,
@@ -53,6 +54,24 @@ module redmule_mx_output_stage
 logic [Width-1:0][BITW-1:0] fifo_data_out;
 logic fifo_push, fifo_pop, fifo_valid;
 
+// Delay reg_enable by total pipeline latency
+// Includes: systolic array (Height + Width) + MX decoder path + FMA pipeline
+// Empirically tuned to align with first valid engine output
+localparam int unsigned ENGINE_LATENCY = Height + Width + 55;
+logic [ENGINE_LATENCY-1:0] reg_enable_delay_q;
+logic reg_enable_delayed;
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni)
+    reg_enable_delay_q <= '0;
+  else if (clear_i)
+    reg_enable_delay_q <= '0;
+  else
+    reg_enable_delay_q <= {reg_enable_delay_q[ENGINE_LATENCY-2:0], reg_enable_i};
+end
+
+assign reg_enable_delayed = reg_enable_delay_q[ENGINE_LATENCY-1];
+
 // Push conditions - check if engine has valid output
 logic any_pe_valid;
 logic [Width-1:0] width_valid;
@@ -62,9 +81,12 @@ always_comb begin
   end
   any_pe_valid = |width_valid; // OR all Width stages
 end
-assign fifo_push = any_pe_valid && mx_enable_i && fifo_grant_o;
+assign fifo_push = z_engine_stream_i.valid && mx_enable_i && fifo_grant_o;
 
 // Engine FIFO
+logic [Width-1:0][BITW-1:0] fifo_data_in;
+assign fifo_data_in = z_engine_stream_i.data[Width*BITW-1:0];
+
 redmule_mx_fifo #(
   .DATA_WIDTH ( Width*BITW ),
   .FIFO_DEPTH ( 4          )
@@ -74,7 +96,7 @@ redmule_mx_fifo #(
   .clear_i    ( clear_i          ),
   .push_i     ( fifo_push        ),
   .grant_o    ( fifo_grant_o     ),
-  .data_i     ( z_engine_data_i  ),
+  .data_i     ( fifo_data_in     ),
   .pop_i      ( fifo_pop         ),
   .valid_o    ( fifo_valid       ),
   .data_o     ( fifo_data_out    )
@@ -87,7 +109,7 @@ logic [7:0] mx_exp_data;
 logic mx_exp_valid, mx_exp_ready;
 logic encoder_ready;
 
-// Gate pop with mx_enable AND fifo_valid
+// Gate pop with mx_enable AND fifo_valid AND decoder started
 assign fifo_pop = encoder_ready && mx_enable_i && fifo_valid;
 
 // MX Encoder
@@ -162,6 +184,6 @@ assign z_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : z_engine_stream
 assign z_muxed_o.valid = mx_enable_i ? mx_mux_valid_q : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
-assign z_engine_stream_i.ready = mx_enable_i ? 1'b1 : z_muxed_o.ready;
+assign z_engine_stream_i.ready = mx_enable_i ? fifo_grant_o : z_muxed_o.ready;
 
 endmodule : redmule_mx_output_stage

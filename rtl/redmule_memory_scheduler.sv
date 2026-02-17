@@ -63,7 +63,7 @@ module redmule_memory_scheduler
   assign w_blocks = (total_w_values + 31) >> 5;  // ceil(N*K / 32)
   
   assign x_exp_bytes = x_blocks;              // 1 byte per X block
-  assign w_exp_bytes = w_blocks << 2;         // 4 bytes per W block (vector exponent)
+  assign w_exp_bytes = w_blocks;              // 1 byte per W block (same as X)
   
   assign x_exp_beats = (x_exp_bytes + 63) >> 6;  // ceil(x_exp_bytes / 64)
   assign w_exp_beats = (w_exp_bytes + 63) >> 6;  // ceil(w_exp_bytes / 64)
@@ -152,19 +152,34 @@ module redmule_memory_scheduler
 
   assign x_rows_offs_d = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 ? '0 : x_rows_offs_q + reg_file_i.hwpe_params[X_ROWS_OFFS];
 
-  assign num_x_reads = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
+  // In MX mode, X data is packed (2 FP8 per 16-bit word), so we read half as many beats
+  logic [$clog2(W):0] num_x_reads_raw;
+  assign num_x_reads_raw = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
+  assign num_x_reads = cntrl_flags_i.mx_enable ? ((num_x_reads_raw + 1) >> 1) : num_x_reads_raw;
 
   // Here we initialize the streamer source signals
   // for the X stream source
-  assign cntrl_streamer_o.x_stream_source_ctrl.req_start = !cntrl_flags_i.idle && flgs_streamer_i.x_stream_source_flags.ready_start &&
-                                                           (cntrl_scheduler_i.first_load || tot_x_read_q < reg_file_i.hwpe_params[TOT_X_READ]);
+  // Allow first X request while controller is in the first_load phase, but block additional
+  // requests until TOT_X_READ indicates more tiles are required. Without this guard the X
+  // stream can restart multiple times before W loading completes, effectively duplicating
+  // the decoded blocks.
+  logic x_first_req_pending;
+  assign x_first_req_pending = cntrl_scheduler_i.first_load && (tot_x_read_q == '0);
+
+  assign cntrl_streamer_o.x_stream_source_ctrl.req_start = !cntrl_flags_i.idle &&
+                                                           flgs_streamer_i.x_stream_source_flags.ready_start &&
+                                                           (x_first_req_pending ||
+                                                            (tot_x_read_q < reg_file_i.hwpe_params[TOT_X_READ]));
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[X_ADDR]
                                                                     + x_rows_offs_q + x_cols_offs_q;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.tot_len = num_x_reads;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d0_len = 'd1;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d0_stride = 'd0;
-  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_len = W;
-  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_stride = reg_file_i.hwpe_params[X_D1_STRIDE];
+  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_len = cntrl_flags_i.mx_enable ? (W >> 1) : W;
+  // In MX mode, X data is read linearly (packed FP8), so use beat size (DW/8 bytes) as stride
+  // In FP16 mode, use row stride from tiler
+  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_stride =
+      cntrl_flags_i.mx_enable ? (DW/8) : reg_file_i.hwpe_params[X_D1_STRIDE];
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d2_stride = '0;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 

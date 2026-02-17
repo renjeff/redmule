@@ -167,10 +167,10 @@ logic [MX_DATA_W-1:0] w_unpacked_lower, w_unpacked_upper;
 
 always_comb begin
   if (mx_enable_i) begin
-    x_unpacked_lower = mx_unpack_half(x_data_i.data[MX_DATA_W-1:0]);
-    x_unpacked_upper = mx_unpack_half(x_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
-    w_unpacked_lower = mx_unpack_half(w_data_i.data[MX_DATA_W-1:0]);
-    w_unpacked_upper = mx_unpack_half(w_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
+    x_unpacked_lower = mx_unpack_half(x_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
+    x_unpacked_upper = mx_unpack_half(x_data_i.data[MX_DATA_W-1:0]);
+    w_unpacked_lower = mx_unpack_half(w_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
+    w_unpacked_upper = mx_unpack_half(w_data_i.data[MX_DATA_W-1:0]);
   end else begin
     // FP16 mode: pass through lower half
     x_unpacked_lower = x_data_i.data[MX_DATA_W-1:0];
@@ -227,9 +227,11 @@ logic x_slot_pair_ready, w_slot_pair_ready;
 assign x_slot_pair_ready = x_slot_valid_o && x_slot_exp_valid_o;
 assign w_slot_pair_ready = w_slot_valid_o && w_slot_exp_valid_o;
 
+// Registered consume flags to ensure single-cycle pop
+logic x_consumed_q, w_consumed_q;
 logic x_slot_pop, w_slot_pop;
-assign x_slot_pop = consume_x_slot_i && x_slot_pair_ready;
-assign w_slot_pop = consume_w_slot_i && w_slot_pair_ready;
+assign x_slot_pop = consume_x_slot_i && x_slot_pair_ready && !x_consumed_q;
+assign w_slot_pop = consume_w_slot_i && w_slot_pair_ready && !w_consumed_q;
 
 // Next-state logic for pointers / counters
 logic [SLOT_PTR_W-1:0] x_data_head_d, x_data_tail_d;
@@ -307,6 +309,8 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_exp_head_q <= '0;
     w_exp_tail_q <= '0;
     w_exp_count_q <= '0;
+    x_consumed_q <= 1'b0;
+    w_consumed_q <= 1'b0;
   end else if (clear_i) begin
     x_data_head_q <= '0;
     x_data_tail_q <= '0;
@@ -320,6 +324,8 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_exp_head_q <= '0;
     w_exp_tail_q <= '0;
     w_exp_count_q <= '0;
+    x_consumed_q <= 1'b0;
+    w_consumed_q <= 1'b0;
   end else begin
     x_data_head_q <= x_data_head_d;
     x_data_tail_q <= x_data_tail_d;
@@ -333,21 +339,38 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     w_exp_head_q <= w_exp_head_d;
     w_exp_tail_q <= w_exp_tail_d;
     w_exp_count_q <= w_exp_count_d;
+    
+    // Set consumed flag when slot is popped
+    if (x_slot_pop) begin
+      x_consumed_q <= 1'b1;
+    end else if (!consume_x_slot_i) begin
+      x_consumed_q <= 1'b0;
+    end
 
+    if (w_slot_pop) begin
+      w_consumed_q <= 1'b1;
+    end else if (!consume_w_slot_i) begin
+      w_consumed_q <= 1'b0;
+    end
+  end
+end
+
+// Data memory writes
+always_ff @(posedge clk_i) begin
     // Mantissa writes (use tail prior to update)
     if (x_data_accept) begin
       automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
       idx0 = x_data_tail_q;
       idx1 = bump_slot_ptr(x_data_tail_q, 1);
-      x_data_mem[idx0] <= x_unpacked_lower;
-      x_data_mem[idx1] <= x_unpacked_upper;
+      x_data_mem[idx1] <= x_unpacked_lower;
+      x_data_mem[idx0] <= x_unpacked_upper;
     end
     if (w_data_accept) begin
       automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
       idx0 = w_data_tail_q;
       idx1 = bump_slot_ptr(w_data_tail_q, 1);
-      w_data_mem[idx0] <= w_unpacked_lower;
-      w_data_mem[idx1] <= w_unpacked_upper;
+      w_data_mem[idx1] <= w_unpacked_lower;
+      w_data_mem[idx0] <= w_unpacked_upper;
     end
 
     // Exponent writes
@@ -358,6 +381,5 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
       w_exp_mem[w_exp_tail_q] <= w_exp_data_i;
     end
   end
-end
 
 endmodule : redmule_mx_slot_buffer

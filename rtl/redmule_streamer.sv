@@ -258,12 +258,31 @@ hci_core_intf #(
 hci_core_intf #( .DW ( DW ),
                  .UW ( UW ) ) z_fifo_q ( .clk ( clk_i ) );
 
-logic cast;
-assign cast = (ctrl_i.input_cast_src_fmt == fpnew_pkg::FP16) ? 1'b0: 1'b1;
+// load_cast: active in non-MX mode when source data needs FP8→FP16 conversion.
+// In MX mode this is always 0 — the MX decoder handles FP8→FP16.
+// Also reused as the store-cast enable for the non-MX castout path.
+logic load_cast;
+assign load_cast = ctrl_i.mx_enable ? 1'b0 :
+                   (ctrl_i.input_cast_src_fmt == fpnew_pkg::FP16) ? 1'b0 : 1'b1;
 
-// Store cast unit
-// This unit uses only the data bus of the TCDM interface. The other buses
-// are assigned manually.
+logic [DW-1:0] z_cast_data;
+// MX store path: byte+halfword swap applied to the raw pre-encoded FP8 stream
+// (the MX output stage already converts FP16→FP8; we only need to fix byte order).
+logic [DW-1:0] z_raw_swapped_bytes;
+logic [DW-1:0] z_raw_swapped;
+
+for (genvar byte_word = 0; byte_word < DW/16; byte_word++) begin : gen_store_byte_swap
+  assign z_raw_swapped_bytes[byte_word*16 +: 8]     = zstream2cast.data[byte_word*16 + 8 +: 8];
+  assign z_raw_swapped_bytes[byte_word*16 + 8 +: 8] = zstream2cast.data[byte_word*16 +: 8];
+end
+
+for (genvar word = 0; word < DW/32; word++) begin : gen_store_half_swap
+  assign z_raw_swapped[word*32 +: 16]      = z_raw_swapped_bytes[word*32 + 16 +: 16];
+  assign z_raw_swapped[word*32 + 16 +: 16] = z_raw_swapped_bytes[word*32 +: 16];
+end
+
+// Store cast unit — active only in non-MX FP8 mode (FP16→FP8 conversion).
+// In MX mode cast_i=0 (bypass); MX encoder has already produced FP8 output.
 redmule_castout #(
   .DATA_W        ( DW ),
   .FpFmtConfig   ( FpFmtConfig  ),
@@ -273,11 +292,15 @@ redmule_castout #(
   .clk_i                                     ,
   .rst_ni                                    ,
   .clear_i                                   ,
-  .cast_i       ( cast                      ),
+  .cast_i       ( load_cast                 ),
   .src_i        (zstream2cast.data          ),
   .dst_fmt_i    (ctrl_i.output_cast_dst_fmt ),
-  .dst_o        (z_fifo_d.data              )
+  .dst_o        (z_cast_data               )
 );
+
+// In MX mode: store the pre-encoded FP8 stream with byte reordering.
+// In non-MX mode: store the castout result (FP16 or FP8 depending on load_cast).
+assign z_fifo_d.data = ctrl_i.mx_enable ? z_raw_swapped : z_cast_data;
 
 // Left TCDM buses assignment.
 assign z_fifo_d.req          = zstream2cast.req;
@@ -407,7 +430,7 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
       .clk_i                                     ,
       .rst_ni                                    ,
       .clear_i                                   ,
-      .cast_i       ( cast                      ),
+      .cast_i       ( load_cast                 ),
       .src_i        ( load_fifo_q[i].r_data     ),
       .src_fmt_i    ( ctrl_i.input_cast_src_fmt ),
       .dst_o        ( tcdm_cast[i].r_data       )
