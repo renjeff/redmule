@@ -72,8 +72,8 @@ module redmule_tb
   logic redmule_busy;
   logic core_sleep;
   int errors;
-  integer f_engine_x, f_engine_w;
-  integer f_dec_fp16, f_dec_exp;
+  integer f_engine_x, f_engine_w, f_engine_z;
+  integer f_dec_fp16, f_dec_exp, f_dec_target;
 
   task automatic load_exponent_file(string path, int base_word_offset);
     int fd;
@@ -131,8 +131,10 @@ module redmule_tb
     end
     if (f_engine_x) $fclose(f_engine_x);
     if (f_engine_w) $fclose(f_engine_w);
+    if (f_engine_z) $fclose(f_engine_z);
     if (f_dec_fp16) $fclose(f_dec_fp16);
     if (f_dec_exp) $fclose(f_dec_exp);
+    if (f_dec_target) $fclose(f_dec_target);
     $writememh("y_oup_dump.mem", redmule_tb.i_dummy_dmemory.memory);
   end
 
@@ -152,6 +154,10 @@ module redmule_tb
     if (f_engine_w == 0) begin
       $fatal(1, "[TB] Failed to open engine_w_inputs.txt");
     end
+    f_engine_z = $fopen("engine_z_outputs.txt", "w");
+    if (f_engine_z == 0) begin
+      $fatal(1, "[TB] Failed to open engine_z_outputs.txt");
+    end
     f_dec_fp16 = $fopen("mx_decoder_fp16_outputs.txt", "w");
     if (f_dec_fp16 == 0) begin
       $fatal(1, "[TB] Failed to open mx_decoder_fp16_outputs.txt");
@@ -159,6 +165,10 @@ module redmule_tb
     f_dec_exp = $fopen("mx_decoder_exponents.txt", "w");
     if (f_dec_exp == 0) begin
       $fatal(1, "[TB] Failed to open mx_decoder_exponents.txt");
+    end
+    f_dec_target = $fopen("mx_decoder_targets.txt", "w");
+    if (f_dec_target == 0) begin
+      $fatal(1, "[TB] Failed to open mx_decoder_targets.txt");
     end
   end
 
@@ -232,8 +242,14 @@ module redmule_tb
               end
               $fwrite(f_dec_fp16, "\n");
             end
-            if (f_dec_exp && i_dut.i_redmule_top.mx_dec_exp_valid && i_dut.i_redmule_top.mx_dec_exp_ready) begin
-              $fwrite(f_dec_exp, "%02h\n", i_dut.i_redmule_top.mx_dec_exp_data);
+            if (f_dec_target) begin
+              if (i_dut.i_redmule_top.target_is_x) begin
+                $fwrite(f_dec_target, "X\n");
+              end else if (i_dut.i_redmule_top.target_is_w) begin
+                $fwrite(f_dec_target, "W\n");
+              end else begin
+                $fwrite(f_dec_target, "-\n");
+              end
             end
           end
 
@@ -257,6 +273,15 @@ module redmule_tb
     end
   end
   logic scan_cg_en;
+
+  // Log MX decoder exponents whenever the decoder accepts a new block
+  always @(posedge clk_i) begin
+    if (f_dec_exp &&
+        i_dut.i_redmule_top.mx_dec_exp_valid &&
+        i_dut.i_redmule_top.mx_dec_exp_ready) begin
+      $fwrite(f_dec_exp, "%0h\n", i_dut.i_redmule_top.mx_dec_exp_data);
+    end
+  end
 
   // Helper: get directory name from path
   function automatic string dirname(input string path);
@@ -516,8 +541,8 @@ module redmule_tb
   );
 
   integer f_x, f_W, f_y, f_tau;
-  integer f_engine_x, f_engine_w;
-  integer f_dec_fp16, f_dec_exp;
+  integer f_engine_x, f_engine_w, f_engine_z;
+  integer f_dec_fp16, f_dec_exp, f_dec_target;
   logic start;
   logic x_buf_read_q, w_buf_read_q;
 
@@ -681,6 +706,17 @@ module redmule_tb
                     i_dut.i_redmule_top.w_buffer_q[h_idx]);
           end
           $fwrite(f_engine_w, "\n");
+        end
+      end
+
+      if (i_dut.i_redmule_top.fifo_valid &&
+          i_dut.i_redmule_top.fifo_pop) begin
+        if (f_engine_z) begin
+          for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
+            $fwrite(f_engine_z, "%04h ",
+                    i_dut.i_redmule_top.fifo_data_out[lane*BITW +: BITW]);
+          end
+          $fwrite(f_engine_z, "\n");
         end
       end
 

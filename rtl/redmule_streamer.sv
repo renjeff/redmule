@@ -266,20 +266,6 @@ assign load_cast = ctrl_i.mx_enable ? 1'b0 :
                    (ctrl_i.input_cast_src_fmt == fpnew_pkg::FP16) ? 1'b0 : 1'b1;
 
 logic [DW-1:0] z_cast_data;
-// MX store path: byte+halfword swap applied to the raw pre-encoded FP8 stream
-// (the MX output stage already converts FP16→FP8; we only need to fix byte order).
-logic [DW-1:0] z_raw_swapped_bytes;
-logic [DW-1:0] z_raw_swapped;
-
-for (genvar byte_word = 0; byte_word < DW/16; byte_word++) begin : gen_store_byte_swap
-  assign z_raw_swapped_bytes[byte_word*16 +: 8]     = zstream2cast.data[byte_word*16 + 8 +: 8];
-  assign z_raw_swapped_bytes[byte_word*16 + 8 +: 8] = zstream2cast.data[byte_word*16 +: 8];
-end
-
-for (genvar word = 0; word < DW/32; word++) begin : gen_store_half_swap
-  assign z_raw_swapped[word*32 +: 16]      = z_raw_swapped_bytes[word*32 + 16 +: 16];
-  assign z_raw_swapped[word*32 + 16 +: 16] = z_raw_swapped_bytes[word*32 +: 16];
-end
 
 // Store cast unit — active only in non-MX FP8 mode (FP16→FP8 conversion).
 // In MX mode cast_i=0 (bypass); MX encoder has already produced FP8 output.
@@ -298,9 +284,9 @@ redmule_castout #(
   .dst_o        (z_cast_data               )
 );
 
-// In MX mode: store the pre-encoded FP8 stream with byte reordering.
-// In non-MX mode: store the castout result (FP16 or FP8 depending on load_cast).
-assign z_fifo_d.data = ctrl_i.mx_enable ? z_raw_swapped : z_cast_data;
+// In MX mode: store the pre-encoded FP8 stream directly. In non-MX mode the
+// castout result (FP16 or FP8 depending on load_cast) is used.
+assign z_fifo_d.data = ctrl_i.mx_enable ? zstream2cast.data : z_cast_data;
 
 // Left TCDM buses assignment.
 assign z_fifo_d.req          = zstream2cast.req;

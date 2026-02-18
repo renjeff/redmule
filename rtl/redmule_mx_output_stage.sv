@@ -155,7 +155,12 @@ logic mx_mux_handshake_done;
 
 assign mx_val_ready = !mx_mux_valid_q || mx_mux_handshake_done;
 
-// MX encoder output packing
+// MX encoder output packing (32 FP8 bytes per block)
+localparam int unsigned MX_ACTIVE_BYTES = (DATAW/2)/8;
+localparam int unsigned TOTAL_BYTES     = DATAW_ALIGN/8;
+logic [TOTAL_BYTES-1:0] mx_store_strb;
+assign mx_store_strb = {{(TOTAL_BYTES-MX_ACTIVE_BYTES){1'b0}}, {MX_ACTIVE_BYTES{1'b1}}};
+
 logic [DATAW_ALIGN-1:0] mx_z_buffer_data;
 assign mx_z_buffer_data = {{(DATAW_ALIGN-256){1'b0}}, mx_val_data};
 
@@ -180,7 +185,7 @@ end
 
 // MUX: Select between latched MX output and engine bypass
 assign z_muxed_o.data  = mx_enable_i ? mx_mux_data_q : z_engine_stream_i.data;
-assign z_muxed_o.strb  = mx_enable_i ? {(DATAW_ALIGN/8){1'b1}} : z_engine_stream_i.strb;
+assign z_muxed_o.strb  = mx_enable_i ? mx_store_strb : z_engine_stream_i.strb;
 assign z_muxed_o.valid = mx_enable_i ? mx_mux_valid_q : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream

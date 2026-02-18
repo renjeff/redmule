@@ -197,6 +197,13 @@ module redmule_memory_scheduler
 
   // Here we initialize the streamer source signals
   // for the Y stream source
+  logic [31:0] z_store_d0_stride;
+  logic [31:0] z_store_d2_stride;
+  assign z_store_d0_stride = cntrl_flags_i.mx_enable ? (reg_file_i.hwpe_params[Z_D0_STRIDE] >> 1)
+                                                     :  reg_file_i.hwpe_params[Z_D0_STRIDE];
+  assign z_store_d2_stride = cntrl_flags_i.mx_enable ? (reg_file_i.hwpe_params[Z_D2_STRIDE] >> 1)
+                                                     :  reg_file_i.hwpe_params[Z_D2_STRIDE];
+
   assign cntrl_streamer_o.y_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load && reg_file_i.hwpe_params[OP_SELECTION][0] && flgs_streamer_i.y_stream_source_flags.ready_start;
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
@@ -213,10 +220,10 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_len = W;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_stride = reg_file_i.hwpe_params[Z_D0_STRIDE];
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_stride = z_store_d0_stride;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_len = reg_file_i.hwpe_params[W_ITERS][15:0];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_stride = JMP;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d2_stride = reg_file_i.hwpe_params[Z_D2_STRIDE];
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d2_stride = z_store_d2_stride;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 
   // MX exponent streams (linear addressing, enabled only when MX mode is active)
