@@ -312,7 +312,7 @@ localparam int unsigned MX_INPUT_ELEM_WIDTH  = 8;
 localparam int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH;
 localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
 localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
-localparam int unsigned MX_SLOT_FIFO_DEPTH   = 16;  // Trimmed slack: still 8 beats but far less storage
+localparam int unsigned MX_SLOT_FIFO_DEPTH   = 16;  // Restore depth to avoid stressing dummy TCDM
 
 // Slot buffer signals
 logic x_slot_valid, w_slot_valid;

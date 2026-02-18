@@ -88,6 +88,15 @@ STIM_DATA=$(BUILD_DIR)/stim_data.txt
 STACK_INIT=$(BUILD_DIR)/stack_init.txt
 
 # MX header generation variables (must be defined before $(OBJ) rule)
+TENSOR_DIM_HEADER := $(SW)/inc/tensor_dim.h
+define _extract_dim
+$(shell awk '/#define $(1)_SIZE/{print $$3}' $(TENSOR_DIM_HEADER) 2>/dev/null)
+endef
+M ?= $(if $(wildcard $(TENSOR_DIM_HEADER)),$(call _extract_dim,M),3)
+N ?= $(if $(wildcard $(TENSOR_DIM_HEADER)),$(call _extract_dim,N),3)
+K ?= $(if $(wildcard $(TENSOR_DIM_HEADER)),$(call _extract_dim,K),3)
+
+# MX header generation variables (must be defined before $(OBJ) rule)
 MX_GEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_test_vectors.py
 MX_GOLDEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_golden.py
 MX_NUM_LANES  := 32
@@ -102,6 +111,7 @@ W_EXP_MX_H  := $(SW)/inc/w_exp_mx.h
 GOLDEN_MX_H := $(SW)/inc/golden_mx.h
 GOLDEN_MX_EXP_H := $(SW)/inc/golden_mx_exp.h
 MX_DIR      := $(RootDir)golden-model/MX
+FP16_GOLDEN_SCRIPT := $(RootDir)golden-model/FP16/gemm.py
 X_EXP_TXT  := $(MX_DIR)/mx_x_exp.txt
 W_EXP_TXT  := $(MX_DIR)/mx_w_exp.txt
 
@@ -196,8 +206,17 @@ $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H): $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_
 		--x-exp-format 8bit \
 		--w-exp-format 32bit
 
-mx-headers: $(MX_DIM_FILE) $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(X_EXP_TXT) $(W_EXP_TXT) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
+mx-headers: $(MX_DIM_FILE) fp16-headers $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(X_EXP_TXT) $(W_EXP_TXT) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 	@echo "[MX] MX-encoded headers are up to date"
+
+.PHONY: fp16-headers
+fp16-headers:
+	@if [ "$(MX_SKIP_FP16)" = "1" ]; then \
+		echo "[FP16] Skipping baseline regeneration (MX_SKIP_FP16=1)"; \
+	else \
+		echo "[FP16] Generating baseline headers (M=$(M), N=$(N), K=$(K)) via golden model..."; \
+		$(MAKE) -C golden-model gemm SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=FP16; \
+	fi
 
 # Generate instructions and data stimuli
 # Only generate MX headers when MX_ENABLE=1
