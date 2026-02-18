@@ -142,7 +142,7 @@ flgs_scheduler_t  flgs_scheduler;
 
 // Register file binded from controller to FSM
 ctrl_regfile_t reg_file;
-flags_fifo_t   x_fifo_flgs, w_fifo_flgs, z_fifo_flgs, x_exp_fifo_flgs, w_exp_fifo_flgs;
+flags_fifo_t   x_fifo_flgs, w_fifo_flgs, x_exp_fifo_flgs, w_exp_fifo_flgs;
 cntrl_flags_t  cntrl_flags;
 
 /*--------------------------------------------------------------*/
@@ -169,9 +169,9 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_slot      ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) y_buffer_d         ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) y_buffer_fifo      ( .clk( clk_i ) );
 
-// Z streaming interface + Z FIFO interface
+// Z streaming interface
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_q         ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_fifo      ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_muxed     ( .clk( clk_i ) );
 
 // X,W exponent interfaces: streaming input from streamer
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_exp_from_streamer   ( .clk( clk_i ) );
@@ -216,7 +216,7 @@ redmule_streamer #(
   .x_exp_stream_o  ( x_exp_from_streamer ), // mx output exponent stream
   .w_exp_stream_o  ( w_exp_from_streamer ),
   // Sink interface for the outgoing stream
-  .z_stream_i      ( z_buffer_fifo       ),
+  .z_stream_i      ( z_buffer_muxed      ),
   // Master TCDM interface ports for the memory side
   .tcdm            ( tcdm                ),
   .ecc_errors_o    ( ecc_errors_streamer ),
@@ -312,7 +312,7 @@ localparam int unsigned MX_INPUT_ELEM_WIDTH  = 8;
 localparam int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH;
 localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
 localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
-localparam int unsigned MX_SLOT_FIFO_DEPTH   = 64;  // Enough slots to cover long bursts
+localparam int unsigned MX_SLOT_FIFO_DEPTH   = 16;  // Trimmed slack: still 8 beats but far less storage
 
 // Slot buffer signals
 logic x_slot_valid, w_slot_valid;
@@ -678,9 +678,6 @@ redmule_engine     #(
 /* |                   MX OUTPUT STAGE                         | */
 /*---------------------------------------------------------------*/
 
-// MX Output Stage: Engine FIFO, MX encoder, and output muxing
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) z_buffer_muxed ( .clk( clk_i ) );
-
 redmule_mx_output_stage #(
   .DATAW_ALIGN   ( DATAW_ALIGN   ),
   .DATAW         ( DATAW         ),
@@ -711,24 +708,12 @@ redmule_mx_output_stage #(
   .fifo_data_out_o    ( fifo_data_out           )
 );
 
-hwpe_stream_fifo #(
-  .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 2             )
-) i_z_buffer_fifo (
-  .clk_i          ( clk_i         ),
-  .rst_ni         ( rst_ni        ),
-  .clear_i        ( clear         ),
-  .flags_o        ( z_fifo_flgs   ),
-  .push_i         ( z_buffer_muxed ),
-  .pop_o          ( z_buffer_fifo )
-);
-
 /*---------------------------------------------------------------*/
 /* |                    Memory Controller                      | */
 /*---------------------------------------------------------------*/
 
 logic z_priority;
-assign z_priority = z_buffer_flgs.z_priority | !z_fifo_flgs.empty;
+assign z_priority = z_buffer_flgs.z_priority;
 
 redmule_memory_scheduler #(
   .DW (DATAW_ALIGN),

@@ -279,6 +279,9 @@ assign config_d.tot_x_read   = mx_enable ? ((tot_x_read_raw + MX_PACK_FACTOR - 1
 assign config_d.x_tot_len    = '0; // not used
 
 // register configuration to avoid critical paths (maybe removable!)
+bit dbg_tiler;
+initial dbg_tiler = $test$plusargs("MX_DEBUG_DUMP");
+
 always_ff @(posedge clk_int or negedge rst_ni) begin
   if(~rst_ni)
     config_q <= '0;
@@ -286,12 +289,14 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
     config_q <= '0;
   else if(x_rows_by_w_cols_by_w_rows_iter_valid & x_rows_by_w_cols_by_w_rows_iter_ready) begin
     config_q <= config_d;
-    $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d",
-             mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter);
-    $display("[DBG][TILER] m_size=%0d m_size_for_x_buffer=%0d x_rows_lftovr=%0d x_rows_iter=%0d",
-             config_d.m_size, m_size_for_x_buffer, config_d.x_rows_lftovr, config_d.x_rows_iter);
-    $display("[DBG][TILER] x_cols_lftovr=%0d x_buffer_slots=%0d x_cols_iter=%0d LEFTOVERS[31:24]=%0d",
-             config_d.x_cols_lftovr, config_d.x_buffer_slots, config_d.x_cols_iter, config_d.x_rows_lftovr);
+    if (dbg_tiler) begin
+      $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d",
+               mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter);
+      $display("[DBG][TILER] m_size=%0d m_size_for_x_buffer=%0d x_rows_lftovr=%0d x_rows_iter=%0d",
+               config_d.m_size, m_size_for_x_buffer, config_d.x_rows_lftovr, config_d.x_rows_iter);
+      $display("[DBG][TILER] x_cols_lftovr=%0d x_buffer_slots=%0d x_cols_iter=%0d LEFTOVERS[31:24]=%0d",
+               config_d.x_cols_lftovr, config_d.x_buffer_slots, config_d.x_cols_iter, config_d.x_rows_lftovr);
+    end
   end
 end
 

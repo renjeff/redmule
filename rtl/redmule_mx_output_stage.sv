@@ -151,44 +151,99 @@ assign mx_exp_data_o    = mx_exp_data;
 // Data stream handshake - provide backpressure when output register full
 logic mx_mux_valid_q;
 logic [DATAW_ALIGN-1:0] mx_mux_data_q;
+logic [DATAW_ALIGN/8-1:0] mx_mux_strb_q;
 logic mx_mux_handshake_done;
 
-assign mx_val_ready = !mx_mux_valid_q || mx_mux_handshake_done;
-
-// MX encoder output packing (32 FP8 bytes per block)
+// MX encoder output packing: collect two 256-bit blocks per 512-bit beat
 localparam int unsigned MX_ACTIVE_BYTES = (DATAW/2)/8;
 localparam int unsigned TOTAL_BYTES     = DATAW_ALIGN/8;
-logic [TOTAL_BYTES-1:0] mx_store_strb;
-assign mx_store_strb = {{(TOTAL_BYTES-MX_ACTIVE_BYTES){1'b0}}, {MX_ACTIVE_BYTES{1'b1}}};
+localparam logic [TOTAL_BYTES-1:0] MX_STRB_HALF = {{(TOTAL_BYTES-MX_ACTIVE_BYTES){1'b0}},
+                                                   {MX_ACTIVE_BYTES{1'b1}}};
+localparam logic [TOTAL_BYTES-1:0] MX_STRB_FULL = {TOTAL_BYTES{1'b1}};
 
-logic [DATAW_ALIGN-1:0] mx_z_buffer_data;
-assign mx_z_buffer_data = {{(DATAW_ALIGN-256){1'b0}}, mx_val_data};
+logic hold_block_valid;
+logic [DATAW/2-1:0] hold_block_data;
+logic pair_valid;
+logic [DATAW_ALIGN-1:0] pair_data;
+logic [TOTAL_BYTES-1:0] pair_strb;
+logic mx_enable_q;
+logic mx_active;
 
-// Simple valid/data register - latch when encoder produces and we're ready
 assign mx_mux_handshake_done = z_muxed_o.valid && z_muxed_o.ready;
+logic mx_mux_ready;
+assign mx_mux_ready = !mx_mux_valid_q || mx_mux_handshake_done;
+
+// Encoder can always send the first block; the second waits for pair buffer space
+assign mx_val_ready = !hold_block_valid ? 1'b1 : !pair_valid;
+
+// Track MX enable to flush leftover block when the job ends
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni)
+    mx_enable_q <= 1'b0;
+  else if (clear_i)
+    mx_enable_q <= 1'b0;
+  else
+    mx_enable_q <= mx_enable_i;
+end
+
+logic flush_single_block;
+assign flush_single_block = hold_block_valid && !pair_valid && !mx_enable_i && mx_enable_q;
+
+assign mx_active = mx_enable_i || hold_block_valid || pair_valid || mx_mux_valid_q;
 
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
-    mx_mux_valid_q <= 1'b0;
-    mx_mux_data_q  <= '0;
+    hold_block_valid <= 1'b0;
+    pair_valid       <= 1'b0;
+    mx_mux_valid_q   <= 1'b0;
+    mx_mux_data_q    <= '0;
+    mx_mux_strb_q    <= '0;
   end else if (clear_i) begin
-    mx_mux_valid_q <= 1'b0;
-    mx_mux_data_q  <= '0;
-  end else if (mx_val_valid && mx_val_ready) begin
-    // Latch when encoder produces and we can accept
-    mx_mux_valid_q <= 1'b1;
-    mx_mux_data_q  <= mx_z_buffer_data;
-  end else if (mx_mux_handshake_done) begin
-    mx_mux_valid_q <= 1'b0;  // Clear after successful handshake
+    hold_block_valid <= 1'b0;
+    pair_valid       <= 1'b0;
+    mx_mux_valid_q   <= 1'b0;
+    mx_mux_data_q    <= '0;
+    mx_mux_strb_q    <= '0;
+  end else begin
+    // Capture MX encoder outputs
+    if (mx_val_valid && mx_val_ready) begin
+      if (!hold_block_valid) begin
+        hold_block_valid <= 1'b1;
+        hold_block_data  <= mx_val_data;
+      end else begin
+        pair_valid       <= 1'b1;
+        pair_data        <= {mx_val_data, hold_block_data};
+        pair_strb        <= MX_STRB_FULL;
+        hold_block_valid <= 1'b0;
+      end
+    end
+
+    // Flush an odd leftover block when MX mode turns off
+    if (flush_single_block) begin
+      pair_valid       <= 1'b1;
+      pair_data        <= {{(DATAW_ALIGN-256){1'b0}}, hold_block_data};
+      pair_strb        <= MX_STRB_HALF;
+      hold_block_valid <= 1'b0;
+    end
+
+    // Move fully-packed data toward the streamer
+    if (pair_valid && mx_mux_ready) begin
+      mx_mux_valid_q <= 1'b1;
+      mx_mux_data_q  <= pair_data;
+      mx_mux_strb_q  <= pair_strb;
+      pair_valid     <= 1'b0;
+    end else if (mx_mux_handshake_done) begin
+      mx_mux_valid_q <= 1'b0;
+    end
   end
 end
 
 // MUX: Select between latched MX output and engine bypass
-assign z_muxed_o.data  = mx_enable_i ? mx_mux_data_q : z_engine_stream_i.data;
-assign z_muxed_o.strb  = mx_enable_i ? mx_store_strb : z_engine_stream_i.strb;
-assign z_muxed_o.valid = mx_enable_i ? mx_mux_valid_q : z_engine_stream_i.valid;
+assign z_muxed_o.data  = mx_active ? mx_mux_data_q : z_engine_stream_i.data;
+assign z_muxed_o.strb  = mx_active ? mx_mux_strb_q : z_engine_stream_i.strb;
+assign z_muxed_o.valid = mx_active ? mx_mux_valid_q : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
-assign z_engine_stream_i.ready = mx_enable_i ? fifo_grant_o : z_muxed_o.ready;
+assign z_engine_stream_i.ready = mx_active ? fifo_grant_o : z_muxed_o.ready;
 
 endmodule : redmule_mx_output_stage

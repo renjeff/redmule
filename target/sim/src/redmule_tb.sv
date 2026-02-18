@@ -109,19 +109,23 @@ module redmule_tb
   longint unsigned perf_encoder_blocks;
   longint unsigned perf_decoder_blocks;
 
-  // Optional MX debug dumping (enabled with +MX_DEBUG_DUMP)
+  // Optional MX debug dumping (enabled via +MX_DEBUG_DUMP)
   bit mx_debug_dump;
   integer mx_debug_fd;
   initial begin
-    mx_debug_dump = 1'b1;
-    mx_debug_fd   = $fopen("mx_debug.log", "w");
-    if (mx_debug_fd == 0) begin
-      $display("[TB][MXDBG] Failed to open mx_debug.log, disabling dump");
-      mx_debug_dump = 1'b0;
+    mx_debug_dump = $test$plusargs("MX_DEBUG_DUMP");
+    if (mx_debug_dump) begin
+      mx_debug_fd = $fopen("mx_debug.log", "w");
+      if (mx_debug_fd == 0) begin
+        $display("[TB][MXDBG] Failed to open mx_debug.log, disabling dump");
+        mx_debug_dump = 1'b0;
+      end else begin
+        $display("[TB][MXDBG] Logging MX slot/decoder activity to mx_debug.log");
+        $fdisplay(mx_debug_fd,
+                  "time,stage,target,data,exp");
+      end
     end else begin
-      $display("[TB][MXDBG] Logging MX slot/decoder activity to mx_debug.log");
-      $fdisplay(mx_debug_fd,
-                "time,stage,target,data,exp");
+      mx_debug_fd = 0;
     end
   end
 
@@ -541,8 +545,6 @@ module redmule_tb
   );
 
   integer f_x, f_W, f_y, f_tau;
-  integer f_engine_x, f_engine_w, f_engine_z;
-  integer f_dec_fp16, f_dec_exp, f_dec_target;
   logic start;
   logic x_buf_read_q, w_buf_read_q;
 
@@ -551,7 +553,7 @@ module redmule_tb
   begin
     if((core_data_req.addr == 32'h80000000) &&
        (core_data_req.we & core_data_req.req == 1'b1)) begin
-      errors = core_data_req.data;
+      errors <= core_data_req.data;
     end
     if((core_data_req.addr == 32'h80000004 ) &&
        (core_data_req.we & core_data_req.req == 1'b1)) begin
