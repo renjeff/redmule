@@ -148,12 +148,6 @@ assign mx_exp_valid_o   = mx_exp_valid;
 assign mx_exp_ready_o   = mx_exp_ready;
 assign mx_exp_data_o    = mx_exp_data;
 
-// Data stream handshake - provide backpressure when output register full
-logic mx_mux_valid_q;
-logic [DATAW_ALIGN-1:0] mx_mux_data_q;
-logic [DATAW_ALIGN/8-1:0] mx_mux_strb_q;
-logic mx_mux_handshake_done;
-
 // MX encoder output packing: collect two 256-bit blocks per 512-bit beat
 localparam int unsigned MX_ACTIVE_BYTES = (DATAW/2)/8;
 localparam int unsigned TOTAL_BYTES     = DATAW_ALIGN/8;
@@ -168,10 +162,6 @@ logic [DATAW_ALIGN-1:0] pair_data;
 logic [TOTAL_BYTES-1:0] pair_strb;
 logic mx_enable_q;
 logic mx_active;
-
-assign mx_mux_handshake_done = z_muxed_o.valid && z_muxed_o.ready;
-logic mx_mux_ready;
-assign mx_mux_ready = !mx_mux_valid_q || mx_mux_handshake_done;
 
 // Encoder can always send the first block; the second waits for pair buffer space
 assign mx_val_ready = !hold_block_valid ? 1'b1 : !pair_valid;
@@ -189,21 +179,15 @@ end
 logic flush_single_block;
 assign flush_single_block = hold_block_valid && !pair_valid && !mx_enable_i && mx_enable_q;
 
-assign mx_active = mx_enable_i || hold_block_valid || pair_valid || mx_mux_valid_q;
+assign mx_active = mx_enable_i || hold_block_valid || pair_valid;
 
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
     hold_block_valid <= 1'b0;
     pair_valid       <= 1'b0;
-    mx_mux_valid_q   <= 1'b0;
-    mx_mux_data_q    <= '0;
-    mx_mux_strb_q    <= '0;
   end else if (clear_i) begin
     hold_block_valid <= 1'b0;
     pair_valid       <= 1'b0;
-    mx_mux_valid_q   <= 1'b0;
-    mx_mux_data_q    <= '0;
-    mx_mux_strb_q    <= '0;
   end else begin
     // Capture MX encoder outputs
     if (mx_val_valid && mx_val_ready) begin
@@ -226,22 +210,16 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
       hold_block_valid <= 1'b0;
     end
 
-    // Move fully-packed data toward the streamer
-    if (pair_valid && mx_mux_ready) begin
-      mx_mux_valid_q <= 1'b1;
-      mx_mux_data_q  <= pair_data;
-      mx_mux_strb_q  <= pair_strb;
-      pair_valid     <= 1'b0;
-    end else if (mx_mux_handshake_done) begin
-      mx_mux_valid_q <= 1'b0;
+    if (pair_valid && z_muxed_o.ready && mx_active) begin
+      pair_valid <= 1'b0;
     end
   end
 end
 
 // MUX: Select between latched MX output and engine bypass
-assign z_muxed_o.data  = mx_active ? mx_mux_data_q : z_engine_stream_i.data;
-assign z_muxed_o.strb  = mx_active ? mx_mux_strb_q : z_engine_stream_i.strb;
-assign z_muxed_o.valid = mx_active ? mx_mux_valid_q : z_engine_stream_i.valid;
+assign z_muxed_o.data  = mx_active ? pair_data : z_engine_stream_i.data;
+assign z_muxed_o.strb  = mx_active ? pair_strb : z_engine_stream_i.strb;
+assign z_muxed_o.valid = mx_active ? pair_valid : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
 assign z_engine_stream_i.ready = mx_active ? fifo_grant_o : z_muxed_o.ready;
