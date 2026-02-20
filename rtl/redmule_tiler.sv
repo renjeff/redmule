@@ -59,9 +59,10 @@ assign config_d.gemm_output_fmt = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 
 logic mx_enable;
 assign mx_enable = reg_file_i.hwpe_params[MACFG][16];
 
-// TILE size for iteration calculations
-// With ARRAY_HEIGHT=8 and PIPE_REGS=3: TILE = 8*4 = 32 (matches MX block size)
-localparam int unsigned TILE = ARRAY_HEIGHT*(PIPE_REGS+1);
+// TILE size for iteration calculations. Match the actual TCDM beat width so we
+// request the correct number of beats even when ARRAY_HEIGHT*(PIPE_REGS+1)
+// exceeds DATAW/BITW.
+localparam int unsigned TILE = TOT_DEPTH;
 localparam int unsigned MX_PACK_FACTOR = 2;  // FP8 packs 2x more slots per beat
 
 // Unpack m_size and n_size for X buffer and systolic control

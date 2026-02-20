@@ -247,7 +247,7 @@ assign w_buffer_d.ready    = mx_mode_active ? w_buffer_slot.ready : w_buffer_raw
 // Dedicated exponent FIFOs decouple streamer backpressure from the deep buffers
 hwpe_stream_fifo #(
   .DATA_WIDTH ( DATAW_ALIGN ),
-  .FIFO_DEPTH ( 64          )
+  .FIFO_DEPTH ( 4           )
 ) i_x_exp_stream_fifo (
   .clk_i   ( clk_i                 ),
   .rst_ni  ( rst_ni                ),
@@ -259,7 +259,7 @@ hwpe_stream_fifo #(
 
 hwpe_stream_fifo #(
   .DATA_WIDTH ( DATAW_ALIGN ),
-  .FIFO_DEPTH ( 64          )
+  .FIFO_DEPTH ( 4           )
 ) i_w_exp_stream_fifo (
   .clk_i   ( clk_i                 ),
   .rst_ni  ( rst_ni                ),

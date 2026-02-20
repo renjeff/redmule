@@ -1,7 +1,1779 @@
-# vsim -c -do "run 0; examine /redmule_tb_wrap/i_redmule_tb/i_dut/i_redmule_top/i_streamer/DW; examine /redmule_tb_wrap/i_redmule_tb/i_dut/i_redmule_top/i_streamer/out_stream\[3\].DATA_WIDTH; quit" redmule_tb_wrap_opt 
-# Start time: 16:05:10 on Jan 26,2026
-# ** Error (suppressible): (vsim-19) Failed to access library 'work' at "work".
-# No such file or directory. (errno = ENOENT)
-# Error loading design
-# End time: 16:05:11 on Jan 26,2026, Elapsed time: 0:00:01
-# Errors: 1, Warnings: 0
+# do target/sim/vsim/compile.vsim.tcl
+# /scratch2/msc25h32/redmule
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:53 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/clk_rst_gen.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/sim_timeout.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/stream_watchdog.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/signal_highlighter.sv 
+# -- Compiling module clk_rst_gen
+# -- Compiling module sim_timeout
+# -- Compiling module stream_watchdog
+# -- Compiling module signal_highlighter
+# 
+# Top level modules:
+# 	clk_rst_gen
+# 	sim_timeout
+# 	stream_watchdog
+# 	signal_highlighter
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_id_queue.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_stream_mst.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_synch_holdable_driver.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_verif_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_synch_driver.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_verification-149a8baf816d0f55/src/rand_stream_slv.sv 
+# -- Compiling package rand_id_queue_pkg
+# -- Compiling module rand_stream_mst
+# -- Compiling module rand_synch_holdable_driver
+# -- Compiling package rand_verif_pkg
+# -- Compiling module rand_synch_driver
+# -- Compiling module rand_stream_slv
+# 
+# Top level modules:
+# 	rand_stream_mst
+# 	rand_stream_slv
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/rtl/tc_sram.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/rtl/tc_sram_impl.sv 
+# -- Compiling module tc_sram
+# -- Compiling module tc_sram_impl
+# 
+# Top level modules:
+# 	tc_sram_impl
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 7
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/rtl/tc_clk.sv 
+# -- Compiling module tc_clk_and2
+# -- Compiling module tc_clk_buffer
+# -- Compiling module tc_clk_gating
+# -- Compiling module tc_clk_inverter
+# -- Compiling module tc_clk_mux2
+# -- Compiling module tc_clk_xor2
+# -- Compiling module tc_clk_or2
+# -- Compiling module tc_clk_delay
+# 
+# Top level modules:
+# 	tc_clk_and2
+# 	tc_clk_buffer
+# 	tc_clk_gating
+# 	tc_clk_inverter
+# 	tc_clk_mux2
+# 	tc_clk_xor2
+# 	tc_clk_or2
+# 	tc_clk_delay
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/cluster_pwr_cells.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/generic_memory.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/generic_rom.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/pad_functional.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/pulp_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/pulp_pwr_cells.sv 
+# -- Compiling module cluster_level_shifter_in
+# -- Compiling module cluster_level_shifter_in_clamp
+# -- Compiling module cluster_level_shifter_inout
+# -- Compiling module cluster_level_shifter_out
+# -- Compiling module cluster_level_shifter_out_clamp
+# -- Compiling module generic_memory
+# -- Compiling module generic_rom
+# -- Compiling module pad_functional_pd
+# -- Compiling module pad_functional_pu
+# -- Compiling module pulp_buffer
+# -- Compiling module pulp_level_shifter_in
+# -- Compiling module pulp_level_shifter_in_clamp
+# -- Compiling module pulp_level_shifter_inout
+# -- Compiling module pulp_level_shifter_out
+# -- Compiling module pulp_level_shifter_out_clamp
+# -- Compiling module pulp_power_gating
+# -- Compiling module pulp_isolation_0
+# -- Compiling module pulp_isolation_1
+# 
+# Top level modules:
+# 	cluster_level_shifter_in
+# 	cluster_level_shifter_in_clamp
+# 	cluster_level_shifter_inout
+# 	cluster_level_shifter_out
+# 	cluster_level_shifter_out_clamp
+# 	generic_memory
+# 	generic_rom
+# 	pad_functional_pd
+# 	pad_functional_pu
+# 	pulp_buffer
+# 	pulp_level_shifter_in
+# 	pulp_level_shifter_in_clamp
+# 	pulp_level_shifter_inout
+# 	pulp_level_shifter_out
+# 	pulp_level_shifter_out_clamp
+# 	pulp_power_gating
+# 	pulp_isolation_0
+# 	pulp_isolation_1
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/tc_pwr.sv 
+# -- Compiling module tc_pwr_level_shifter_in
+# -- Compiling module tc_pwr_level_shifter_in_clamp_lo
+# -- Compiling module tc_pwr_level_shifter_in_clamp_hi
+# -- Compiling module tc_pwr_level_shifter_out
+# -- Compiling module tc_pwr_level_shifter_out_clamp_lo
+# -- Compiling module tc_pwr_level_shifter_out_clamp_hi
+# -- Compiling module tc_pwr_power_gating
+# -- Compiling module tc_pwr_isolation_lo
+# -- Compiling module tc_pwr_isolation_hi
+# 
+# Top level modules:
+# 	tc_pwr_level_shifter_in
+# 	tc_pwr_level_shifter_in_clamp_lo
+# 	tc_pwr_level_shifter_in_clamp_hi
+# 	tc_pwr_level_shifter_out
+# 	tc_pwr_level_shifter_out_clamp_lo
+# 	tc_pwr_level_shifter_out_clamp_hi
+# 	tc_pwr_power_gating
+# 	tc_pwr_isolation_lo
+# 	tc_pwr_isolation_hi
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/pulp_clock_gating_async.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/cluster_clk_cells.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/tech_cells_generic-9d9ba23d5bf3a109/src/deprecated/pulp_clk_cells.sv 
+# -- Compiling module pulp_clock_gating_async
+# -- Compiling module cluster_clock_and2
+# -- Compiling module cluster_clock_buffer
+# -- Compiling module cluster_clock_gating
+# -- Compiling module cluster_clock_inverter
+# -- Compiling module cluster_clock_mux2
+# -- Compiling module cluster_clock_xor2
+# -- Compiling module pulp_clock_and2
+# -- Compiling module pulp_clock_buffer
+# -- Compiling module pulp_clock_gating
+# -- Compiling module pulp_clock_inverter
+# -- Compiling module pulp_clock_mux2
+# -- Compiling module pulp_clock_xor2
+# -- Compiling module pulp_clock_delay
+# 
+# Top level modules:
+# 	pulp_clock_gating_async
+# 	cluster_clock_and2
+# 	cluster_clock_buffer
+# 	cluster_clock_gating
+# 	cluster_clock_inverter
+# 	cluster_clock_mux2
+# 	cluster_clock_xor2
+# 	pulp_clock_and2
+# 	pulp_clock_buffer
+# 	pulp_clock_inverter
+# 	pulp_clock_mux2
+# 	pulp_clock_xor2
+# 	pulp_clock_delay
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/binary_to_gray.sv 
+# -- Compiling module binary_to_gray
+# 
+# Top level modules:
+# 	binary_to_gray
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cb_filter_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cc_onehot.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_reset_ctrlr_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cf_math_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/clk_int_div.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/credit_counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/delta_counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/ecc_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/edge_propagator_tx.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/exp_backoff.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/fifo_v3.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/gray_to_binary.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/isochronous_4phase_handshake.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/isochronous_spill_register.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/lfsr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/lfsr_16bit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/lfsr_8bit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/lossy_valid_to_stream.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/mv_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/onehot_to_bin.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/plru_tree.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/passthrough_stream_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/popcount.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/rr_arb_tree.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/rstgen_bypass.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/serial_deglitch.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/shift_reg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/shift_reg_gated.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/spill_register_flushable.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_fork.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_intf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_join_dynamic.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_throttle.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/sub_per_hash.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/sync.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/sync_wedge.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/unread.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/read.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/addr_decode_dync.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_2phase.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_4phase.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/clk_int_div_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/addr_decode.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/addr_decode_napot.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/multiaddr_decode.sv 
+# -- Compiling package cb_filter_pkg
+# -- Compiling module cc_onehot
+# -- Compiling package cdc_reset_ctrlr_pkg
+# -- Compiling package cf_math_pkg
+# -- Compiling module clk_int_div
+# -- Compiling module credit_counter
+# -- Compiling module delta_counter
+# -- Compiling package ecc_pkg
+# -- Compiling module edge_propagator_tx
+# -- Compiling module exp_backoff
+# -- Compiling module fifo_v3
+# -- Compiling module gray_to_binary
+# -- Compiling module isochronous_4phase_handshake
+# -- Compiling module isochronous_spill_register
+# -- Compiling module lfsr
+# -- Compiling module lfsr_16bit
+# -- Compiling module lfsr_8bit
+# -- Compiling module lossy_valid_to_stream
+# -- Compiling module mv_filter
+# -- Compiling module onehot_to_bin
+# -- Compiling module plru_tree
+# -- Compiling module passthrough_stream_fifo
+# -- Compiling module popcount
+# -- Compiling module rr_arb_tree
+# -- Compiling module rstgen_bypass
+# -- Compiling module serial_deglitch
+# -- Compiling module shift_reg
+# -- Compiling module shift_reg_gated
+# -- Compiling module spill_register_flushable
+# -- Compiling module stream_demux
+# -- Compiling module stream_filter
+# -- Compiling module stream_fork
+# -- Compiling interface STREAM_DV
+# -- Compiling module stream_join_dynamic
+# -- Compiling module stream_mux
+# -- Compiling module stream_throttle
+# -- Compiling module sub_per_hash
+# -- Compiling module sync
+# -- Compiling module sync_wedge
+# -- Compiling module unread
+# -- Compiling module read
+# -- Compiling module addr_decode_dync
+# -- Compiling module cdc_2phase
+# -- Compiling module cdc_2phase_src
+# -- Compiling module cdc_2phase_dst
+# -- Compiling module cdc_4phase
+# -- Compiling module cdc_4phase_src
+# -- Compiling module cdc_4phase_dst
+# -- Compiling module clk_int_div_static
+# -- Compiling module addr_decode
+# -- Compiling module addr_decode_napot
+# -- Compiling module multiaddr_decode
+# 
+# Top level modules:
+# 	cc_onehot
+# 	credit_counter
+# 	delta_counter
+# 	edge_propagator_tx
+# 	exp_backoff
+# 	fifo_v3
+# 	gray_to_binary
+# 	isochronous_4phase_handshake
+# 	isochronous_spill_register
+# 	lfsr
+# 	lfsr_16bit
+# 	lfsr_8bit
+# 	lossy_valid_to_stream
+# 	mv_filter
+# 	onehot_to_bin
+# 	plru_tree
+# 	passthrough_stream_fifo
+# 	popcount
+# 	rr_arb_tree
+# 	rstgen_bypass
+# 	serial_deglitch
+# 	shift_reg
+# 	spill_register_flushable
+# 	stream_demux
+# 	stream_filter
+# 	stream_fork
+# 	stream_join_dynamic
+# 	stream_mux
+# 	stream_throttle
+# 	sub_per_hash
+# 	sync_wedge
+# 	unread
+# 	read
+# 	cdc_2phase
+# 	cdc_4phase
+# 	clk_int_div_static
+# 	addr_decode
+# 	addr_decode_napot
+# 	multiaddr_decode
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 25
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cb_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_fifo_2phase.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/clk_mux_glitch_free.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/ecc_decode.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/ecc_encode.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/edge_detect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/lzc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/max_counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/rstgen.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/spill_register.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_delay.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_fork_dynamic.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_join.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_reset_ctrlr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_fifo_gray.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/fall_through_register.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/id_queue.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_to_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_arbiter_flushable.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_fifo_optimal_wrap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_register.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_fifo_gray_clearable.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/cdc_2phase_clearable.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/mem_to_banks_detailed.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_arbiter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/stream_omega_net.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/mem_to_banks.sv 
+# -- Compiling module cb_filter
+# -- Compiling module hash_block
+# -- Compiling module cdc_fifo_2phase
+# -- Compiling module clk_mux_glitch_free
+# -- Compiling module clk_or_tree
+# -- Compiling module counter
+# -- Compiling module ecc_decode
+# -- Compiling module ecc_encode
+# -- Compiling module edge_detect
+# -- Compiling module lzc
+# -- Compiling module max_counter
+# -- Compiling module rstgen
+# -- Compiling module spill_register
+# -- Compiling module stream_delay
+# -- Compiling module stream_fifo
+# -- Compiling module stream_fork_dynamic
+# -- Compiling module stream_join
+# -- Compiling module cdc_reset_ctrlr
+# -- Compiling module cdc_reset_ctrlr_half
+# -- Compiling module cdc_fifo_gray
+# -- Compiling module cdc_fifo_gray_src
+# -- Compiling module cdc_fifo_gray_dst
+# -- Compiling module fall_through_register
+# -- Compiling module id_queue
+# -- Compiling module stream_to_mem
+# -- Compiling module stream_arbiter_flushable
+# -- Compiling module stream_fifo_optimal_wrap
+# -- Compiling module stream_register
+# -- Compiling module stream_xbar
+# -- Compiling module cdc_fifo_gray_clearable
+# -- Compiling module cdc_fifo_gray_src_clearable
+# -- Compiling module cdc_fifo_gray_dst_clearable
+# -- Compiling module cdc_2phase_clearable
+# -- Compiling module cdc_2phase_src_clearable
+# -- Compiling module cdc_2phase_dst_clearable
+# -- Compiling module mem_to_banks_detailed
+# -- Compiling module stream_arbiter
+# -- Compiling module stream_omega_net
+# -- Compiling module mem_to_banks
+# 
+# Top level modules:
+# 	cb_filter
+# 	cdc_fifo_2phase
+# 	clk_mux_glitch_free
+# 	ecc_decode
+# 	ecc_encode
+# 	edge_detect
+# 	max_counter
+# 	stream_delay
+# 	stream_fork_dynamic
+# 	stream_join
+# 	cdc_fifo_gray
+# 	fall_through_register
+# 	id_queue
+# 	stream_to_mem
+# 	stream_fifo_optimal_wrap
+# 	stream_register
+# 	cdc_fifo_gray_clearable
+# 	cdc_2phase_clearable
+# 	stream_arbiter
+# 	stream_omega_net
+# 	mem_to_banks
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 55
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/sram.sv 
+# -- Compiling module sram
+# 
+# Top level modules:
+# 	sram
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/clock_divider_counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/clk_div.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/find_first_one.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/generic_LFSR_8bit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/generic_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/prioarbiter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/pulp_sync.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/pulp_sync_wedge.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/rrarbiter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/clock_divider.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/fifo_v2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/deprecated/fifo_v1.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/edge_propagator_ack.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/edge_propagator.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/src/edge_propagator_rx.sv 
+# -- Compiling module clock_divider_counter
+# -- Compiling module clk_div
+# -- Compiling module find_first_one
+# -- Compiling module generic_LFSR_8bit
+# -- Compiling module generic_fifo
+# -- Compiling module prioarbiter
+# -- Compiling module pulp_sync
+# -- Compiling module pulp_sync_wedge
+# -- Compiling module rrarbiter
+# -- Compiling module clock_divider
+# -- Compiling module fifo_v2
+# -- Compiling module fifo
+# -- Compiling module edge_propagator_ack
+# -- Compiling module edge_propagator
+# -- Compiling module edge_propagator_rx
+# 
+# Top level modules:
+# 	clk_div
+# 	find_first_one
+# 	generic_LFSR_8bit
+# 	generic_fifo
+# 	prioarbiter
+# 	rrarbiter
+# 	clock_divider
+# 	fifo
+# 	edge_propagator
+# 	edge_propagator_rx
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_intf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_err_slv.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_regs.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_cdc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_demux.sv 
+# -- Compiling package apb_pkg
+# -- Compiling interface APB
+# -- Compiling interface APB_DV
+# -- Compiling module apb_err_slv
+# -- Compiling module apb_err_slv_intf
+# -- Compiling module apb_regs
+# -- Compiling module apb_regs_intf
+# -- Compiling module apb_cdc
+# -- Compiling module apb_cdc_intf
+# -- Compiling module apb_demux
+# -- Compiling module apb_demux_intf
+# 
+# Top level modules:
+# 	apb_err_slv_intf
+# 	apb_regs_intf
+# 	apb_cdc_intf
+# 	apb_demux_intf
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 6
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_test.sv 
+# -- Compiling package apb_test
+# ** Warning: /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_test.sv(216): (vlog-2240) Treating stand-alone use of function 'reset' as an implicit VOID cast.
+# ** Warning: /scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/src/apb_test.sv(297): (vlog-2240) Treating stand-alone use of function 'reset' as an implicit VOID cast.
+# 
+# Top level modules:
+# 	--none--
+# End time: 15:45:54 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 2, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:54 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_intf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_atop_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_burst_splitter_gran.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_burst_unwrap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_bus_compare.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_cdc_dst.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_cdc_src.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_cut.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_delayer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_demux_simple.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_dw_downsizer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_dw_upsizer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_fifo_delay_dyn.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_id_remap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_id_prepend.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_inval_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_isolate.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_join.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_dw_converter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_from_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_join.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_lfsr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_mailbox.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_regs.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_to_apb.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_to_axi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_modify_address.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_rw_join.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_rw_split.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_serializer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_slave_compare.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_throttle.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_detailed_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_burst_splitter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_cdc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_err_slv.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_dw_converter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_from_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_id_serialize.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lfsr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_multicut.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_axi_lite.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_zero_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_interleaved_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_iw_converter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_lite_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_xbar_unmuxed.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_mem_banked.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_mem_interleaved.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_to_mem_split.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_xp.sv 
+# -- Compiling package axi_pkg
+# -- Compiling interface AXI_BUS
+# -- Compiling interface AXI_BUS_DV
+# -- Compiling interface AXI_BUS_ASYNC
+# -- Compiling interface AXI_BUS_ASYNC_GRAY
+# -- Compiling interface AXI_LITE
+# -- Compiling interface AXI_LITE_DV
+# -- Compiling interface AXI_LITE_ASYNC_GRAY
+# -- Compiling module axi_atop_filter
+# -- Compiling module axi_atop_filter_intf
+# -- Compiling module axi_burst_splitter_gran
+# -- Compiling module axi_burst_splitter_gran_ax_chan
+# -- Compiling module axi_burst_splitter_gran_counters
+# -- Compiling module axi_burst_unwrap
+# -- Compiling module axi_burst_unwrap_ax_chan
+# -- Compiling module axi_burst_counters
+# -- Compiling module axi_bus_compare
+# -- Compiling module axi_cdc_dst
+# -- Compiling module axi_cdc_dst_intf
+# -- Compiling module axi_lite_cdc_dst_intf
+# -- Compiling module axi_cdc_src
+# -- Compiling module axi_cdc_src_intf
+# -- Compiling module axi_lite_cdc_src_intf
+# -- Compiling module axi_cut
+# -- Compiling module axi_cut_intf
+# -- Compiling module axi_lite_cut_intf
+# -- Compiling module axi_delayer
+# -- Compiling module axi_delayer_intf
+# -- Compiling module axi_demux_simple
+# -- Compiling module axi_demux_id_counters
+# -- Compiling module axi_dw_downsizer
+# -- Compiling module axi_dw_upsizer
+# -- Compiling module axi_fifo
+# -- Compiling module axi_fifo_intf
+# -- Compiling module axi_fifo_delay_dyn
+# -- Compiling module axi_fifo_delay_dyn_intf
+# -- Compiling module stream_fifo_delay_dyn
+# -- Compiling module axi_id_remap
+# -- Compiling module axi_id_remap_table
+# -- Compiling module axi_id_remap_intf
+# -- Compiling module axi_id_prepend
+# -- Compiling module axi_inval_filter
+# -- Compiling module axi_isolate
+# -- Compiling module axi_isolate_inner
+# -- Compiling module axi_isolate_intf
+# -- Compiling module axi_join_intf
+# -- Compiling module axi_lite_demux
+# -- Compiling module axi_lite_demux_intf
+# -- Compiling module axi_lite_dw_converter
+# -- Compiling module axi_lite_dw_converter_intf
+# -- Compiling module axi_lite_from_mem
+# -- Compiling module axi_lite_join_intf
+# -- Compiling module axi_lite_lfsr
+# -- Compiling module axi_opt_lfsr
+# -- Compiling module axi_lite_mailbox
+# -- Compiling module axi_lite_mailbox_slave
+# -- Compiling module axi_lite_mailbox_intf
+# -- Compiling module axi_lite_mux
+# -- Compiling module axi_lite_mux_intf
+# -- Compiling module axi_lite_regs
+# -- Compiling module axi_lite_regs_intf
+# -- Compiling module axi_lite_to_apb
+# -- Compiling module axi_lite_to_apb_intf
+# -- Compiling module axi_lite_to_axi
+# -- Compiling module axi_lite_to_axi_intf
+# -- Compiling module axi_modify_address
+# -- Compiling module axi_modify_address_intf
+# -- Compiling module axi_mux
+# -- Compiling module axi_mux_intf
+# -- Compiling module axi_rw_join
+# -- Compiling module axi_rw_split
+# -- Compiling module axi_serializer
+# -- Compiling module axi_serializer_intf
+# -- Compiling module axi_slave_compare
+# -- Compiling module axi_throttle
+# -- Compiling module axi_to_detailed_mem
+# -- Compiling module axi_to_detailed_mem_intf
+# -- Compiling module mem_stream_to_banks_detailed
+# -- Compiling module axi_burst_splitter
+# -- Compiling module axi_cdc
+# -- Compiling module axi_cdc_intf
+# -- Compiling module axi_lite_cdc_intf
+# -- Compiling module axi_demux
+# -- Compiling module axi_demux_intf
+# -- Compiling module axi_err_slv
+# -- Compiling module axi_dw_converter
+# -- Compiling module axi_dw_converter_intf
+# -- Compiling module axi_from_mem
+# -- Compiling module axi_id_serialize
+# -- Compiling module axi_id_serialize_intf
+# -- Compiling module axi_lfsr
+# -- Compiling module axi_multicut
+# -- Compiling module axi_multicut_intf
+# -- Compiling module axi_lite_multicut_intf
+# -- Compiling module axi_to_axi_lite
+# -- Compiling module axi_to_axi_lite_id_reflect
+# -- Compiling module axi_to_axi_lite_intf
+# -- Compiling module axi_to_mem
+# -- Compiling module axi_to_mem_intf
+# -- Compiling module axi_zero_mem
+# -- Compiling module axi_interleaved_xbar
+# -- Compiling module axi_interleaved_xbar_intf
+# -- Compiling module axi_iw_converter
+# -- Compiling module axi_iw_converter_intf
+# -- Compiling module axi_lite_xbar
+# -- Compiling module axi_lite_xbar_intf
+# -- Compiling module axi_xbar_unmuxed
+# -- Compiling module axi_xbar_unmuxed_intf
+# -- Compiling module axi_to_mem_banked
+# -- Compiling module axi_to_mem_banked_intf
+# -- Compiling module axi_to_mem_interleaved
+# -- Compiling module axi_to_mem_interleaved_intf
+# -- Compiling module axi_to_mem_split
+# -- Compiling module axi_to_mem_split_intf
+# -- Compiling module axi_xbar
+# -- Compiling module axi_xbar_intf
+# -- Compiling module axi_xp
+# -- Compiling module axi_xp_intf
+# 
+# Top level modules:
+# 	axi_atop_filter_intf
+# 	axi_burst_unwrap
+# 	axi_cdc_dst_intf
+# 	axi_lite_cdc_dst_intf
+# 	axi_cdc_src_intf
+# 	axi_lite_cdc_src_intf
+# 	axi_cut_intf
+# 	axi_lite_cut_intf
+# 	axi_delayer_intf
+# 	axi_fifo_intf
+# 	axi_fifo_delay_dyn_intf
+# 	axi_id_remap_intf
+# 	axi_inval_filter
+# 	axi_isolate_intf
+# 	axi_join_intf
+# 	axi_lite_demux_intf
+# 	axi_lite_dw_converter_intf
+# 	axi_lite_join_intf
+# 	axi_lite_mailbox_intf
+# 	axi_lite_mux_intf
+# 	axi_lite_regs_intf
+# 	axi_lite_to_apb_intf
+# 	axi_lite_to_axi_intf
+# 	axi_modify_address_intf
+# 	axi_mux_intf
+# 	axi_rw_join
+# 	axi_rw_split
+# 	axi_serializer_intf
+# 	axi_slave_compare
+# 	axi_throttle
+# 	axi_to_detailed_mem_intf
+# 	axi_cdc_intf
+# 	axi_lite_cdc_intf
+# 	axi_demux_intf
+# 	axi_dw_converter_intf
+# 	axi_from_mem
+# 	axi_id_serialize_intf
+# 	axi_lfsr
+# 	axi_multicut_intf
+# 	axi_lite_multicut_intf
+# 	axi_to_axi_lite_intf
+# 	axi_to_mem_intf
+# 	axi_zero_mem
+# 	axi_interleaved_xbar_intf
+# 	axi_iw_converter_intf
+# 	axi_lite_xbar_intf
+# 	axi_xbar_unmuxed_intf
+# 	axi_to_mem_banked_intf
+# 	axi_to_mem_interleaved_intf
+# 	axi_to_mem_split_intf
+# 	axi_xbar_intf
+# 	axi_xp_intf
+# End time: 15:45:55 on Feb 19,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 584
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:55 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_chan_compare.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_dumper.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_sim_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/src/axi_test.sv 
+# -- Compiling module axi_chan_compare
+# -- Compiling module axi_dumper
+# -- Compiling module axi_dumper_intf
+# -- Compiling module axi_sim_mem
+# -- Compiling module axi_sim_mem_intf
+# -- Compiling module axi_sim_mem_multiport_intf
+# -- Compiling package axi_test
+# -- Compiling module axi_chan_logger
+# 
+# Top level modules:
+# 	axi_chan_compare
+# 	axi_dumper_intf
+# 	axi_sim_mem_intf
+# 	axi_sim_mem_multiport_intf
+# 	axi_chan_logger
+# End time: 15:45:55 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:55 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/defs_div_sqrt_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/iteration_div_sqrt_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/control_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/norm_div_sqrt_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/preprocess_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/nrbd_nrsc_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/div_sqrt_top_mvp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpu_div_sqrt_mvp-6f47e499794a44e3/hdl/div_sqrt_mvp_wrapper.sv 
+# -- Compiling package defs_div_sqrt_mvp
+# -- Compiling module iteration_div_sqrt_mvp
+# -- Compiling package control_mvp_sv_unit
+# -- Compiling module control_mvp
+# -- Compiling package norm_div_sqrt_mvp_sv_unit
+# -- Compiling module norm_div_sqrt_mvp
+# -- Compiling package preprocess_mvp_sv_unit
+# -- Compiling module preprocess_mvp
+# -- Compiling package nrbd_nrsc_mvp_sv_unit
+# -- Compiling module nrbd_nrsc_mvp
+# -- Compiling package div_sqrt_top_mvp_sv_unit
+# -- Compiling module div_sqrt_top_mvp
+# -- Compiling package div_sqrt_mvp_wrapper_sv_unit
+# -- Compiling module div_sqrt_mvp_wrapper
+# 
+# Top level modules:
+# 	div_sqrt_mvp_wrapper
+# End time: 15:45:55 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 13, Suppressed Warnings: 33
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:55 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/apb-f0e7444192d96b7a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/axi-991029d9e8d6a62a/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_intf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/vendor/lowrisc_opentitan/src/prim_subreg_ext.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/apb_to_reg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/axi_lite_to_reg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/axi_to_reg_v2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/periph_to_reg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_cdc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_cut.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_err_slv.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_filter_empty_writes.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_to_apb.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_to_mem.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_to_tlul.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_to_axi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/reg_uniform.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/vendor/lowrisc_opentitan/src/prim_subreg_shadow.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/vendor/lowrisc_opentitan/src/prim_subreg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/src/deprecated/axi_to_reg.sv 
+# -- Compiling interface REG_BUS
+# -- Compiling module prim_subreg_arb
+# -- Compiling module prim_subreg_ext
+# -- Compiling module apb_to_reg
+# -- Compiling module apb_to_reg_intf
+# -- Compiling module axi_lite_to_reg
+# -- Compiling module axi_lite_to_reg_intf
+# -- Compiling module axi_to_reg_v2
+# -- Compiling module periph_to_reg
+# -- Compiling module reg_cdc_src
+# -- Compiling module reg_cdc_dst
+# -- Compiling module reg_cdc
+# -- Compiling module reg_cut
+# -- Compiling module reg_demux
+# -- Compiling module reg_err_slv
+# -- Compiling module reg_filter_empty_writes
+# -- Compiling module reg_mux
+# -- Compiling module reg_to_apb
+# -- Compiling module reg_to_mem
+# -- Compiling module reg_to_tlul
+# -- Compiling module reg_to_axi
+# -- Compiling module reg_uniform
+# -- Compiling module prim_subreg_shadow
+# -- Compiling module prim_subreg
+# -- Compiling module axi_to_reg
+# -- Compiling module axi_to_reg_intf
+# 
+# Top level modules:
+# 	prim_subreg_ext
+# 	apb_to_reg
+# 	apb_to_reg_intf
+# 	axi_to_reg_v2
+# 	reg_cdc
+# 	reg_cut
+# 	reg_err_slv
+# 	reg_filter_empty_writes
+# 	reg_to_apb
+# 	reg_to_mem
+# 	reg_to_tlul
+# 	reg_to_axi
+# 	reg_uniform
+# 	prim_subreg_shadow
+# 	axi_to_reg
+# 	axi_to_reg_intf
+# End time: 15:45:55 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 15
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:55 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/tcdm_interconnect_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/addr_dec_resp_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/amo_shim.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/variable_latency_interconnect/addr_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/variable_latency_interconnect/simplex_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/clos_net.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/bfly_net.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/variable_latency_interconnect/full_duplex_xbar.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/tcdm_interconnect/tcdm_interconnect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/variable_latency_interconnect/variable_latency_bfly_net.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/variable_latency_interconnect/variable_latency_interconnect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/FanInPrimitive_Req.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/ArbitrationTree.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/MUX2_REQ.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/AddressDecoder_Resp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/TestAndSet.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/RequestBlock2CH.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/RequestBlock1CH.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/FanInPrimitive_Resp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/ResponseTree.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/ResponseBlock.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/AddressDecoder_Req.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/XBAR_TCDM.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/XBAR_TCDM_WRAPPER.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/TCDM_PIPE_REQ.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/TCDM_PIPE_RESP.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/grant_mask.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco/priority_Flag_Req.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/AddressDecoder_PE_Req.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/AddressDecoder_Resp_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/ArbitrationTree_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/FanInPrimitive_Req_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/RR_Flag_Req_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/MUX2_REQ_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/FanInPrimitive_PE_Resp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/RequestBlock1CH_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/RequestBlock2CH_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/ResponseBlock_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/ResponseTree_PE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco/XBAR_PE.sv 
+# -- Compiling package tcdm_interconnect_pkg
+# -- Compiling module addr_dec_resp_mux
+# -- Compiling module amo_shim
+# -- Compiling module addr_decoder
+# -- Compiling module xbar
+# -- Compiling module simplex_xbar
+# -- Compiling module clos_net
+# -- Compiling module bfly_net
+# -- Compiling module full_duplex_xbar
+# -- Compiling module tcdm_interconnect
+# -- Compiling module variable_latency_bfly_net
+# -- Compiling module variable_latency_interconnect
+# -- Compiling module FanInPrimitive_Req
+# -- Compiling module ArbitrationTree
+# -- Compiling module MUX2_REQ
+# -- Compiling module AddressDecoder_Resp
+# -- Compiling module TestAndSet
+# -- Compiling module RequestBlock2CH
+# -- Compiling module RequestBlock1CH
+# -- Compiling module FanInPrimitive_Resp
+# -- Compiling module ResponseTree
+# -- Compiling module ResponseBlock
+# -- Compiling module AddressDecoder_Req
+# -- Compiling module XBAR_TCDM
+# -- Compiling module XBAR_TCDM_WRAPPER
+# -- Compiling module TCDM_PIPE_REQ
+# -- Compiling module TCDM_PIPE_RESP
+# -- Compiling module grant_mask
+# -- Compiling module priority_Flag_Req
+# -- Compiling module AddressDecoder_PE_Req
+# -- Compiling module AddressDecoder_Resp_PE
+# -- Compiling module ArbitrationTree_PE
+# -- Compiling module FanInPrimitive_Req_PE
+# -- Compiling module RR_Flag_Req_PE
+# -- Compiling module MUX2_REQ_PE
+# -- Compiling module FanInPrimitive_PE_Resp
+# -- Compiling module RequestBlock1CH_PE
+# -- Compiling module RequestBlock2CH_PE
+# -- Compiling module ResponseBlock_PE
+# -- Compiling module ResponseTree_PE
+# -- Compiling module XBAR_PE
+# 
+# Top level modules:
+# 	amo_shim
+# 	tcdm_interconnect
+# 	variable_latency_interconnect
+# 	XBAR_TCDM_WRAPPER
+# 	XBAR_PE
+# End time: 15:45:55 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 87
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:55 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_cast_multi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_classifier.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/clk/rtl/gated_clk_cell.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_ctrl.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_ff1.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_pack_single.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_prepare.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_round_single.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_special.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_srt_single.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fdsu/rtl/pa_fdsu_top.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fpu/rtl/pa_fpu_dp.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fpu/rtl/pa_fpu_frbus.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/opene906/E906_RTL_FACTORY/gen_rtl/fpu/rtl/pa_fpu_src_type.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_ctrl.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_double.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_ff1.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_pack.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_prepare.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_round.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_scalar_dp.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_srt_radix16_bound_table.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_srt_radix16_with_sqrt.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_srt.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/ct_vfdsu_top.v /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_divsqrt_th_32.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_divsqrt_th_64_multi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_divsqrt_multi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_fma.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_fma_multi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_sdotp_multi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_sdotp_multi_wrapper.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_noncomp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_opgroup_block.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_opgroup_fmt_slice.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_opgroup_multifmt_slice.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_rounding.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/lfsr_sr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/fpnew-596368a327261645/src/fpnew_top.sv 
+# -- Compiling package fpnew_pkg
+# -- Compiling module fpnew_cast_multi
+# -- Compiling module fpnew_classifier
+# -- Compiling module gated_clk_cell
+# -- Compiling module pa_fdsu_ctrl
+# -- Compiling module pa_fdsu_ff1
+# -- Compiling module pa_fdsu_pack_single
+# -- Compiling module pa_fdsu_prepare
+# -- Compiling module pa_fdsu_round_single
+# -- Compiling module pa_fdsu_special
+# -- Compiling module pa_fdsu_srt_single
+# -- Compiling module pa_fdsu_top
+# -- Compiling module pa_fpu_dp
+# -- Compiling module pa_fpu_frbus
+# -- Compiling module pa_fpu_src_type
+# -- Compiling module ct_vfdsu_ctrl
+# -- Compiling module ct_vfdsu_double
+# -- Compiling module ct_vfdsu_ff1
+# -- Compiling module ct_vfdsu_pack
+# -- Compiling module ct_vfdsu_prepare
+# -- Compiling module ct_vfdsu_round
+# -- Compiling module ct_vfdsu_scalar_dp
+# -- Compiling module ct_vfdsu_srt_radix16_bound_table
+# -- Compiling module ct_vfdsu_srt_radix16_with_sqrt
+# -- Compiling module ct_vfdsu_srt
+# -- Compiling module ct_vfdsu_top
+# -- Compiling module fpnew_divsqrt_th_32
+# -- Compiling module fpnew_divsqrt_th_64_multi
+# -- Compiling module fpnew_divsqrt_multi
+# -- Compiling module fpnew_fma
+# -- Compiling module fpnew_fma_multi
+# -- Compiling module fpnew_sdotp_multi
+# -- Compiling module fpnew_sdotp_multi_wrapper
+# -- Compiling module fpnew_noncomp
+# -- Compiling module fpnew_opgroup_block
+# -- Compiling module fpnew_opgroup_fmt_slice
+# -- Compiling module fpnew_opgroup_multifmt_slice
+# -- Compiling module fpnew_rounding
+# -- Compiling module lfsr_sr
+# -- Compiling module fpnew_top
+# 
+# Top level modules:
+# 	fpnew_top
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 199
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl" /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/hwpe_stream_package.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/hwpe_stream_interfaces.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_assign.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_demux_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_deserialize.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_fence.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_merge.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_mux_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_serialize.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/basic/hwpe_stream_split.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_scm.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_addressgen.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_addressgen_v2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_addressgen_v3.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_sink_realign.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_source_realign.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_strbgen.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_streamer_queue.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_assign.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_mux_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_reorder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_reorder_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_earlystall.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_earlystall_sidech.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_scm_test_wrap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_sidech.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_fifo_load_sidech.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/fifo/hwpe_stream_fifo_passthrough.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_source.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_fifo_load.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/tcdm/hwpe_stream_tcdm_fifo_store.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-stream-ab150de1021c0132/rtl/streamer/hwpe_stream_sink.sv 
+# -- Compiling package hwpe_stream_package
+# -- Compiling interface hwpe_stream_intf_tcdm
+# -- Compiling interface hwpe_stream_intf_stream
+# -- Compiling package hwpe_stream_assign_sv_unit
+# -- Compiling module hwpe_stream_assign
+# -- Compiling package hwpe_stream_buffer_sv_unit
+# -- Compiling module hwpe_stream_buffer
+# -- Compiling package hwpe_stream_demux_static_sv_unit
+# -- Compiling module hwpe_stream_demux_static
+# -- Compiling package hwpe_stream_deserialize_sv_unit
+# -- Compiling module hwpe_stream_deserialize
+# -- Compiling package hwpe_stream_fence_sv_unit
+# -- Compiling module hwpe_stream_fence
+# -- Compiling package hwpe_stream_merge_sv_unit
+# -- Compiling module hwpe_stream_merge
+# -- Compiling package hwpe_stream_mux_static_sv_unit
+# -- Compiling module hwpe_stream_mux_static
+# -- Compiling package hwpe_stream_serialize_sv_unit
+# -- Compiling module hwpe_stream_serialize
+# -- Compiling package hwpe_stream_split_sv_unit
+# -- Compiling module hwpe_stream_split
+# -- Compiling package hwpe_stream_fifo_ctrl_sv_unit
+# -- Compiling module hwpe_stream_fifo_ctrl
+# -- Compiling package hwpe_stream_fifo_scm_sv_unit
+# -- Compiling module hwpe_stream_fifo_scm
+# -- Compiling package hwpe_stream_addressgen_sv_unit
+# -- Compiling module hwpe_stream_addressgen
+# -- Compiling package hwpe_stream_addressgen_v2_sv_unit
+# -- Compiling module hwpe_stream_addressgen_v2
+# -- Compiling package hwpe_stream_addressgen_v3_sv_unit
+# -- Compiling module hwpe_stream_addressgen_v3
+# -- Compiling package hwpe_stream_sink_realign_sv_unit
+# -- Compiling module hwpe_stream_sink_realign
+# -- Compiling package hwpe_stream_source_realign_sv_unit
+# -- Compiling module hwpe_stream_source_realign
+# -- Compiling package hwpe_stream_strbgen_sv_unit
+# -- Compiling module hwpe_stream_strbgen
+# -- Compiling package hwpe_stream_streamer_queue_sv_unit
+# -- Compiling module hwpe_stream_streamer_queue
+# -- Compiling package hwpe_stream_tcdm_assign_sv_unit
+# -- Compiling module hwpe_stream_tcdm_assign
+# -- Compiling package hwpe_stream_tcdm_mux_sv_unit
+# -- Compiling module hwpe_stream_tcdm_mux
+# -- Compiling package hwpe_stream_tcdm_mux_static_sv_unit
+# -- Compiling module hwpe_stream_tcdm_mux_static
+# -- Compiling package hwpe_stream_tcdm_reorder_sv_unit
+# -- Compiling module hwpe_stream_tcdm_reorder
+# -- Compiling package hwpe_stream_tcdm_reorder_static_sv_unit
+# -- Compiling module hwpe_stream_tcdm_reorder_static
+# -- Compiling package hwpe_stream_fifo_earlystall_sv_unit
+# -- Compiling module hwpe_stream_fifo_earlystall
+# -- Compiling package hwpe_stream_fifo_earlystall_sidech_sv_unit
+# -- Compiling module hwpe_stream_fifo_earlystall_sidech
+# -- Compiling package hwpe_stream_fifo_scm_test_wrap_sv_unit
+# -- Compiling module hwpe_stream_fifo_scm_test_wrap
+# -- Compiling package hwpe_stream_fifo_sidech_sv_unit
+# -- Compiling module hwpe_stream_fifo_sidech
+# -- Compiling package hwpe_stream_fifo_sv_unit
+# -- Compiling module hwpe_stream_fifo
+# -- Compiling package hwpe_stream_tcdm_fifo_load_sidech_sv_unit
+# -- Compiling module hwpe_stream_tcdm_fifo_load_sidech
+# -- Compiling package hwpe_stream_fifo_passthrough_sv_unit
+# -- Compiling module hwpe_stream_fifo_passthrough
+# -- Compiling package hwpe_stream_source_sv_unit
+# -- Compiling module hwpe_stream_source
+# -- Compiling package hwpe_stream_tcdm_fifo_sv_unit
+# -- Compiling module hwpe_stream_tcdm_fifo
+# -- Compiling package hwpe_stream_tcdm_fifo_load_sv_unit
+# -- Compiling module hwpe_stream_tcdm_fifo_load
+# -- Compiling package hwpe_stream_tcdm_fifo_store_sv_unit
+# -- Compiling module hwpe_stream_tcdm_fifo_store
+# -- Compiling package hwpe_stream_sink_sv_unit
+# -- Compiling module hwpe_stream_sink
+# 
+# Top level modules:
+# 	hwpe_stream_buffer
+# 	hwpe_stream_demux_static
+# 	hwpe_stream_deserialize
+# 	hwpe_stream_mux_static
+# 	hwpe_stream_serialize
+# 	hwpe_stream_fifo_ctrl
+# 	hwpe_stream_addressgen_v2
+# 	hwpe_stream_addressgen_v3
+# 	hwpe_stream_strbgen
+# 	hwpe_stream_streamer_queue
+# 	hwpe_stream_tcdm_assign
+# 	hwpe_stream_tcdm_mux
+# 	hwpe_stream_tcdm_mux_static
+# 	hwpe_stream_tcdm_reorder
+# 	hwpe_stream_tcdm_reorder_static
+# 	hwpe_stream_fifo_earlystall
+# 	hwpe_stream_fifo_earlystall_sidech
+# 	hwpe_stream_tcdm_fifo_load_sidech
+# 	hwpe_stream_fifo_passthrough
+# 	hwpe_stream_source
+# 	hwpe_stream_tcdm_fifo
+# 	hwpe_stream_tcdm_fifo_load
+# 	hwpe_stream_sink
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 71, Suppressed Warnings: 176
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/l2_tcdm_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/lint_2_apb.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/lint_2_axi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/axi_2_lint/axi64_2_lint32.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/axi_2_lint/axi_read_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/axi_2_lint/axi_write_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/axi_2_lint/lint64_to_32.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/AddressDecoder_Req_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/AddressDecoder_Resp_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/ArbitrationTree_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/FanInPrimitive_Req_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/FanInPrimitive_Resp_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/MUX2_REQ_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/RequestBlock_L2_1CH.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/RequestBlock_L2_2CH.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/ResponseBlock_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/ResponseTree_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/RR_Flag_Req_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_L2/XBAR_L2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/AddressDecoder_Req_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/AddressDecoder_Resp_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/ArbitrationTree_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/FanInPrimitive_Req_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/FanInPrimitive_Resp_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/MUX2_REQ_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/RequestBlock1CH_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/RequestBlock2CH_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/ResponseBlock_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/ResponseTree_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/RR_Flag_Req_BRIDGE.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/l2_tcdm_hybrid_interco-c454a1d770326823/RTL/XBAR_BRIDGE/XBAR_BRIDGE.sv 
+# -- Compiling module l2_tcdm_demux
+# -- Compiling module lint_2_apb
+# -- Compiling module lint_2_axi
+# -- Compiling module axi64_2_lint32
+# -- Compiling module axi_read_ctrl
+# -- Compiling module axi_write_ctrl
+# -- Compiling module lint64_to_32
+# -- Compiling module AddressDecoder_Req_L2
+# -- Compiling module AddressDecoder_Resp_L2
+# -- Compiling module ArbitrationTree_L2
+# -- Compiling module FanInPrimitive_Req_L2
+# -- Compiling module FanInPrimitive_Resp_L2
+# -- Compiling module MUX2_REQ_L2
+# -- Compiling module RequestBlock_L2_1CH
+# -- Compiling module RequestBlock_L2_2CH
+# -- Compiling module ResponseBlock_L2
+# -- Compiling module ResponseTree_L2
+# -- Compiling module RR_Flag_Req_L2
+# -- Compiling module XBAR_L2
+# -- Compiling module AddressDecoder_Req_BRIDGE
+# -- Compiling module AddressDecoder_Resp_BRIDGE
+# -- Compiling module ArbitrationTree_BRIDGE
+# -- Compiling module FanInPrimitive_Req_BRIDGE
+# -- Compiling module FanInPrimitive_Resp_BRIDGE
+# -- Compiling module MUX2_REQ_BRIDGE
+# -- Compiling module RequestBlock1CH_BRIDGE
+# -- Compiling module RequestBlock2CH_BRIDGE
+# -- Compiling module ResponseBlock_BRIDGE
+# -- Compiling module ResponseTree_BRIDGE
+# -- Compiling module RR_Flag_Req_BRIDGE
+# -- Compiling module XBAR_BRIDGE
+# 
+# Top level modules:
+# 	l2_tcdm_demux
+# 	lint_2_apb
+# 	lint_2_axi
+# 	axi64_2_lint32
+# 	XBAR_L2
+# 	XBAR_BRIDGE
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 63
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ODRG_unit/odrg_manager_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ecc_wrap/ecc_manager_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/pulpissimo_tcls/tcls_manager_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_13_8_cor.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_13_8_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_13_8_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_22_16_cor.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_22_16_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_22_16_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_39_32_cor.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_39_32_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_39_32_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_72_64_cor.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_72_64_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_72_64_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/lowrisc_ecc/prim_secded_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ODRG_unit/triple_core_barrier.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/hsiao_ecc/hsiao_ecc_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/hsiao_ecc/hsiao_ecc_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/hsiao_ecc/hsiao_ecc_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/hsiao_ecc/hsiao_ecc_cor.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/TMR_voter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/TMR_word_voter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/resp_suppress.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ODRG_unit/odrg_manager_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ecc_wrap/ecc_manager_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/pulpissimo_tcls/tcls_manager_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ecc_wrap/ecc_scrubber.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/TMR_voter_detect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/bitwise_TMR_voter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ecc_wrap/ecc_manager.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ecc_wrap/ecc_sram_wrap.sv 
+# -- Compiling package odrg_manager_reg_pkg
+# -- Compiling package ecc_manager_reg_pkg
+# -- Compiling package tcls_manager_reg_pkg
+# -- Compiling module prim_secded_13_8_cor
+# -- Compiling module prim_secded_13_8_dec
+# -- Compiling module prim_secded_13_8_enc
+# -- Compiling module prim_secded_22_16_cor
+# -- Compiling module prim_secded_22_16_dec
+# -- Compiling module prim_secded_22_16_enc
+# -- Compiling module prim_secded_39_32_cor
+# -- Compiling module prim_secded_39_32_dec
+# -- Compiling module prim_secded_39_32_enc
+# -- Compiling module prim_secded_72_64_cor
+# -- Compiling module prim_secded_72_64_dec
+# -- Compiling module prim_secded_72_64_enc
+# -- Compiling package prim_secded_pkg
+# -- Compiling module triple_core_barrier
+# -- Compiling package hsiao_ecc_pkg
+# -- Compiling module hsiao_ecc_enc
+# -- Compiling module hsiao_ecc_dec
+# -- Compiling module hsiao_ecc_cor
+# -- Compiling module TMR_voter
+# -- Compiling module TMR_word_voter
+# -- Compiling module resp_suppress
+# -- Compiling module odrg_manager_reg_top
+# -- Compiling module odrg_manager_reg_top_intf
+# -- Compiling module ecc_manager_reg_top
+# -- Compiling module ecc_manager_reg_top_intf
+# -- Compiling module tcls_manager_reg_top
+# -- Compiling module tcls_manager_reg_top_intf
+# -- Compiling module ecc_scrubber
+# -- Compiling module TMR_voter_detect
+# -- Compiling module bitwise_TMR_voter
+# -- Compiling module ecc_manager
+# -- Compiling module ecc_sram_wrap
+# 
+# Top level modules:
+# 	prim_secded_13_8_cor
+# 	prim_secded_13_8_dec
+# 	prim_secded_13_8_enc
+# 	prim_secded_22_16_cor
+# 	prim_secded_22_16_dec
+# 	prim_secded_22_16_enc
+# 	prim_secded_39_32_cor
+# 	prim_secded_39_32_enc
+# 	prim_secded_72_64_cor
+# 	prim_secded_72_64_dec
+# 	prim_secded_72_64_enc
+# 	triple_core_barrier
+# 	TMR_word_voter
+# 	resp_suppress
+# 	odrg_manager_reg_top_intf
+# 	ecc_manager_reg_top_intf
+# 	tcls_manager_reg_top_intf
+# 	bitwise_TMR_voter
+# 	ecc_manager
+# 	ecc_sram_wrap
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 6
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ODRG_unit" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/ODRG_unit/ODRG_unit.sv 
+# -- Compiling module ODRG_unit
+# 
+# Top level modules:
+# 	ODRG_unit
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 14
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/pulpissimo_tcls" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/pulpissimo_tcls/TCLS_unit.sv 
+# -- Compiling module TCLS_unit
+# 
+# Top level modules:
+# 	TCLS_unit
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 5
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/rapid_recovery_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/recovery_csr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/recovery_pc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/recovery_rf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/rapid_recovery_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/DMR_checker.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/DMR_CSR_checker.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/DMR_address_generator.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_rapid_recovery_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_registers_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_core_regs_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_dmr_regs_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_tmr_regs_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_registers_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_core_regs_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_dmr_regs_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_dmr_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_tmr_regs_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_tmr_ctrl.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/HMR_wrap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/redundancy_cells-5a4cfd2f3b95368a/rtl/HMR/hmr_unit.sv 
+# -- Compiling package rapid_recovery_pkg
+# -- Compiling module recovery_csr
+# -- Compiling module recovery_pc
+# -- Compiling module recovery_rf
+# -- Compiling module rapid_recovery_unit
+# -- Compiling module DMR_checker
+# -- Compiling module DMR_CSR_checker
+# -- Compiling module DMR_address_generator
+# -- Compiling module hmr_rapid_recovery_ctrl
+# -- Compiling package hmr_registers_reg_pkg
+# -- Compiling package hmr_core_regs_reg_pkg
+# -- Compiling package hmr_dmr_regs_reg_pkg
+# -- Compiling package hmr_tmr_regs_reg_pkg
+# -- Compiling module hmr_registers_reg_top
+# -- Compiling module hmr_registers_reg_top_intf
+# -- Compiling module hmr_core_regs_reg_top
+# -- Compiling module hmr_core_regs_reg_top_intf
+# -- Compiling module hmr_dmr_regs_reg_top
+# -- Compiling module hmr_dmr_regs_reg_top_intf
+# -- Compiling module hmr_dmr_ctrl
+# -- Compiling module hmr_tmr_regs_reg_top
+# -- Compiling module hmr_tmr_regs_reg_top_intf
+# -- Compiling module hmr_tmr_ctrl
+# -- Compiling module HMR_wrap
+# -- Compiling module hmr_unit
+# 
+# Top level modules:
+# 	DMR_CSR_checker
+# 	hmr_registers_reg_top_intf
+# 	hmr_core_regs_reg_top_intf
+# 	hmr_dmr_regs_reg_top_intf
+# 	hmr_tmr_regs_reg_top_intf
+# 	HMR_wrap
+# 	hmr_unit
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 482
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include/cv32e40p_apu_core_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include/cv32e40p_fpu_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include/cv32e40p_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_alu.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_alu_div.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_aligner.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_compressed_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_cs_registers.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_int_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_ex_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_hwloop_regs.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_id_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_if_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_load_store_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_mult.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_prefetch_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_prefetch_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_obi_interface.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_core.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_apu_disp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_popcnt.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_ff_one.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_sleep_unit.sv 
+# -- Compiling package cv32e40p_apu_core_pkg
+# -- Compiling package cv32e40p_fpu_pkg
+# -- Compiling package cv32e40p_pkg
+# -- Compiling module cv32e40p_alu
+# -- Compiling module cv32e40p_alu_div
+# -- Compiling module cv32e40p_aligner
+# -- Compiling module cv32e40p_compressed_decoder
+# -- Compiling module cv32e40p_controller
+# -- Compiling module cv32e40p_cs_registers
+# -- Compiling module cv32e40p_decoder
+# -- Compiling module cv32e40p_int_controller
+# -- Compiling module cv32e40p_ex_stage
+# -- Compiling module cv32e40p_fifo
+# -- Compiling module cv32e40p_hwloop_regs
+# -- Compiling module cv32e40p_id_stage
+# -- Compiling module cv32e40p_if_stage
+# -- Compiling module cv32e40p_load_store_unit
+# -- Compiling module cv32e40p_mult
+# -- Compiling module cv32e40p_prefetch_buffer
+# -- Compiling module cv32e40p_prefetch_controller
+# -- Compiling module cv32e40p_obi_interface
+# -- Compiling module cv32e40p_core
+# -- Compiling module cv32e40p_apu_disp
+# -- Compiling module cv32e40p_popcnt
+# -- Compiling module cv32e40p_ff_one
+# -- Compiling module cv32e40p_sleep_unit
+# 
+# Top level modules:
+# 	cv32e40p_core
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 473
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/cv32e40p_register_file_latch.sv 
+# -- Compiling module cv32e40p_register_file
+# 
+# Top level modules:
+# 	cv32e40p_register_file
+# End time: 15:45:56 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 4
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:56 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv/cv32e40p_sim_clock_gate.sv 
+# -- Compiling module cv32e40p_clock_gate
+# 
+# Top level modules:
+# 	cv32e40p_clock_gate
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+CV32E40P_TRACE_EXECUTION" "+define+COREV_ASSERT_OFF" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/rtl/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv/include/cv32e40p_tracer_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv/cv32e40p_wrapper.sv 
+# -- Compiling package cv32e40p_tracer_pkg
+# -- Compiling module cv32e40p_core_log
+# ** Note: (vlog-2286) /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40p-0c712058920bd787/bhv/cv32e40p_tracer.sv(27): Using implicit +incdir+/usr/pack/modelsim-10.7b-kgf/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src from import uvm_pkg
+# -- Compiling module cv32e40p_tracer
+# -- Compiling module cv32e40p_wrapper
+# 
+# Top level modules:
+# 	cv32e40p_wrapper
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/sva" /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/include/cv32e40x_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/bhv/cv32e40x_sim_clock_gate.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_if_c_obi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_if_xif.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_pma.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_prefetcher.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_alignment_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_i_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_a_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_b_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_m_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_ff_one.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_alu_b_cpop.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_popcnt.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_prefetch_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_compressed_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_instr_obi_interface.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_mpu.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_sequencer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_pc_target.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_alu.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_div.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_mult.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_wpt.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_align_check.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_lsu_response_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_write_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_data_obi_interface.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_csr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_debug_triggers.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_controller_fsm.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_controller_bypass.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_register_file.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_sleep_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_if_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_id_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_ex_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_load_store_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_wb_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_cs_registers.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_clic_int_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_int_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_register_file_wrapper.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/rtl/cv32e40x_core.sv 
+# -- Compiling package cv32e40x_pkg
+# -- Compiling module cv32e40x_clock_gate
+# -- Compiling interface cv32e40x_if_c_obi
+# -- Compiling interface cv32e40x_if_xif
+# -- Compiling module cv32e40x_pma
+# -- Compiling module cv32e40x_prefetcher
+# -- Compiling module cv32e40x_alignment_buffer
+# -- Compiling module cv32e40x_i_decoder
+# -- Compiling module cv32e40x_a_decoder
+# -- Compiling module cv32e40x_b_decoder
+# -- Compiling module cv32e40x_m_decoder
+# -- Compiling module cv32e40x_ff_one
+# -- Compiling module cv32e40x_alu_b_cpop
+# -- Compiling module cv32e40x_popcnt
+# -- Compiling module cv32e40x_prefetch_unit
+# -- Compiling module cv32e40x_compressed_decoder
+# -- Compiling module cv32e40x_instr_obi_interface
+# -- Compiling module cv32e40x_mpu
+# -- Compiling module cv32e40x_sequencer
+# -- Compiling module cv32e40x_pc_target
+# -- Compiling module cv32e40x_decoder
+# -- Compiling module cv32e40x_alu
+# -- Compiling module cv32e40x_div
+# -- Compiling module cv32e40x_mult
+# -- Compiling module cv32e40x_wpt
+# -- Compiling module cv32e40x_align_check
+# -- Compiling module cv32e40x_lsu_response_filter
+# -- Compiling module cv32e40x_write_buffer
+# -- Compiling module cv32e40x_data_obi_interface
+# -- Compiling module cv32e40x_csr
+# -- Compiling module cv32e40x_debug_triggers
+# -- Compiling module cv32e40x_controller_fsm
+# -- Compiling module cv32e40x_controller_bypass
+# -- Compiling module cv32e40x_register_file
+# -- Compiling module cv32e40x_sleep_unit
+# -- Compiling module cv32e40x_if_stage
+# -- Compiling module cv32e40x_id_stage
+# -- Compiling module cv32e40x_ex_stage
+# -- Compiling module cv32e40x_load_store_unit
+# -- Compiling module cv32e40x_wb_stage
+# -- Compiling module cv32e40x_cs_registers
+# -- Compiling module cv32e40x_controller
+# -- Compiling module cv32e40x_clic_int_controller
+# -- Compiling module cv32e40x_int_controller
+# -- Compiling module cv32e40x_register_file_wrapper
+# -- Compiling module cv32e40x_core
+# 
+# Top level modules:
+# 	cv32e40x_popcnt
+# 	cv32e40x_core
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 165
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/low_latency_interco" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cluster_interconnect-3cafd41fb1ea3828/rtl/peripheral_interco" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common/hci_package.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_manager_reg_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common/hci_interfaces.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_manager_reg_top.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_assign.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_assign_expand.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_mux_dynamic.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_mux_static.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_mux_ooo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_r_valid_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_r_id_filter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_source.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_split.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_dec.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_enc.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_manager.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_log_interconnect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_log_interconnect_l2.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_new_log_interconnect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_arbiter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_arbiter_tree.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_router_reorder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/parity/hci_copy_source.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/parity/hci_copy_sink.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/core/hci_core_sink.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_source.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/interco/hci_router.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_interconnect.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/ecc/hci_ecc_sink.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/hci_interconnect.sv 
+# -- Compiling package hci_package
+# -- Compiling package hci_ecc_manager_reg_pkg
+# -- Compiling interface hci_core_intf
+# -- Compiling module hci_ecc_manager_reg_top
+# -- Compiling module hci_ecc_manager_reg_top_intf
+# -- Compiling module hci_core_assign
+# -- Compiling module hci_core_assign_expand
+# -- Compiling module hci_core_fifo
+# -- Compiling module hci_core_mux_dynamic
+# -- Compiling module hci_core_mux_static
+# -- Compiling module hci_core_mux_ooo
+# -- Compiling module hci_core_r_valid_filter
+# -- Compiling module hci_core_r_id_filter
+# -- Compiling module hci_core_source
+# -- Compiling module hci_core_split
+# -- Compiling module hci_ecc_dec
+# -- Compiling module hci_ecc_enc
+# -- Compiling module hci_ecc_manager
+# -- Compiling module hci_log_interconnect
+# -- Compiling module hci_log_interconnect_l2
+# -- Compiling module hci_new_log_interconnect
+# -- Compiling module hci_arbiter
+# -- Compiling module hci_arbiter_tree
+# -- Compiling module hci_router_reorder
+# -- Compiling module hci_copy_source
+# -- Compiling module hci_copy_sink
+# -- Compiling module hci_core_sink
+# -- Compiling module hci_ecc_source
+# -- Compiling module hci_router
+# -- Compiling module hci_ecc_interconnect
+# -- Compiling module hci_ecc_sink
+# -- Compiling module hci_interconnect
+# 
+# Top level modules:
+# 	hci_ecc_manager_reg_top_intf
+# 	hci_core_assign_expand
+# 	hci_core_mux_dynamic
+# 	hci_core_mux_static
+# 	hci_core_mux_ooo
+# 	hci_core_r_valid_filter
+# 	hci_core_r_id_filter
+# 	hci_core_split
+# 	hci_copy_source
+# 	hci_copy_sink
+# 	hci_ecc_source
+# 	hci_ecc_interconnect
+# 	hci_ecc_sink
+# 	hci_interconnect
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 108
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl" /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_package.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_interfaces.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_regfile_ff.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_regfile_latch.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_seq_mult.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_uloop.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_regfile_latch_test_wrap.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_regfile.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/hwpe-ctrl-baf519a1b44955c2/rtl/hwpe_ctrl_slave.sv 
+# -- Compiling package hwpe_ctrl_package
+# -- Compiling interface hwpe_ctrl_intf_periph
+# -- Compiling module hwpe_ctrl_regfile_ff
+# -- Compiling module hwpe_ctrl_regfile_latch
+# -- Compiling module hwpe_ctrl_seq_mult
+# -- Compiling module hwpe_ctrl_uloop
+# -- Compiling module hwpe_ctrl_regfile_latch_test_wrap
+# -- Compiling module hwpe_ctrl_regfile
+# -- Compiling module hwpe_ctrl_slave
+# 
+# Top level modules:
+# 	hwpe_ctrl_seq_mult
+# 	hwpe_ctrl_uloop
+# 	hwpe_ctrl_slave
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 32
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_register_file_latch.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_register_file_ff.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_register_file_fpga.sv 
+# -- Compiling module ibex_register_file_latch
+# -- Compiling module ibex_register_file_ff
+# -- Compiling module ibex_register_file_fpga
+# 
+# Top level modules:
+# 	ibex_register_file_latch
+# 	ibex_register_file_ff
+# 	ibex_register_file_fpga
+# End time: 15:45:57 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 2
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:57 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/vendor/lowrisc_ip/ip/prim/rtl" /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/vendor/lowrisc_ip/ip/prim/rtl/prim_assert.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_alu.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_compressed_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_controller.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_counter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_csr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_decoder.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_fetch_fifo.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_load_store_unit.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_multdiv_fast.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_multdiv_slow.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_pmp.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_wb_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_cs_registers.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_ex_block.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_id_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_prefetch_buffer.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_if_stage.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/ibex-b31972101ad06c84/rtl/ibex_core.sv 
+# -- Compiling package ibex_pkg
+# -- Compiling module ibex_alu
+# -- Compiling module ibex_compressed_decoder
+# -- Compiling module ibex_controller
+# -- Compiling module ibex_counter
+# -- Compiling module ibex_csr
+# -- Compiling module ibex_decoder
+# -- Compiling module ibex_fetch_fifo
+# -- Compiling module ibex_load_store_unit
+# -- Compiling module ibex_multdiv_fast
+# -- Compiling module ibex_multdiv_slow
+# -- Compiling module ibex_pmp
+# -- Compiling module ibex_wb_stage
+# -- Compiling module ibex_cs_registers
+# -- Compiling module ibex_ex_block
+# -- Compiling module ibex_id_stage
+# -- Compiling module ibex_prefetch_buffer
+# -- Compiling module ibex_if_stage
+# -- Compiling module ibex_core
+# 
+# Top level modules:
+# 	ibex_core
+# End time: 15:45:58 on Feb 19,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 438
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:58 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/include" /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_pkg.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_intf.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_rready_converter.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/apb_to_obi.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_atop_resolver.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_cut.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_demux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_err_sbr.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_mux.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_sram_shim.sv /scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/src/obi_xbar.sv 
+# -- Compiling package obi_pkg
+# -- Compiling interface OBI_BUS
+# -- Compiling interface OBI_BUS_DV
+# -- Compiling module obi_rready_converter
+# -- Compiling module apb_to_obi
+# -- Compiling module obi_atop_resolver
+# -- Compiling module obi_atop_resolver_intf
+# -- Compiling module obi_cut
+# -- Compiling module obi_demux
+# -- Compiling module obi_demux_intf
+# -- Compiling module obi_err_sbr
+# -- Compiling module obi_err_sbr_intf
+# -- Compiling module obi_mux
+# -- Compiling module obi_mux_intf
+# -- Compiling module obi_sram_shim
+# -- Compiling module obi_xbar
+# -- Compiling module obi_xbar_intf
+# 
+# Top level modules:
+# 	obi_rready_converter
+# 	apb_to_obi
+# 	obi_atop_resolver_intf
+# 	obi_cut
+# 	obi_demux_intf
+# 	obi_err_sbr_intf
+# 	obi_mux_intf
+# 	obi_sram_shim
+# 	obi_xbar_intf
+# End time: 15:45:58 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1, Suppressed Warnings: 35
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:58 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/sva" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/rtl/redmule_pkg.sv /scratch2/msc25h32/redmule/rtl/redmule_tiler.sv /scratch2/msc25h32/redmule/rtl/redmule_ctrl.sv /scratch2/msc25h32/redmule/rtl/redmule_scheduler.sv /scratch2/msc25h32/redmule/rtl/redmule_castin.sv /scratch2/msc25h32/redmule/rtl/redmule_castout.sv /scratch2/msc25h32/redmule/rtl/redmule_streamer.sv /scratch2/msc25h32/redmule/rtl/x_buffer/redmule_x_buffer.sv /scratch2/msc25h32/redmule/rtl/x_buffer/redmule_x_pad_scm.sv /scratch2/msc25h32/redmule/rtl/x_buffer/redmule_x_buffer_scm.sv /scratch2/msc25h32/redmule/rtl/w_buffer/redmule_w_buffer.sv /scratch2/msc25h32/redmule/rtl/w_buffer/redmule_w_buffer_scm.sv /scratch2/msc25h32/redmule/rtl/z_buffer/redmule_z_buffer.sv /scratch2/msc25h32/redmule/rtl/z_buffer/redmule_z_buffer_scm.sv /scratch2/msc25h32/redmule/rtl/redmule_fma.sv /scratch2/msc25h32/redmule/rtl/redmule_noncomp.sv /scratch2/msc25h32/redmule/rtl/redmule_ce.sv /scratch2/msc25h32/redmule/rtl/redmule_row.sv /scratch2/msc25h32/redmule/rtl/redmule_engine.sv /scratch2/msc25h32/redmule/rtl/redmule_inst_decoder.sv /scratch2/msc25h32/redmule/rtl/redmule_top.sv /scratch2/msc25h32/redmule/rtl/redmule_memory_scheduler.sv /scratch2/msc25h32/redmule/rtl/redmule_complex.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_fifo.sv /scratch2/msc25h32/redmule/rtl/redmule_exp_buffer.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_encoder.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_decoder.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_slot_buffer.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_arbiter.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_input_mux.sv /scratch2/msc25h32/redmule/rtl/redmule_mx_output_stage.sv 
+# -- Compiling package redmule_pkg_sv_unit
+# -- Compiling package redmule_pkg
+# -- Compiling module redmule_tiler
+# -- Compiling package redmule_ctrl_sv_unit
+# -- Compiling module redmule_ctrl
+# -- Compiling module redmule_scheduler
+# -- Compiling package redmule_castin_sv_unit
+# -- Compiling module redmule_castin
+# -- Compiling package redmule_castout_sv_unit
+# -- Compiling module redmule_castout
+# -- Compiling module redmule_streamer
+# -- Compiling module redmule_x_buffer
+# -- Compiling module redmule_x_pad_scm
+# -- Compiling module redmule_x_buffer_scm
+# -- Compiling module redmule_w_buffer
+# -- Compiling module redmule_w_buffer_scm
+# -- Compiling module redmule_z_buffer
+# -- Compiling module redmule_z_buffer_scm
+# -- Compiling module redmule_fma
+# -- Compiling module redmule_noncomp
+# -- Compiling module redmule_ce
+# -- Compiling module redmule_row
+# -- Compiling module redmule_engine
+# -- Compiling module redmule_inst_decoder
+# -- Compiling module redmule_top
+# -- Compiling module redmule_memory_scheduler
+# -- Compiling module redmule_complex
+# -- Compiling module redmule_mx_fifo
+# -- Compiling module redmule_exp_buffer
+# -- Compiling module redmule_mx_encoder
+# -- Compiling module redmule_mx_decoder
+# -- Compiling module redmule_mx_slot_buffer
+# -- Compiling module redmule_mx_arbiter
+# -- Compiling module redmule_mx_input_mux
+# -- Compiling module redmule_mx_output_stage
+# 
+# Top level modules:
+# 	redmule_complex
+# End time: 15:45:58 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 9, Suppressed Warnings: 76
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:58 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/sva" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/target/sim/src/tb_dummy_memory.sv /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv 
+# -- Compiling module tb_dummy_memory
+# -- Compiling package redmule_tb_sv_unit
+# -- Compiling module redmule_tb
+# ** Warning (downgraded): /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(749): (vlog-7061) Variable 'errors' driven in an always_ff block, may not be driven by any other process. See /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(557).
+# 
+# Top level modules:
+# 	redmule_tb
+# End time: 15:45:58 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 1, Suppressed Errors: 3, Suppressed Warnings: 2
+# QuestaSim-64 vlog 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:58 on Feb 19,2026
+# vlog -incr -sv "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 "+define+TARGET_CV32E40P_INCLUDE_TRACER" "+define+TARGET_REDMULE_TEST" "+define+TARGET_RTL" "+define+TARGET_SIMULATION" "+define+TARGET_VSIM" "+define+COREV_ASSERT_OFF" "+define+CV32E40P_TRACE_EXECUTION" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/common_cells-c395fc6010bcbc9d/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/cv32e40x-b02547e8c1b6e597/sva" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/obi-1697a9bcab4e6368/include" "+incdir+/scratch2/msc25h32/redmule/.bender/git/checkouts/register_interface-ced59a5752a778ad/include" /scratch2/msc25h32/redmule/target/sim/src/redmule_tb_wrap.sv 
+# -- Compiling module redmule_tb_wrap
+# 
+# Top level modules:
+# 	redmule_tb_wrap
+# End time: 15:45:58 on Feb 19,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0, Suppressed Errors: 1
+# QuestaSim-64 vopt 10.7b_1 Compiler 2018.07 Jul 26 2018
+# Start time: 15:45:58 on Feb 19,2026
+# vopt "+acc" -permissive -floatparameters+redmule_tb_wrap -suppress 2583 -suppress 13314 -suppress vlog-1952 redmule_tb_wrap -o redmule_tb_wrap_opt 
+# 
+# Top level modules:
+# 	redmule_tb_wrap
+# 
+# Analyzing design...
+# -- Loading module redmule_tb_wrap
+# -- Importing package redmule_pkg
+# -- Importing package fpnew_pkg
+# -- Importing package hci_package
+# -- Importing package hwpe_stream_package
+# -- Loading module redmule_tb
+# -- Loading interface hwpe_stream_intf_tcdm
+# -- Loading interface hwpe_stream_intf_stream
+# -- Loading interface hci_core_intf
+# -- Loading module tb_dummy_memory
+# -- Loading module redmule_complex
+# -- Importing package cv32e40x_pkg
+# -- Importing package hwpe_ctrl_package
+# -- Importing package obi_pkg
+# -- Importing package cf_math_pkg
+# -- Loading interface hwpe_ctrl_intf_periph
+# -- Loading module tc_clk_gating
+# -- Loading interface cv32e40x_if_xif
+# -- Loading module obi_cut
+# -- Loading module spill_register
+# -- Loading module spill_register_flushable
+# -- Loading module redmule_top
+# -- Loading module redmule_streamer
+# -- Loading module hci_core_mux_ooo
+# -- Loading module hci_core_r_id_filter
+# -- Loading module hci_core_r_valid_filter
+# -- Loading module hci_core_sink
+# -- Loading module hwpe_stream_addressgen_v3
+# -- Loading module hwpe_stream_fifo
+# -- Loading module redmule_castout
+# -- Loading module hci_core_fifo
+# -- Loading module hci_core_assign
+# -- Loading module hwpe_stream_assign
+# -- Loading module redmule_exp_buffer
+# -- Loading module redmule_mx_slot_buffer
+# -- Loading module redmule_mx_arbiter
+# -- Loading module redmule_mx_decoder
+# -- Loading module redmule_mx_input_mux
+# -- Loading module redmule_x_buffer
+# -- Loading module redmule_x_pad_scm
+# -- Loading module redmule_x_buffer_scm
+# -- Loading module redmule_w_buffer
+# -- Loading module redmule_w_buffer_scm
+# -- Loading module redmule_z_buffer
+# -- Loading module redmule_z_buffer_scm
+# -- Loading module redmule_engine
+# -- Loading module redmule_mx_output_stage
+# -- Loading module redmule_mx_fifo
+# -- Loading module redmule_mx_encoder
+# -- Loading module redmule_memory_scheduler
+# -- Loading module redmule_ctrl
+# -- Loading module hwpe_ctrl_slave
+# -- Loading module hwpe_ctrl_regfile
+# -- Loading module hwpe_ctrl_regfile_latch_test_wrap
+# -- Loading module redmule_tiler
+# -- Loading module hwpe_ctrl_seq_mult
+# -- Loading module redmule_scheduler
+# -- Loading module fpnew_cast_multi
+# -- Loading module lzc
+# -- Loading module fpnew_rounding
+# -- Loading module hci_core_source
+# -- Loading module redmule_castin
+# -- Loading module redmule_row
+# -- Loading module hwpe_ctrl_regfile_ff
+# -- Loading module redmule_inst_decoder
+# -- Loading module cv32e40p_wrapper
+# -- Importing package cv32e40p_apu_core_pkg
+# -- Loading module cv32e40p_core_log
+# -- Loading module cv32e40p_tracer
+# -- Importing package cv32e40p_pkg
+# -- Importing package mtiUvm.uvm_pkg (uvm-1.1d Built-in)
+# -- Importing package cv32e40p_tracer_pkg
+# -- Loading module cv32e40p_core
+# -- Loading module cv32e40p_sleep_unit
+# -- Loading module cv32e40p_clock_gate
+# -- Loading module cv32e40p_if_stage
+# -- Loading module cv32e40p_prefetch_buffer
+# -- Loading module cv32e40p_prefetch_controller
+# -- Loading module cv32e40p_fifo
+# -- Loading module cv32e40p_obi_interface
+# -- Loading module cv32e40p_aligner
+# -- Loading module cv32e40p_compressed_decoder
+# -- Loading module cv32e40p_id_stage
+# -- Importing package cv32e40p_fpu_pkg
+# -- Loading module cv32e40p_register_file
+# -- Loading module cv32e40p_decoder
+# -- Loading module cv32e40p_controller
+# -- Loading module cv32e40p_int_controller
+# -- Loading module cv32e40p_ex_stage
+# -- Loading module cv32e40p_alu
+# -- Loading module cv32e40p_popcnt
+# -- Loading module cv32e40p_ff_one
+# -- Loading module cv32e40p_alu_div
+# -- Loading module cv32e40p_mult
+# -- Loading module cv32e40p_load_store_unit
+# -- Loading module cv32e40p_cs_registers
+# -- Loading module addr_decode
+# -- Loading module addr_decode_dync
+# -- Loading module obi_demux
+# -- Loading module delta_counter
+# -- Loading module cv32e40x_core
+# -- Loading interface cv32e40x_if_c_obi
+# -- Loading module cv32e40x_sleep_unit
+# -- Loading module cv32e40x_clock_gate
+# -- Loading module cv32e40x_if_stage
+# -- Loading module cv32e40x_prefetch_unit
+# -- Loading module cv32e40x_prefetcher
+# -- Loading module cv32e40x_alignment_buffer
+# -- Loading module cv32e40x_mpu
+# -- Loading module cv32e40x_pma
+# -- Loading module cv32e40x_instr_obi_interface
+# -- Loading module cv32e40x_compressed_decoder
+# -- Loading module cv32e40x_id_stage
+# -- Loading module cv32e40x_pc_target
+# -- Loading module cv32e40x_decoder
+# -- Loading module cv32e40x_i_decoder
+# -- Loading module cv32e40x_ex_stage
+# -- Loading module cv32e40x_alu
+# -- Loading module cv32e40x_ff_one
+# -- Loading module cv32e40x_alu_b_cpop
+# -- Loading module cv32e40x_load_store_unit
+# -- Loading module cv32e40x_align_check
+# -- Loading module cv32e40x_lsu_response_filter
+# -- Loading module cv32e40x_write_buffer
+# -- Loading module cv32e40x_data_obi_interface
+# -- Loading module cv32e40x_wb_stage
+# -- Loading module cv32e40x_cs_registers
+# -- Loading module cv32e40x_csr
+# -- Loading module cv32e40x_debug_triggers
+# -- Loading module cv32e40x_controller
+# -- Loading module cv32e40x_controller_fsm
+# -- Loading module cv32e40x_controller_bypass
+# -- Loading module cv32e40x_register_file_wrapper
+# -- Loading module cv32e40x_register_file
+# -- Loading package mtiUvm.questa_uvm_pkg
+# -- Loading module fpnew_classifier
+# -- Loading module redmule_ce
+# -- Loading module cluster_clock_gating
+# -- Loading module redmule_noncomp
+# -- Loading module redmule_fma
+# -- Loading module cv32e40x_sequencer
+# -- Loading module cv32e40x_m_decoder
+# -- Loading module cv32e40x_div
+# -- Loading module cv32e40x_mult
+# -- Loading module cv32e40x_wpt
+# -- Loading module cv32e40x_int_controller
+# Optimizing 209 design-units (inlining 0/15557 module instances):
+# -- Optimizing package hwpe_stream_assign_sv_unit(fast)
+# -- Optimizing package hwpe_stream_fifo_sv_unit(fast)
+# -- Optimizing package hwpe_stream_addressgen_v3_sv_unit(fast)
+# -- Optimizing package obi_pkg(fast)
+# -- Optimizing package hci_package(fast)
+# -- Optimizing package redmule_tb_sv_unit(fast)
+# -- Optimizing package redmule_pkg(fast)
+# -- Optimizing package redmule_castin_sv_unit(fast)
+# -- Optimizing package redmule_ctrl_sv_unit(fast)
+# -- Optimizing package redmule_castout_sv_unit(fast)
+# -- Optimizing interface hwpe_stream_intf_stream(fast)
+# -- Optimizing interface hci_core_intf(fast)
+# -- Optimizing interface hwpe_ctrl_intf_periph(fast)
+# -- Optimizing interface cv32e40x_if_xif(fast)
+# -- Optimizing interface hwpe_stream_intf_tcdm(fast)
+# -- Optimizing interface cv32e40x_if_c_obi(fast)
+# -- Optimizing module hwpe_stream_fifo(fast__5)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__5)".
+# -- Optimizing module hwpe_stream_fifo(fast__6)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__6)".
+# -- Optimizing module hwpe_stream_fifo(fast__7)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__7)".
+# -- Optimizing module hwpe_stream_fifo(fast__8)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__8)".
+# -- Optimizing module hwpe_stream_fifo(fast__9)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__9)".
+# -- Optimizing module cv32e40x_alu_b_cpop(fast)
+# -- Optimizing module cv32e40p_prefetch_controller(fast)
+# -- Optimizing interface hci_core_intf(fast)
+# -- Optimizing interface hci_core_intf(fast__1)
+# -- Optimizing interface hci_core_intf(fast__2)
+# -- Optimizing interface hci_core_intf(fast__3)
+# -- Optimizing interface hci_core_intf(fast__4)
+# -- Optimizing interface hci_core_intf(fast__5)
+# -- Optimizing interface hci_core_intf(fast__6)
+# -- Optimizing module redmule_mx_arbiter(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_mx_arbiter(fast)".
+# -- Optimizing module hwpe_stream_addressgen_v3(fast)
+# -- Optimizing module hwpe_stream_addressgen_v3(fast__1)
+# -- Optimizing module redmule_mx_output_stage(fast)
+# -- Optimizing module cv32e40p_if_stage(fast)
+# -- Optimizing module redmule_inst_decoder(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_inst_decoder(fast)".
+# -- Optimizing module hci_core_r_valid_filter(fast)
+# -- Optimizing module fpnew_classifier(fast__3)
+# -- Optimizing module cv32e40p_aligner(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40p_aligner(fast)".
+# -- Optimizing module cv32e40x_csr(fast)
+# -- Optimizing module cv32e40x_csr(fast__1)
+# -- Optimizing module cv32e40x_csr(fast__2)
+# -- Optimizing module cv32e40x_csr(fast__3)
+# -- Optimizing module cv32e40x_csr(fast__4)
+# -- Optimizing module cv32e40x_csr(fast__5)
+# -- Optimizing module cv32e40x_csr(fast__6)
+# -- Optimizing module cv32e40x_csr(fast__7)
+# -- Optimizing module cv32e40x_csr(fast__8)
+# -- Optimizing module cv32e40p_fifo(fast)
+# -- Optimizing module cv32e40x_wb_stage(fast)
+# -- Optimizing module cv32e40x_mult(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_mult(fast)".
+# -- Optimizing module addr_decode_dync(fast)
+# -- Optimizing module redmule_w_buffer(fast)
+# -- Optimizing module cv32e40x_lsu_response_filter(fast)
+# -- Optimizing module cv32e40x_mpu(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_mpu(fast)".
+# -- Optimizing module cv32e40x_mpu(fast__1)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_mpu(fast__1)".
+# -- Optimizing module cv32e40p_int_controller(fast)
+# -- Optimizing module obi_demux(fast)
+# -- Optimizing module cv32e40p_obi_interface(fast)
+# -- Optimizing module cv32e40p_obi_interface(fast__1)
+# -- Optimizing module hwpe_ctrl_regfile_latch_test_wrap(fast)
+# -- Optimizing module redmule_exp_buffer(fast)
+# -- Optimizing module cv32e40x_controller(fast)
+# -- Optimizing module cv32e40p_wrapper(fast)
+# -- Optimizing module redmule_mx_fifo(fast)
+# -- Optimizing module fpnew_classifier(fast)
+# -- Optimizing module fpnew_classifier(fast__1)
+# -- Optimizing module fpnew_classifier(fast__2)
+# -- Optimizing module cv32e40x_wpt(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_wpt(fast)".
+# -- Optimizing module cv32e40x_alignment_buffer(fast)
+# -- Optimizing module hci_core_fifo(fast)
+# -- Optimizing module hci_core_fifo(fast__1)
+# -- Optimizing module redmule_tiler(fast)
+# -- Optimizing module hci_core_mux_ooo(fast)
+# -- Optimizing module redmule_top(fast)
+# -- Optimizing module redmule_mx_slot_buffer(fast)
+# -- Optimizing module cv32e40x_debug_triggers(fast)
+# -- Optimizing module redmule_memory_scheduler(fast)
+# -- Optimizing module cv32e40x_ex_stage(fast)
+# -- Optimizing module lzc(fast)
+# -- Optimizing module redmule_x_pad_scm(fast)
+# -- Optimizing module cv32e40p_alu_div(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40p_alu_div(fast)".
+# -- Optimizing module cv32e40x_compressed_decoder(fast)
+# -- Optimizing module cv32e40x_core(fast)
+# -- Optimizing module cv32e40x_controller_bypass(fast)
+# -- Optimizing module cv32e40x_div(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_div(fast)".
+# -- Optimizing module cv32e40x_if_stage(fast)
+# -- Optimizing module cv32e40x_sequencer(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_sequencer(fast)".
+# -- Optimizing module cv32e40p_core(fast)
+# -- Optimizing module redmule_ce(fast)
+# -- Optimizing module cv32e40p_load_store_unit(fast)
+# -- Optimizing module redmule_complex(fast)
+# -- Optimizing module tb_dummy_memory(fast__1)
+# -- Optimizing module hci_core_source(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hci_core_source(fast)".
+# -- Optimizing module cv32e40p_mult(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40p_mult(fast)".
+# -- Optimizing module hci_core_sink(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hci_core_sink(fast)".
+# -- Optimizing module cv32e40x_i_decoder(fast)
+# -- Optimizing module cv32e40x_decoder(fast)
+# -- Optimizing module redmule_z_buffer(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_z_buffer(fast)".
+# -- Optimizing module cv32e40x_alu(fast)
+# -- Optimizing module cv32e40p_compressed_decoder(fast)
+# -- Optimizing module cv32e40p_popcnt(fast)
+# -- Optimizing module cv32e40p_ex_stage(fast)
+# -- Optimizing module redmule_ctrl(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_ctrl(fast)".
+# -- Optimizing module hci_core_r_id_filter(fast)
+# -- Optimizing module hci_core_r_id_filter(fast__1)
+# -- Optimizing module fpnew_classifier(fast__4)
+# -- Optimizing module hwpe_stream_fifo(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast)".
+# -- Optimizing module hwpe_stream_fifo(fast__1)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__1)".
+# -- Optimizing module hwpe_stream_fifo(fast__2)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__2)".
+# -- Optimizing module hwpe_stream_fifo(fast__3)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__3)".
+# -- Optimizing module hwpe_stream_fifo(fast__4)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_stream_fifo(fast__4)".
+# -- Optimizing module fpnew_cast_multi(fast)
+# -- Optimizing module redmule_castout(fast)
+# -- Optimizing module redmule_castin(fast)
+# -- Optimizing module cv32e40x_controller_fsm(fast)
+# ** Note: (vopt-143) Recognized 2 FSMs in module "cv32e40x_controller_fsm(fast)".
+# -- Optimizing module cv32e40p_id_stage(fast)
+# -- Optimizing module redmule_fma(fast)
+# -- Optimizing module redmule_row(fast)
+# -- Optimizing module hwpe_ctrl_regfile(fast)
+# -- Optimizing module cv32e40p_controller(fast)
+# ** Note: (vopt-143) Recognized 2 FSMs in module "cv32e40p_controller(fast)".
+# -- Optimizing module redmule_z_buffer_scm(fast)
+# -- Optimizing module redmule_mx_decoder(fast)
+# -- Optimizing module hci_core_mux_ooo(fast__1)
+# -- Optimizing module cv32e40p_register_file(fast)
+# -- Optimizing module redmule_scheduler(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_scheduler(fast)".
+# -- Optimizing module lzc(fast__1)
+# -- Optimizing module cv32e40x_register_file(fast)
+# -- Optimizing module redmule_w_buffer_scm(fast)
+# -- Optimizing module cv32e40p_ff_one(fast)
+# -- Optimizing module cv32e40x_ff_one(fast)
+# -- Optimizing module redmule_streamer(fast)
+# -- Optimizing module cv32e40x_id_stage(fast)
+# -- Optimizing module redmule_noncomp(fast)
+# -- Optimizing module redmule_noncomp(fast__1)
+# -- Optimizing module redmule_mx_encoder(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_mx_encoder(fast)".
+# -- Optimizing module cv32e40x_load_store_unit(fast)
+# -- Optimizing module hwpe_ctrl_slave(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "hwpe_ctrl_slave(fast)".
+# -- Optimizing module redmule_x_buffer(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "redmule_x_buffer(fast)".
+# -- Optimizing module tb_dummy_memory(fast)
+# -- Optimizing module hwpe_ctrl_regfile_ff(fast)
+# -- Optimizing module cv32e40x_cs_registers(fast)
+# -- Optimizing module cv32e40p_cs_registers(fast)
+# -- Optimizing module cv32e40p_tracer(fast)
+# -- Optimizing module redmule_x_buffer_scm(fast)
+# -- Optimizing module cv32e40p_decoder(fast)
+# -- Optimizing module redmule_tb(fast)
+# ** Warning (downgraded): /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(749): (vopt-7061) Variable 'errors' driven in an always_ff block, may not be driven by any other process. See /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(557).
+# -- Optimizing module cv32e40p_alu(fast)
+# -- Optimizing module redmule_engine(fast)
+# -- Optimizing module cv32e40x_align_check(fast)
+# ** Note: (vopt-143) Recognized 1 FSM in module "cv32e40x_align_check(fast)".
+# -- Optimizing module cv32e40x_pma(fast)
+# -- Optimizing module spill_register_flushable(fast)
+# -- Optimizing module spill_register_flushable(fast__1)
+# -- Optimizing module delta_counter(fast)
+# -- Optimizing module cv32e40x_m_decoder(fast)
+# -- Optimizing module cv32e40x_prefetcher(fast)
+# -- Optimizing module cv32e40x_int_controller(fast)
+# -- Optimizing interface hwpe_stream_intf_stream(fast)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__1)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__2)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__3)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__4)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__5)
+# -- Optimizing interface hwpe_stream_intf_stream(fast__6)
+# -- Optimizing module hwpe_ctrl_seq_mult(fast)
+# -- Optimizing module hwpe_ctrl_seq_mult(fast__1)
+# -- Optimizing module fpnew_rounding(fast)
+# -- Optimizing module fpnew_rounding(fast__1)
+# -- Optimizing interface cv32e40x_if_xif(fast)
+# -- Optimizing module cv32e40p_prefetch_buffer(fast)
+# -- Optimizing module cv32e40p_sleep_unit(fast)
+# -- Optimizing module cv32e40x_write_buffer(fast)
+# -- Optimizing module cv32e40x_instr_obi_interface(fast)
+# -- Optimizing module hci_core_assign(fast)
+# -- Optimizing module hci_core_assign(fast__1)
+# -- Optimizing module hci_core_assign(fast__2)
+# -- Optimizing module hci_core_assign(fast__3)
+# -- Optimizing module redmule_tb_wrap(fast)
+# -- Optimizing module redmule_mx_input_mux(fast)
+# -- Optimizing module cv32e40x_prefetch_unit(fast)
+# -- Optimizing module cv32e40x_sleep_unit(fast)
+# -- Optimizing module obi_cut(fast)
+# -- Optimizing module cv32e40x_pc_target(fast)
+# -- Optimizing interface hwpe_stream_intf_tcdm(fast)
+# -- Optimizing module addr_decode(fast)
+# -- Optimizing module cv32e40p_core_log(fast)
+# -- Optimizing module cv32e40x_data_obi_interface(fast)
+# -- Optimizing module spill_register(fast)
+# -- Optimizing module spill_register(fast__1)
+# -- Optimizing module cv32e40x_register_file_wrapper(fast)
+# -- Optimizing module tc_clk_gating(fast)
+# -- Optimizing module cv32e40x_clock_gate(fast)
+# -- Optimizing module cv32e40p_clock_gate(fast)
+# -- Optimizing module hwpe_stream_assign(fast)
+# -- Optimizing interface hwpe_ctrl_intf_periph(fast)
+# -- Optimizing module cluster_clock_gating(fast)
+# -- Optimizing interface cv32e40x_if_c_obi(fast)
+# -- Optimizing interface cv32e40x_if_c_obi(fast__1)
+# -- Optimizing package cv32e40p_fpu_pkg(fast)
+# -- Optimizing package mtiUvm.uvm_pkg (uvm-1.1d Built-in)(fast)
+# -- Optimizing package cv32e40p_pkg(fast)
+# -- Optimizing package cv32e40p_apu_core_pkg(fast)
+# -- Optimizing package cf_math_pkg(fast)
+# -- Optimizing package hwpe_ctrl_package(fast)
+# -- Optimizing package cv32e40x_pkg(fast)
+# -- Optimizing package hwpe_stream_package(fast)
+# -- Optimizing package fpnew_pkg(fast)
+# -- Optimizing package mtiUvm.questa_uvm_pkg(fast)
+# -- Optimizing package cv32e40p_tracer_pkg(fast)
+# Optimized design name is redmule_tb_wrap_opt
+# End time: 15:46:03 on Feb 19,2026, Elapsed time: 0:00:05
+# Errors: 0, Warnings: 1, Suppressed Warnings: 131

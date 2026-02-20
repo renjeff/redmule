@@ -75,6 +75,52 @@ module redmule_tb
   integer f_engine_x, f_engine_w, f_engine_z;
   integer f_dec_fp16, f_dec_exp, f_dec_target;
 
+  function automatic longint unsigned ceil_div(longint unsigned num,
+                                               longint unsigned den);
+    return (den == 0) ? 0 : ((num + den - 1) / den);
+  endfunction
+
+  localparam int unsigned IDEAL_M_SIZE = 32;
+  localparam int unsigned IDEAL_N_SIZE = 32;
+  localparam int unsigned IDEAL_K_SIZE = 32;
+
+  function automatic longint unsigned compute_ideal_cycles(
+      input logic [31:0] mcfig0,
+      input logic [31:0] mcfig1);
+    int unsigned m_size;
+    int unsigned n_size;
+    int unsigned k_size;
+    longint unsigned L_rows;
+    longint unsigned H_cols;
+    longint unsigned pipe_regs;
+    longint unsigned tile;
+    longint unsigned warmup_cycles;
+    longint unsigned steady_cycles;
+
+    // Use package-level defaults rather than runtime register values
+    m_size = IDEAL_M_SIZE;
+    k_size = IDEAL_K_SIZE;
+    n_size = IDEAL_N_SIZE;
+/*     void'(mcfig0);
+    void'(mcfig1); */
+
+    L_rows   = (ARRAY_HEIGHT != 0) ? ARRAY_HEIGHT : 1;
+    pipe_regs = PIPE_REGS;
+    H_cols   = (pipe_regs + 1) != 0 ? (redmule_pkg::TOT_DEPTH / (pipe_regs + 1)) : 0;
+    if (H_cols == 0) H_cols = 1;
+    tile = H_cols * (pipe_regs + 1);
+    if (tile == 0) tile = 1;
+
+    warmup_cycles = tile;
+
+    steady_cycles  = ceil_div(m_size, L_rows);
+    steady_cycles *= ceil_div(k_size, tile);
+    steady_cycles *= ceil_div(n_size, tile);
+    steady_cycles *= tile;
+
+    return warmup_cycles + steady_cycles;
+  endfunction
+
   task automatic load_exponent_file(string path, int base_word_offset);
     int fd;
     int idx;
@@ -108,6 +154,11 @@ module redmule_tb
   longint unsigned perf_busy_cycles;
   longint unsigned perf_encoder_blocks;
   longint unsigned perf_decoder_blocks;
+  longint unsigned perf_load_to_store_cycles;
+  longint unsigned perf_load_window_counter;
+  longint unsigned perf_engine_busy_cycles;
+  logic           load_window_active;
+  logic           load_window_done;
 
   // Optional MX debug dumping (enabled via +MX_DEBUG_DUMP)
   bit mx_debug_dump;
@@ -194,6 +245,14 @@ module redmule_tb
                         (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) ||
                         (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready);
 
+  logic tcdm_load_fire;
+  logic z_store_done_pulse;
+
+  assign tcdm_load_fire = redmule_tcdm.req & redmule_tcdm.gnt & redmule_tcdm.wen;
+  assign z_store_done_pulse = i_dut.i_redmule_top.flgs_streamer.z_stream_sink_flags.done;
+  logic engine_busy_any;
+  assign engine_busy_any = |i_dut.i_redmule_top.flgs_engine.busy;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       perf_active         <= 1'b0;
@@ -206,6 +265,11 @@ module redmule_tb
       x_stream_done_count <= 0;
       w_stream_done_count <= 0;
       z_stream_done_count <= 0;
+      load_window_active  <= 1'b0;
+      load_window_done    <= 1'b0;
+      perf_load_window_counter <= '0;
+      perf_load_to_store_cycles <= '0;
+      perf_engine_busy_cycles   <= '0;
     end else begin
       if (perf_enable) begin
         // Track stream completions using hci_streamer_flags_t.done field
@@ -221,6 +285,10 @@ module redmule_tb
           if (fetch_enable_i && accel_active) begin
             perf_active <= 1'b1;
             idle_count <= 0;
+            load_window_active <= 1'b0;
+            load_window_done   <= 1'b0;
+            perf_load_window_counter <= '0;
+            perf_load_to_store_cycles <= '0;
           end
         end else begin
           // Measurement active: track cycles and activity
@@ -266,6 +334,23 @@ module redmule_tb
               perf_active <= 1'b0;
               perf_seen_busy <= 1'b0;
               idle_count <= 0;
+            end
+          end
+
+          if (engine_busy_any) begin
+            perf_engine_busy_cycles <= perf_engine_busy_cycles + 1;
+          end
+
+          // Measure window from first load until Z store completes
+          if (!load_window_active && !load_window_done && tcdm_load_fire) begin
+            load_window_active <= 1'b1;
+            perf_load_window_counter <= '0;
+          end else if (load_window_active) begin
+            perf_load_window_counter <= perf_load_window_counter + 1;
+            if (z_store_done_pulse) begin
+              load_window_active <= 1'b0;
+              load_window_done   <= 1'b1;
+              perf_load_to_store_cycles <= perf_load_window_counter + 1;
             end
           end
         end
@@ -670,58 +755,6 @@ module redmule_tb
                     "-");
       end
 
-      if (x_buf_read_q) begin
-        $display("[TB][MXDBG][%0t] XBUFQ row=%0d data=%h",
-                 $time,
-                 i_dut.i_redmule_top.i_x_buffer.h_index_r,
-                 i_dut.i_redmule_top.x_buffer_q);
-        if (mx_debug_fd)
-          $fdisplay(mx_debug_fd,
-                    "%0t,XBUFQ,X,%h,%s",
-                    $time,
-                    i_dut.i_redmule_top.x_buffer_q,
-                    "-");
-        if (f_engine_x) begin
-          for (int w_idx = 0; w_idx < ARRAY_WIDTH; w_idx++) begin
-            for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
-              $fwrite(f_engine_x, "%04h ",
-                      i_dut.i_redmule_top.x_buffer_q[w_idx][h_idx]);
-            end
-          end
-          $fwrite(f_engine_x, "\n");
-        end
-      end
-
-      if (w_buf_read_q) begin
-        $display("[TB][MXDBG][%0t] WBUFQ data=%h",
-                 $time,
-                 i_dut.i_redmule_top.w_buffer_q);
-        if (mx_debug_fd)
-          $fdisplay(mx_debug_fd,
-                    "%0t,WBUFQ,W,%h,%s",
-                    $time,
-                    i_dut.i_redmule_top.w_buffer_q,
-                    "-");
-        if (f_engine_w) begin
-          for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
-            $fwrite(f_engine_w, "%04h ",
-                    i_dut.i_redmule_top.w_buffer_q[h_idx]);
-          end
-          $fwrite(f_engine_w, "\n");
-        end
-      end
-
-      if (i_dut.i_redmule_top.fifo_valid &&
-          i_dut.i_redmule_top.fifo_pop) begin
-        if (f_engine_z) begin
-          for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
-            $fwrite(f_engine_z, "%04h ",
-                    i_dut.i_redmule_top.fifo_data_out[lane*BITW +: BITW]);
-          end
-          $fwrite(f_engine_z, "\n");
-        end
-      end
-
       if (i_dut.i_redmule_top.mx_dec_fp16_valid &&
           i_dut.i_redmule_top.mx_dec_fp16_ready) begin
         target_str = i_dut.i_redmule_top.target_is_x ? "X" :
@@ -737,6 +770,52 @@ module redmule_tb
                     target_str,
                     i_dut.i_redmule_top.mx_dec_fp16_data,
                     "-");
+      end
+    end
+
+    // Engine input/output file captures - always active (not gated by mx_debug_dump)
+    if (x_buf_read_q) begin
+      if (mx_debug_fd)
+        $fdisplay(mx_debug_fd,
+                  "%0t,XBUFQ,X,%h,%s",
+                  $time,
+                  i_dut.i_redmule_top.x_buffer_q,
+                  "-");
+      if (f_engine_x) begin
+        for (int w_idx = 0; w_idx < ARRAY_WIDTH; w_idx++) begin
+          for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
+            $fwrite(f_engine_x, "%04h ",
+                    i_dut.i_redmule_top.x_buffer_q[w_idx][h_idx]);
+          end
+        end
+        $fwrite(f_engine_x, "\n");
+      end
+    end
+
+    if (w_buf_read_q) begin
+      if (mx_debug_fd)
+        $fdisplay(mx_debug_fd,
+                  "%0t,WBUFQ,W,%h,%s",
+                  $time,
+                  i_dut.i_redmule_top.w_buffer_q,
+                  "-");
+      if (f_engine_w) begin
+        for (int h_idx = 0; h_idx < ARRAY_HEIGHT; h_idx++) begin
+          $fwrite(f_engine_w, "%04h ",
+                  i_dut.i_redmule_top.w_buffer_q[h_idx]);
+        end
+        $fwrite(f_engine_w, "\n");
+      end
+    end
+
+    if (i_dut.i_redmule_top.fifo_valid &&
+        i_dut.i_redmule_top.fifo_pop) begin
+      if (f_engine_z) begin
+        for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
+          $fwrite(f_engine_z, "%04h ",
+                  i_dut.i_redmule_top.fifo_data_out[lane*BITW +: BITW]);
+        end
+        $fwrite(f_engine_z, "\n");
       end
     end
   end
@@ -805,13 +884,32 @@ module redmule_tb
     $display("[TB] - cnt_wr=%-8d", cnt_wr);
     if (perf_enable) begin
       real busy_ratio;
+      real util_ratio;
+      real engine_util_ratio;
+      longint unsigned ideal_cycles;
       busy_ratio = (perf_total_cycles != 0) ?
                    (100.0 * real'(perf_busy_cycles) / real'(perf_total_cycles)) : 0.0;
+      ideal_cycles = compute_ideal_cycles(
+        i_dut.i_redmule_top.reg_file.hwpe_params[MCFIG0],
+        i_dut.i_redmule_top.reg_file.hwpe_params[MCFIG1]);
+      util_ratio = (load_window_done && perf_load_to_store_cycles != 0) ?
+                   (100.0 * real'(ideal_cycles) / real'(perf_load_to_store_cycles)) : 0.0;
+      engine_util_ratio = (perf_engine_busy_cycles != 0) ?
+                    (100.0 * real'(ideal_cycles) / real'(perf_engine_busy_cycles)) : 0.0;
       $display("[PERF] total cycles    : %0d", perf_total_cycles);
       $display("[PERF] busy cycles     : %0d", perf_busy_cycles);
       $display("[PERF] busy ratio      : %0.2f %%", busy_ratio);
       $display("[PERF] MX blocks dec   : %0d", perf_decoder_blocks);
       $display("[PERF] MX blocks enc   : %0d", perf_encoder_blocks);
+      $display("[PERF] engine cycles   : %0d", perf_engine_busy_cycles);
+      $display("[PERF] engine util     : %0.2f %%", engine_util_ratio);
+      if (load_window_done) begin
+        $display("[PERF] load->store cycles : %0d", perf_load_to_store_cycles);
+        $display("[PERF] ideal cycles       : %0d", ideal_cycles);
+        $display("[PERF] engine utilization : %0.2f %%", util_ratio);
+      end else begin
+        $display("[PERF] load->store cycles : (not recorded)");
+      end
       $display("[PERF] X stream done   : %0d", x_stream_done_count);
       $display("[PERF] W stream done   : %0d", w_stream_done_count);
       $display("[PERF] Z stream done   : %0d", z_stream_done_count);
