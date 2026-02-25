@@ -160,6 +160,11 @@ module redmule_tb
   logic           load_window_active;
   logic           load_window_done;
 
+  // Engine stall monitoring
+  logic           stall_engine_prev;
+  longint unsigned stall_engine_cycles;
+  longint unsigned stall_engine_events;
+
   // Optional MX debug dumping (enabled via +MX_DEBUG_DUMP)
   bit mx_debug_dump;
   integer mx_debug_fd;
@@ -197,6 +202,7 @@ module redmule_tb
     if (!$value$plusargs("PERF_ENABLE=%0d", perf_enable)) begin
       perf_enable = 1'b1;
     end
+    $display("[TB][STALL] Monitoring scheduler stall_engine (non-fatal)");
   end
 
   // Engine/decoder dump files
@@ -247,6 +253,8 @@ module redmule_tb
 
   logic tcdm_load_fire;
   logic z_store_done_pulse;
+  bit   engine_window_active;
+  longint unsigned engine_window_cycles;
 
   assign tcdm_load_fire = redmule_tcdm.req & redmule_tcdm.gnt & redmule_tcdm.wen;
   assign z_store_done_pulse = i_dut.i_redmule_top.flgs_streamer.z_stream_sink_flags.done;
@@ -341,6 +349,16 @@ module redmule_tb
             perf_engine_busy_cycles <= perf_engine_busy_cycles + 1;
           end
 
+          if (!engine_window_active && i_dut.i_redmule_top.i_scheduler.start_computation) begin
+            engine_window_active  <= 1'b1;
+            engine_window_cycles <= '0;
+          end else if (engine_window_active) begin
+            engine_window_cycles <= engine_window_cycles + 1;
+            if (!i_dut.i_redmule_top.i_scheduler.computing) begin
+              engine_window_active <= 1'b0;
+            end
+          end
+
           // Measure window from first load until Z store completes
           if (!load_window_active && !load_window_done && tcdm_load_fire) begin
             load_window_active <= 1'b1;
@@ -369,6 +387,34 @@ module redmule_tb
         i_dut.i_redmule_top.mx_dec_exp_valid &&
         i_dut.i_redmule_top.mx_dec_exp_ready) begin
       $fwrite(f_dec_exp, "%0h\n", i_dut.i_redmule_top.mx_dec_exp_data);
+    end
+  end
+
+  // Track scheduler stall_engine signal and optionally fail the simulation if it asserts
+  always_ff @(posedge clk_i or negedge rst_ni) begin : monitor_stall_engine
+    logic stall_now;
+    if (!rst_ni) begin
+      stall_engine_prev   <= 1'b0;
+      stall_engine_cycles <= '0;
+      stall_engine_events <= '0;
+    end else begin
+      stall_now          = i_dut.i_redmule_top.i_scheduler.stall_engine;
+      stall_engine_prev <= stall_now;
+      if (stall_now) begin
+        stall_engine_cycles <= stall_engine_cycles + 1;
+      end
+      if (!stall_engine_prev && stall_now) begin
+        stall_engine_events <= stall_engine_events + 1;
+        $display("[TB][STALL] Engine stalled at %0t ps | state=%0d w_valid=%0b (en=%0b) x_full=%0b (en=%0b) y_loaded=%0b (en=%0b)",
+                 $time,
+                 i_dut.i_redmule_top.i_scheduler.current_state,
+                 i_dut.i_redmule_top.i_scheduler.check_w_valid,
+                 i_dut.i_redmule_top.i_scheduler.check_w_valid_en,
+                 i_dut.i_redmule_top.i_scheduler.check_x_full,
+                 i_dut.i_redmule_top.i_scheduler.check_x_full_en,
+                 i_dut.i_redmule_top.i_scheduler.check_y_loaded,
+                 i_dut.i_redmule_top.i_scheduler.check_y_loaded_en);
+      end
     end
   end
 
@@ -808,12 +854,18 @@ module redmule_tb
       end
     end
 
-    if (i_dut.i_redmule_top.fifo_valid &&
-        i_dut.i_redmule_top.fifo_pop) begin
+    if ((i_dut.i_redmule_top.cntrl_flags.mx_enable &&
+         i_dut.i_redmule_top.fifo_valid &&
+         i_dut.i_redmule_top.fifo_pop) ||
+        (!i_dut.i_redmule_top.cntrl_flags.mx_enable &&
+         i_dut.i_redmule_top.z_buffer_muxed.valid &&
+         i_dut.i_redmule_top.z_buffer_muxed.ready)) begin
       if (f_engine_z) begin
         for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
           $fwrite(f_engine_z, "%04h ",
-                  i_dut.i_redmule_top.fifo_data_out[lane*BITW +: BITW]);
+                  i_dut.i_redmule_top.cntrl_flags.mx_enable
+                    ? i_dut.i_redmule_top.fifo_data_out[lane*BITW +: BITW]
+                    : i_dut.i_redmule_top.z_buffer_muxed.data[lane*BITW +: BITW]);
         end
         $fwrite(f_engine_z, "\n");
       end
@@ -914,6 +966,9 @@ module redmule_tb
       $display("[PERF] W stream done   : %0d", w_stream_done_count);
       $display("[PERF] Z stream done   : %0d", z_stream_done_count);
     end
+    $display("[PERF] engine window cycles : %0d", engine_window_cycles);
+    $display("[TB][STALL] events       : %0d", stall_engine_events);
+    $display("[TB][STALL] cycles       : %0d", stall_engine_cycles);
     if(errors != 0) begin
       $display("[TB] - Fail!");
       $error("[TB] - errors=%08x", errors);

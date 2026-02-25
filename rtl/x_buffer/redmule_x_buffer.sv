@@ -122,7 +122,7 @@ redmule_x_buffer_scm #(
   .clear_i      ( clear_i                                      ),
   .write_en_i   ( buf_write_en                                 ),
   .write_addr_i ( {buf_w_addr, h_index_w}                      ),
-  .wdata_i      ( pad_read_cnt <= ctrl_i.height ? x_pad_q : '0 ),
+  .wdata_i      ( x_pad_q                                     ),
   .read_en_i    ( ctrl_i.h_shift                               ),
   .read_addr_i  ( {buf_r_addr, h_index_r}                      ),
   .rdata_o      ( x_buffer_q                                   )

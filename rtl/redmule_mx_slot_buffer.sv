@@ -65,7 +65,8 @@ function automatic logic [MX_DATA_W-1:0] mx_unpack_half(input logic [MX_DATA_W-1
   return unpacked;
 endfunction
 
-localparam int unsigned SLOTS_PER_BEAT = 2;  // 512-bit beat -> two 256-bit slots
+localparam int unsigned SLOTS_PER_BEAT = DATAW_ALIGN / MX_DATA_W;  // one MX block per 256b slot
+localparam int unsigned SLOT_BYTES     = MX_DATA_W / 8;
 localparam int unsigned SLOT_PTR_W     = (SLOT_FIFO_DEPTH > 1) ? $clog2(SLOT_FIFO_DEPTH) : 1;
 localparam int unsigned SLOT_CNT_W     = $clog2(SLOT_FIFO_DEPTH + 1);
 localparam logic [SLOT_CNT_W-1:0] SLOT_ACCEPT_LEVEL =
@@ -161,22 +162,36 @@ logic [W_EXP_PTR_W-1:0] w_exp_head_q, w_exp_tail_q;
 logic [X_EXP_CNT_W-1:0] x_exp_count_q;
 logic [W_EXP_CNT_W-1:0] w_exp_count_q;
 
-// Unpacked data
-logic [MX_DATA_W-1:0] x_unpacked_lower, x_unpacked_upper;
-logic [MX_DATA_W-1:0] w_unpacked_lower, w_unpacked_upper;
+// Unpacked data (one slot per 256b chunk of the beat)
+logic [MX_DATA_W-1:0] x_unpacked [SLOTS_PER_BEAT];
+logic [MX_DATA_W-1:0] w_unpacked [SLOTS_PER_BEAT];
+logic [SLOTS_PER_BEAT-1:0] x_slot_has_data;
+logic [SLOTS_PER_BEAT-1:0] w_slot_has_data;
+logic [SLOT_CNT_W-1:0] x_slots_in_beat;
+logic [SLOT_CNT_W-1:0] w_slots_in_beat;
 
 always_comb begin
-  if (mx_enable_i) begin
-    x_unpacked_lower = mx_unpack_half(x_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
-    x_unpacked_upper = mx_unpack_half(x_data_i.data[MX_DATA_W-1:0]);
-    w_unpacked_lower = mx_unpack_half(w_data_i.data[2*MX_DATA_W-1:MX_DATA_W]);
-    w_unpacked_upper = mx_unpack_half(w_data_i.data[MX_DATA_W-1:0]);
-  end else begin
-    // FP16 mode: pass through lower half
-    x_unpacked_lower = x_data_i.data[MX_DATA_W-1:0];
-    x_unpacked_upper = '0;
-    w_unpacked_lower = w_data_i.data[MX_DATA_W-1:0];
-    w_unpacked_upper = '0;
+  x_slots_in_beat = '0;
+  w_slots_in_beat = '0;
+  for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+    if (mx_enable_i) begin
+      x_unpacked[s] = mx_unpack_half(x_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
+      w_unpacked[s] = mx_unpack_half(w_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
+      x_slot_has_data[s] = |x_data_i.strb[s*SLOT_BYTES +: SLOT_BYTES];
+      w_slot_has_data[s] = |w_data_i.strb[s*SLOT_BYTES +: SLOT_BYTES];
+    end else begin
+      x_unpacked[s] = (s == 0) ? x_data_i.data[MX_DATA_W-1:0] : '0;
+      w_unpacked[s] = (s == 0) ? w_data_i.data[MX_DATA_W-1:0] : '0;
+      x_slot_has_data[s] = (s == 0);
+      w_slot_has_data[s] = (s == 0);
+    end
+
+    if (x_slot_has_data[s]) begin
+      x_slots_in_beat = x_slots_in_beat + 1'b1;
+    end
+    if (w_slot_has_data[s]) begin
+      w_slots_in_beat = w_slots_in_beat + 1'b1;
+    end
   end
 end
 
@@ -252,12 +267,26 @@ always_comb begin
   w_data_count_d = w_data_count_q;
 
   if (x_data_accept) begin
-    x_data_tail_d  = bump_slot_ptr(x_data_tail_d, SLOTS_PER_BEAT);
-    x_data_count_d = x_data_count_d + SLOTS_PER_BEAT;
+    logic [SLOT_PTR_W-1:0] tail_tmp;
+    tail_tmp = x_data_tail_d;
+    for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+      if (x_slot_has_data[s]) begin
+        tail_tmp = bump_slot_ptr(tail_tmp, 1);
+      end
+    end
+    x_data_tail_d  = tail_tmp;
+    x_data_count_d = x_data_count_d + x_slots_in_beat;
   end
   if (w_data_accept) begin
-    w_data_tail_d  = bump_slot_ptr(w_data_tail_d, SLOTS_PER_BEAT);
-    w_data_count_d = w_data_count_d + SLOTS_PER_BEAT;
+    logic [SLOT_PTR_W-1:0] tail_tmp;
+    tail_tmp = w_data_tail_d;
+    for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+      if (w_slot_has_data[s]) begin
+        tail_tmp = bump_slot_ptr(tail_tmp, 1);
+      end
+    end
+    w_data_tail_d  = tail_tmp;
+    w_data_count_d = w_data_count_d + w_slots_in_beat;
   end
   if (x_slot_pop) begin
     x_data_head_d  = bump_slot_ptr(x_data_head_d, 1);
@@ -359,18 +388,24 @@ end
 always_ff @(posedge clk_i) begin
     // Mantissa writes (use tail prior to update)
     if (x_data_accept) begin
-      automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
-      idx0 = x_data_tail_q;
-      idx1 = bump_slot_ptr(x_data_tail_q, 1);
-      x_data_mem[idx1] <= x_unpacked_lower;
-      x_data_mem[idx0] <= x_unpacked_upper;
+      automatic logic [SLOT_PTR_W-1:0] tail_tmp;
+      tail_tmp = x_data_tail_q;
+      for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+        if (x_slot_has_data[s]) begin
+          x_data_mem[tail_tmp] <= x_unpacked[s];
+          tail_tmp = bump_slot_ptr(tail_tmp, 1);
+        end
+      end
     end
     if (w_data_accept) begin
-      automatic logic [SLOT_PTR_W-1:0] idx0, idx1;
-      idx0 = w_data_tail_q;
-      idx1 = bump_slot_ptr(w_data_tail_q, 1);
-      w_data_mem[idx1] <= w_unpacked_lower;
-      w_data_mem[idx0] <= w_unpacked_upper;
+      automatic logic [SLOT_PTR_W-1:0] tail_tmp;
+      tail_tmp = w_data_tail_q;
+      for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+        if (w_slot_has_data[s]) begin
+          w_data_mem[tail_tmp] <= w_unpacked[s];
+          tail_tmp = bump_slot_ptr(tail_tmp, 1);
+        end
+      end
     end
 
     // Exponent writes

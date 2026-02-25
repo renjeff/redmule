@@ -73,7 +73,9 @@ redmule_z_buffer_scm #(
 );
 
 assign flags_o.y_ready = load_en && ctrl_i.y_valid;
-assign flags_o.z_valid = store_en && ctrl_i.ready;
+// Valid must not be combinationally gated by ready; otherwise it can create
+// ready<->valid loops through downstream flow control.
+assign flags_o.z_valid = store_en;
 assign flags_o.z_priority = store_en;
 
 always_ff @(posedge clk_i or negedge rst_ni) begin  : state_register

@@ -221,8 +221,10 @@ logic [31:0] buffer_slots;
 //                                                                                                buffer_slots) * (DATAW/(ARRAY_HEIGHT*BITW));
 
 assign buffer_slots = config_d.x_cols_lftovr/ARRAY_HEIGHT;
-assign config_d.x_buffer_slots = ((config_d.x_cols_lftovr % ARRAY_HEIGHT != '0) ? buffer_slots + 1 :
-                                                                                                buffer_slots) * ARRAY_HEIGHT;
+assign config_d.x_buffer_slots = mx_enable
+    ? (config_d.n_size * MX_PACK_FACTOR)
+    : (((config_d.x_cols_lftovr % ARRAY_HEIGHT != '0) ? buffer_slots + 1 : buffer_slots) * ARRAY_HEIGHT);
+
 
 // Calculating the number of total stores (uses buffer iterations for actual computations)
 assign config_d.tot_stores = buf_x_rows_by_w_cols_iter[15:0];
@@ -291,8 +293,9 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
   else if(x_rows_by_w_cols_by_w_rows_iter_valid & x_rows_by_w_cols_by_w_rows_iter_ready) begin
     config_q <= config_d;
     if (dbg_tiler) begin
-      $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d",
-               mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter);
+      $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d w_cols_iter=%0d w_cols_lftovr=%0d",
+               mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter,
+               config_d.w_cols_iter, config_d.w_cols_lftovr);
       $display("[DBG][TILER] m_size=%0d m_size_for_x_buffer=%0d x_rows_lftovr=%0d x_rows_iter=%0d",
                config_d.m_size, m_size_for_x_buffer, config_d.x_rows_lftovr, config_d.x_rows_iter);
       $display("[DBG][TILER] x_cols_lftovr=%0d x_buffer_slots=%0d x_cols_iter=%0d LEFTOVERS[31:24]=%0d",

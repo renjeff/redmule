@@ -26,6 +26,15 @@ module redmule_memory_scheduler
   output cntrl_streamer_t       cntrl_streamer_o
 );
   localparam int unsigned JMP = NumByte*(DATA_W/MemDw - 1);
+  localparam int unsigned BYTES_PER_BEAT = DW/8;
+  localparam int unsigned WORDS_PER_BEAT = DW/16;
+  localparam int unsigned MX_PACK_FACTOR = 2;
+  localparam int unsigned FP16_BLOCK_BYTES = W * (ELW/8);
+  localparam int unsigned FP16_BLOCKS_PER_BEAT_RAW = (FP16_BLOCK_BYTES == 0) ? 0 : (BYTES_PER_BEAT / FP16_BLOCK_BYTES);
+  localparam int unsigned FP16_BLOCKS_PER_BEAT = (FP16_BLOCKS_PER_BEAT_RAW == 0) ? 1 : FP16_BLOCKS_PER_BEAT_RAW;
+  localparam int unsigned MX_BLOCK_BYTES = 32;
+  localparam int unsigned Z_BLOCKS_PER_BEAT_RAW = BYTES_PER_BEAT / MX_BLOCK_BYTES;
+  localparam int unsigned Z_BLOCKS_PER_BEAT = (Z_BLOCKS_PER_BEAT_RAW == 0) ? 1 : Z_BLOCKS_PER_BEAT_RAW;
 
   logic [31:0]        x_cols_offs_d, x_cols_offs_q;
   logic [31:0]        x_rows_offs_d, x_rows_offs_q;
@@ -51,8 +60,8 @@ module redmule_memory_scheduler
   assign k_size = reg_file_i.hwpe_params[MCFIG0][31:16];
   assign n_size = reg_file_i.hwpe_params[MCFIG1][15:0];
 
-  assign total_x_values = m_size * k_size;
-  assign total_w_values = n_size * k_size;
+  assign total_x_values = m_size * MX_PACK_FACTOR * k_size;
+  assign total_w_values = n_size * MX_PACK_FACTOR * k_size;
 
   // Calculate exponent beats based on actual matrix dimensions
   // X exponents: 1 byte per block, blocks = (M*K)/32
@@ -65,8 +74,8 @@ module redmule_memory_scheduler
   assign x_exp_bytes = x_blocks;              // 1 byte per X block
   assign w_exp_bytes = w_blocks;              // 1 byte per W block (same as X)
   
-  assign x_exp_beats = (x_exp_bytes + 63) >> 6;  // ceil(x_exp_bytes / 64)
-  assign w_exp_beats = (w_exp_bytes + 63) >> 6;  // ceil(w_exp_bytes / 64)
+  assign x_exp_beats = (x_exp_bytes + BYTES_PER_BEAT - 1) / BYTES_PER_BEAT;
+  assign w_exp_beats = (w_exp_bytes + BYTES_PER_BEAT - 1) / BYTES_PER_BEAT;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : x_cols_iters_register
     if (~rst_ni) begin
@@ -152,10 +161,16 @@ module redmule_memory_scheduler
 
   assign x_rows_offs_d = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 ? '0 : x_rows_offs_q + reg_file_i.hwpe_params[X_ROWS_OFFS];
 
-  // In MX mode, X data is packed (2 FP8 per 16-bit word), so we read half as many beats
+  // In MX mode, X data is packed along the row dimension (2 FP8 per 16-bit word).
+  // Packed rows = ceil(actual_rows/2); row length in words = k_size (actual).
+  // beats_needed = packed_rows * k_size / WORDS_PER_BEAT
   logic [$clog2(W):0] num_x_reads_raw;
+  logic [31:0]        x_rows_packed;
+  logic [31:0]        x_total_words;
   assign num_x_reads_raw = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
-  assign num_x_reads = cntrl_flags_i.mx_enable ? ((num_x_reads_raw + 1) >> 1) : num_x_reads_raw;
+  assign x_rows_packed = (num_x_reads_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  assign x_total_words = x_rows_packed * k_size;
+  assign num_x_reads = cntrl_flags_i.mx_enable ? ((x_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT) : num_x_reads_raw;
 
   // Here we initialize the streamer source signals
   // for the X stream source
@@ -175,7 +190,7 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.tot_len = num_x_reads;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d0_len = 'd1;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d0_stride = 'd0;
-  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_len = cntrl_flags_i.mx_enable ? (W >> 1) : W;
+  assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_len = cntrl_flags_i.mx_enable ? num_x_reads : W;
   // In MX mode, X data is read linearly (packed FP8), so use beat size (DW/8 bytes) as stride
   // In FP16 mode, use row stride from tiler
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d1_stride =
@@ -183,31 +198,44 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d2_stride = '0;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 
-  // Here we initialize the streamer source signals
-  // for the W stream source
-  assign cntrl_streamer_o.w_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load && flgs_streamer_i.z_stream_sink_flags.ready_start;
+  assign cntrl_streamer_o.w_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load &&
+                                                           flgs_streamer_i.z_stream_sink_flags.ready_start &&
+                                                           flgs_streamer_i.w_stream_source_flags.ready_start;
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[W_ADDR];
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len = reg_file_i.hwpe_params[W_TOT_LEN];
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_len = reg_file_i.hwpe_params[W_ITERS][31:16];
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_stride = reg_file_i.hwpe_params[W_D0_STRIDE];
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_len = reg_file_i.hwpe_params[W_ITERS][15:0];
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_stride = JMP;
+  logic [31:0] w_total_words;
+  logic [31:0] w_beats;
+  assign w_total_words = k_size * n_size;
+  assign w_beats = (w_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
+
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_len   = cntrl_flags_i.mx_enable ? 32'd1 : reg_file_i.hwpe_params[W_ITERS][31:16];
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_stride= cntrl_flags_i.mx_enable ? 32'd0 : reg_file_i.hwpe_params[W_D0_STRIDE];
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_ITERS][15:0];
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_stride= cntrl_flags_i.mx_enable ? (DW/8) : JMP;
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d2_stride = 'd0;
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 
   // Here we initialize the streamer source signals
   // for the Y stream source
   logic [31:0] z_store_tot_len;
+  logic [31:0] y_load_tot_len;
   logic [31:0] z_store_d0_stride;
   logic [31:0] z_store_d2_stride;
-  assign z_store_tot_len = cntrl_flags_i.mx_enable ? ((reg_file_i.hwpe_params[Z_TOT_LEN] + 1) >> 1)
-                                                   :  reg_file_i.hwpe_params[Z_TOT_LEN];
+  // Keep legacy non-MX semantics (row-based lengths). The addressgen for this
+  // path already accounts for beat width, so dividing by blocks-per-beat here
+  // truncates the transaction count and drops the tail rows.
+  assign y_load_tot_len = cntrl_flags_i.mx_enable ?
+                          ((reg_file_i.hwpe_params[Z_TOT_LEN] + FP16_BLOCKS_PER_BEAT - 1) / FP16_BLOCKS_PER_BEAT) :
+                          reg_file_i.hwpe_params[Z_TOT_LEN];
+  assign z_store_tot_len = cntrl_flags_i.mx_enable ?
+                           ((reg_file_i.hwpe_params[Z_TOT_LEN] + Z_BLOCKS_PER_BEAT - 1) / Z_BLOCKS_PER_BEAT) :
+                           reg_file_i.hwpe_params[Z_TOT_LEN];
   assign z_store_d0_stride = reg_file_i.hwpe_params[Z_D0_STRIDE];
   assign z_store_d2_stride = reg_file_i.hwpe_params[Z_D2_STRIDE];
 
   assign cntrl_streamer_o.y_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load && reg_file_i.hwpe_params[OP_SELECTION][0] && flgs_streamer_i.y_stream_source_flags.ready_start;
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
-  assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
+  assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.tot_len = y_load_tot_len;
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.d0_len = W;
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.d0_stride = reg_file_i.hwpe_params[Z_D0_STRIDE];
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.d1_len = reg_file_i.hwpe_params[W_ITERS][15:0];
@@ -237,7 +265,7 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d0_len = 32'd1;
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d0_stride = 32'd0;
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d1_len = x_exp_beats;
-  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = 32'd64;
+  assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = BYTES_PER_BEAT;
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.d2_stride = 32'd0;
   // Only two dimensions (d0 then d1) required for exponent beats
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
@@ -250,7 +278,7 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d0_len = 32'd1;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d0_stride = 32'd0;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_len = w_exp_beats;
-  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = 32'd64;
+  assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = BYTES_PER_BEAT;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d2_stride = 32'd0;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
 

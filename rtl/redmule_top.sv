@@ -50,6 +50,7 @@ module redmule_top
 
 localparam int unsigned DATAW_ALIGN = `HCI_SIZE_GET_DW(tcdm) - SysDataWidth;
 localparam int unsigned HCI_ECC = (`HCI_SIZE_GET_EW(tcdm)>1);
+localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements per MX block
 
 logic                       enable, clear;
 logic                       reg_enable;
@@ -191,10 +192,10 @@ logic        w_exp_buf_consume;
 logic fifo_grant;  
 logic fifo_valid;
 logic fifo_pop;
-logic [Width*BITW-1:0] fifo_data_out;
+logic [DATAW_ALIGN-1:0] fifo_data_out;
 logic mx_val_valid;
 logic mx_val_ready;
-logic [DATAW/2-1:0] mx_val_data;
+logic [MX_DATA_W-1:0] mx_val_data;
 logic mx_exp_valid;
 logic mx_exp_ready;
 logic [7:0] mx_exp_data;
@@ -227,18 +228,34 @@ redmule_streamer #(
 logic mx_mode_active;
 assign mx_mode_active = cntrl_flags.mx_enable;
 
+localparam int unsigned W_SLOT_STRB_W = DATAW_ALIGN/8;
+logic [W_SLOT_STRB_W-1:0] w_slot_strb_mask;
+logic [$clog2(TOT_DEPTH):0] w_valid_lanes;
+logic [$clog2(TOT_DEPTH):0] w_nominal_width;
+localparam int unsigned X_SLOT_STRB_W = DATAW_ALIGN/8;
+logic [X_SLOT_STRB_W-1:0] x_slot_strb_mask;
+logic [$clog2(TOT_DEPTH):0] x_valid_lanes;
+logic [$clog2(TOT_DEPTH):0] x_row_chunks;
+logic [$clog2(TOT_DEPTH):0] w_row_chunks;
+
 // Route streamer outputs either to MX slot path or raw path
+assign x_valid_lanes = mx_mode_active ? reg_file.hwpe_params[X_SLOTS][$clog2(TOT_DEPTH):0] : x_buffer_ctrl.height;
+assign x_slot_strb_mask = {X_SLOT_STRB_W{1'b1}};
 assign x_buffer_slot.valid = mx_mode_active ? x_buffer_d.valid : 1'b0;
 assign x_buffer_slot.data  = x_buffer_d.data;
-assign x_buffer_slot.strb  = x_buffer_d.strb;
+assign x_buffer_slot.strb  = mx_mode_active ? (x_buffer_d.strb & x_slot_strb_mask) : x_buffer_d.strb;
 assign x_buffer_raw.valid  = mx_mode_active ? 1'b0 : x_buffer_d.valid;
 assign x_buffer_raw.data   = x_buffer_d.data;
 assign x_buffer_raw.strb   = x_buffer_d.strb;
 assign x_buffer_d.ready    = mx_mode_active ? x_buffer_slot.ready : x_buffer_raw.ready;
 
+assign w_nominal_width = (mx_mode_active && reg_file.hwpe_params[LEFTOVERS][7:0] != '0) ?
+                                reg_file.hwpe_params[LEFTOVERS][7:0] : w_buffer_ctrl.width;
+assign w_valid_lanes = w_nominal_width;
+assign w_slot_strb_mask = {W_SLOT_STRB_W{1'b1}};
 assign w_buffer_slot.valid = mx_mode_active ? w_buffer_d.valid : 1'b0;
 assign w_buffer_slot.data  = w_buffer_d.data;
-assign w_buffer_slot.strb  = w_buffer_d.strb;
+assign w_buffer_slot.strb  = mx_mode_active ? (w_buffer_d.strb & w_slot_strb_mask) : w_buffer_d.strb;
 assign w_buffer_raw.valid  = mx_mode_active ? 1'b0 : w_buffer_d.valid;
 assign w_buffer_raw.data   = w_buffer_d.data;
 assign w_buffer_raw.strb   = w_buffer_d.strb;
@@ -306,13 +323,28 @@ redmule_exp_buffer #(
 /*---------------------------------------------------------------*/
 
 // MX decoder parameters
-localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements
-localparam int unsigned MX_NUM_LANES = Width;  // Process Width elements per cycle
 localparam int unsigned MX_INPUT_ELEM_WIDTH  = 8;
 localparam int unsigned MX_INPUT_NUM_ELEMS   = MX_DATA_W / MX_INPUT_ELEM_WIDTH;
+localparam int unsigned MX_BEAT_NUM_LANES    = DATAW_ALIGN / BITW;
+localparam int unsigned MX_NUM_LANES = (MX_BEAT_NUM_LANES < MX_INPUT_NUM_ELEMS) ?
+                                       MX_BEAT_NUM_LANES : MX_INPUT_NUM_ELEMS;
 localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
 localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
 localparam int unsigned MX_SLOT_FIFO_DEPTH   = 16;  // Restore depth to avoid stressing dummy TCDM
+
+initial begin
+  if (DATAW_ALIGN % BITW != 0) begin
+    $fatal(1, "MX path: DATAW_ALIGN (%0d) must be a multiple of BITW (%0d)", DATAW_ALIGN, BITW);
+  end
+  if (MX_INPUT_NUM_ELEMS % MX_NUM_LANES != 0) begin
+    $fatal(1, "MX path: MX_INPUT_NUM_ELEMS (%0d) must be divisible by MX_NUM_LANES (%0d)",
+           MX_INPUT_NUM_ELEMS, MX_NUM_LANES);
+  end
+  if (MX_BEAT_NUM_LANES % MX_NUM_LANES != 0) begin
+    $fatal(1, "MX path: stream lanes per beat (%0d) must be divisible by MX_NUM_LANES (%0d)",
+           MX_BEAT_NUM_LANES, MX_NUM_LANES);
+  end
+end
 
 // Slot buffer signals
 logic x_slot_valid, w_slot_valid;
@@ -446,15 +478,26 @@ assign w_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_va
 assign x_mx_fp16_data  = mx_dec_fp16_data;
 assign w_mx_fp16_data  = mx_dec_fp16_data;
 
+// Row chunk counts for padding beats to DATAW_ALIGN
+assign x_row_chunks = (x_valid_lanes == '0) ? 1 :
+                      ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+assign w_row_chunks = (w_valid_lanes == '0) ? 1 :
+                      ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+
 // Instantiate MX input mux
 redmule_mx_input_mux #(
   .DATAW_ALIGN  ( DATAW_ALIGN  ),
   .BITW         ( BITW         ),
   .MX_NUM_LANES ( MX_NUM_LANES )
 ) i_mx_input_mux (
+  .clk_i             ( clk_i               ),
+  .rst_ni            ( rst_ni              ),
+  .clear_i           ( clear               ),
   .mx_enable_i        ( cntrl_flags.mx_enable ),
   .target_is_x_i      ( target_is_x           ),
   .target_is_w_i      ( target_is_w        ),
+  .x_row_chunks_i     ( x_row_chunks       ),
+  .w_row_chunks_i     ( w_row_chunks       ),
   .x_raw_i            ( x_buffer_raw       ),
   .w_raw_i            ( w_buffer_raw      ),
   .x_decoded_valid_i  ( x_mx_fp16_valid    ),
@@ -473,7 +516,7 @@ assign mx_dec_fp16_ready = target_is_x ? x_mx_fp16_ready :
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 8             )  // Testing smaller depth
+  .FIFO_DEPTH     ( 16             )  // Testing smaller depth
 ) i_x_buffer_fifo (
   .clk_i          ( clk_i           ),
   .rst_ni         ( rst_ni          ),
@@ -485,7 +528,7 @@ hwpe_stream_fifo #(
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 8             )  // Testing smaller depth
+  .FIFO_DEPTH     ( 16            )  // Extra depth so MX W data stays ahead of scheduler
 ) i_w_buffer_fifo (
   .clk_i          ( clk_i           ),
   .rst_ni         ( rst_ni          ),
@@ -681,10 +724,12 @@ redmule_engine     #(
 redmule_mx_output_stage #(
   .DATAW_ALIGN   ( DATAW_ALIGN   ),
   .DATAW         ( DATAW         ),
+  .MX_DATA_W     ( MX_DATA_W     ),
   .BITW          ( BITW          ),
   .Width         ( Width         ),
   .Height        ( Height        ),
-  .SysDataWidth  ( SysDataWidth  )
+  .SysDataWidth  ( SysDataWidth  ),
+  .MX_NUM_LANES  ( MX_NUM_LANES  )
 ) i_mx_output_stage (
   .clk_i              ( clk_i                   ),
   .rst_ni             ( rst_ni                  ),

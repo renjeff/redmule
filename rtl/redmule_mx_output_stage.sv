@@ -13,10 +13,12 @@ module redmule_mx_output_stage
 #(
   parameter int unsigned DATAW_ALIGN = 512,
   parameter int unsigned DATAW       = 512,
+  parameter int unsigned MX_DATA_W   = 256,
   parameter int unsigned BITW        = 16,
   parameter int unsigned Width       = 32,
   parameter int unsigned Height      = 32,
-  parameter int unsigned SysDataWidth = 32
+  parameter int unsigned SysDataWidth = 32,
+  parameter int unsigned MX_NUM_LANES = Width
 )(
   input  logic clk_i,
   input  logic rst_ni,
@@ -41,17 +43,32 @@ module redmule_mx_output_stage
   // Optional debug visibility signals (tapped by testbench)
   output logic                    mx_val_valid_o,
   output logic                    mx_val_ready_o,
-  output logic [DATAW/2-1:0]      mx_val_data_o,
+  output logic [MX_DATA_W-1:0]    mx_val_data_o,
   output logic                    mx_exp_valid_o,
   output logic                    mx_exp_ready_o,
   output logic [7:0]              mx_exp_data_o,
   output logic                    fifo_valid_o,
   output logic                    fifo_pop_o,
-  output logic [Width*BITW-1:0]   fifo_data_out_o
+  output logic [DATAW_ALIGN-1:0]  fifo_data_out_o
 );
 
+localparam int unsigned MX_FP16_PER_BEAT = DATAW_ALIGN / BITW;
+localparam int unsigned MX_CHUNK_RATIO   = MX_FP16_PER_BEAT / MX_NUM_LANES;
+localparam int unsigned MX_CHUNK_WIDTH   = MX_NUM_LANES * BITW;
+localparam int unsigned MX_CHUNK_CNT_W   = (MX_CHUNK_RATIO > 1) ? $clog2(MX_CHUNK_RATIO) : 1;
+
+initial begin
+  if (DATAW_ALIGN % BITW != 0) begin
+    $fatal(1, "MX output: DATAW_ALIGN (%0d) must be a multiple of BITW (%0d)", DATAW_ALIGN, BITW);
+  end
+  if (MX_FP16_PER_BEAT % MX_NUM_LANES != 0) begin
+    $fatal(1, "MX output: beat lanes (%0d) must divide evenly by MX_NUM_LANES (%0d)",
+           MX_FP16_PER_BEAT, MX_NUM_LANES);
+  end
+end
+
 // Engine FIFO signals
-logic [Width-1:0][BITW-1:0] fifo_data_out;
+logic [DATAW_ALIGN-1:0] fifo_data_out;
 logic fifo_push, fifo_pop, fifo_valid;
 
 // Delay reg_enable by total pipeline latency
@@ -84,11 +101,11 @@ end
 assign fifo_push = z_engine_stream_i.valid && mx_enable_i && fifo_grant_o;
 
 // Engine FIFO
-logic [Width-1:0][BITW-1:0] fifo_data_in;
-assign fifo_data_in = z_engine_stream_i.data[Width*BITW-1:0];
+logic [DATAW_ALIGN-1:0] fifo_data_in;
+assign fifo_data_in = z_engine_stream_i.data;
 
 redmule_mx_fifo #(
-  .DATA_WIDTH ( Width*BITW ),
+  .DATA_WIDTH ( DATAW_ALIGN ),
   .FIFO_DEPTH ( 4          )
 ) i_engine_fifo (
   .clk_i      ( clk_i            ),
@@ -103,26 +120,59 @@ redmule_mx_fifo #(
 );
 
 // MX Encoder signals
-logic [DATAW/2-1:0] mx_val_data;  // 256 bits for 32 FP8 elements
+logic [MX_DATA_W-1:0] mx_val_data;  // 256 bits for 32 FP8 elements
 logic mx_val_valid, mx_val_ready;
 logic [7:0] mx_exp_data;
 logic mx_exp_valid, mx_exp_ready;
 logic encoder_ready;
 
-// Gate pop with mx_enable AND fifo_valid AND decoder started
-assign fifo_pop = encoder_ready && mx_enable_i && fifo_valid;
+logic [DATAW_ALIGN-1:0] block_data_q;
+logic block_valid_q;
+logic [MX_CHUNK_CNT_W-1:0] chunk_index_q;
+logic load_block;
+
+assign load_block = mx_enable_i && fifo_valid && !block_valid_q;
+assign fifo_pop   = load_block;
+
+logic [MX_CHUNK_WIDTH-1:0] encoder_chunk;
+assign encoder_chunk = block_data_q[MX_CHUNK_WIDTH*chunk_index_q +: MX_CHUNK_WIDTH];
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    block_valid_q <= 1'b0;
+    block_data_q  <= '0;
+    chunk_index_q <= '0;
+  end else if (clear_i || !mx_enable_i) begin
+    block_valid_q <= 1'b0;
+    block_data_q  <= '0;
+    chunk_index_q <= '0;
+  end else begin
+    if (load_block) begin
+      block_valid_q <= 1'b1;
+      block_data_q  <= fifo_data_out;
+      chunk_index_q <= '0;
+    end else if (block_valid_q && encoder_ready) begin
+      if (chunk_index_q == MX_CHUNK_RATIO-1) begin
+        block_valid_q <= 1'b0;
+        chunk_index_q <= '0;
+      end else begin
+        chunk_index_q <= chunk_index_q + 1'b1;
+      end
+    end
+  end
+end
 
 // MX Encoder
 redmule_mx_encoder #(
-  .DATA_W    ( DATAW/2 ),  // 256 bits output
+  .DATA_W    ( MX_DATA_W ),
   .BITW      ( BITW    ),
-  .NUM_LANES ( Width   )
+  .NUM_LANES ( MX_NUM_LANES )
 ) i_mx_encoder (
   .clk_i          ( clk_i          ),
   .rst_ni         ( rst_ni         ),
-  .fp16_valid_i   ( fifo_valid && mx_enable_i ),
+  .fp16_valid_i   ( block_valid_q  ),
   .fp16_ready_o   ( encoder_ready  ),
-  .fp16_data_i    ( fifo_data_out  ),
+  .fp16_data_i    ( encoder_chunk  ),
   .mx_val_valid_o ( mx_val_valid   ),
   .mx_val_ready_i ( mx_val_ready   ),
   .mx_val_data_o  ( mx_val_data    ),
@@ -148,78 +198,102 @@ assign mx_exp_valid_o   = mx_exp_valid;
 assign mx_exp_ready_o   = mx_exp_ready;
 assign mx_exp_data_o    = mx_exp_data;
 
-// MX encoder output packing: collect two 256-bit blocks per 512-bit beat
-localparam int unsigned MX_ACTIVE_BYTES = (DATAW/2)/8;
+// MX encoder output packing: collect DATAW_ALIGN/MX_DATA_W blocks per beat
+localparam int unsigned MX_BLOCK_WIDTH  = MX_DATA_W;
+localparam int unsigned MX_BLOCK_BYTES  = MX_DATA_W/8;
+localparam int unsigned BLOCKS_PER_BEAT = DATAW_ALIGN / MX_BLOCK_WIDTH;
+localparam int unsigned BLOCK_CNT_W     = (BLOCKS_PER_BEAT > 1) ? $clog2(BLOCKS_PER_BEAT) : 1;
 localparam int unsigned TOTAL_BYTES     = DATAW_ALIGN/8;
-localparam logic [TOTAL_BYTES-1:0] MX_STRB_HALF = {{(TOTAL_BYTES-MX_ACTIVE_BYTES){1'b0}},
-                                                   {MX_ACTIVE_BYTES{1'b1}}};
-localparam logic [TOTAL_BYTES-1:0] MX_STRB_FULL = {TOTAL_BYTES{1'b1}};
 
-logic hold_block_valid;
-logic [DATAW/2-1:0] hold_block_data;
-logic pair_valid;
-logic [DATAW_ALIGN-1:0] pair_data;
-logic [TOTAL_BYTES-1:0] pair_strb;
-logic mx_enable_q;
-logic mx_active;
+logic [DATAW_ALIGN-1:0] pack_data_q, pack_data_d;
+logic [TOTAL_BYTES-1:0] pack_strb_q, pack_strb_d;
+logic [BLOCK_CNT_W-1:0] pack_count_q, pack_count_d;
+logic                   pack_valid_q, pack_valid_d;
+logic                   mx_enable_q;
+logic                   mx_mode_q;
+logic                   mx_active;
+logic                   pack_ready;
 
-// Encoder can always send the first block; the second waits for pair buffer space
-assign mx_val_ready = !hold_block_valid ? 1'b1 : !pair_valid;
+// Keep encoder backpressure local to this stage.
+// Using z_muxed_o.ready here creates a combinational loop via z_buffer ready/control.
+assign pack_ready  = !pack_valid_q;
+assign mx_val_ready = pack_ready;
 
-// Track MX enable to flush leftover block when the job ends
-always_ff @(posedge clk_i or negedge rst_ni) begin
-  if (!rst_ni)
-    mx_enable_q <= 1'b0;
-  else if (clear_i)
-    mx_enable_q <= 1'b0;
-  else
-    mx_enable_q <= mx_enable_i;
-end
-
-logic flush_single_block;
-assign flush_single_block = hold_block_valid && !pair_valid && !mx_enable_i && mx_enable_q;
-
-assign mx_active = mx_enable_i || hold_block_valid || pair_valid;
-
+// Track MX enable to flush leftover blocks when the job ends
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
-    hold_block_valid <= 1'b0;
-    pair_valid       <= 1'b0;
+    mx_enable_q <= 1'b0;
+    mx_mode_q   <= 1'b0;
   end else if (clear_i) begin
-    hold_block_valid <= 1'b0;
-    pair_valid       <= 1'b0;
+    mx_enable_q <= 1'b0;
+    mx_mode_q   <= 1'b0;
   end else begin
-    // Capture MX encoder outputs
-    if (mx_val_valid && mx_val_ready) begin
-      if (!hold_block_valid) begin
-        hold_block_valid <= 1'b1;
-        hold_block_data  <= mx_val_data;
-      end else begin
-        pair_valid       <= 1'b1;
-        pair_data        <= {mx_val_data, hold_block_data};
-        pair_strb        <= MX_STRB_FULL;
-        hold_block_valid <= 1'b0;
-      end
-    end
-
-    // Flush an odd leftover block when MX mode turns off
-    if (flush_single_block) begin
-      pair_valid       <= 1'b1;
-      pair_data        <= {{(DATAW_ALIGN-256){1'b0}}, hold_block_data};
-      pair_strb        <= MX_STRB_HALF;
-      hold_block_valid <= 1'b0;
-    end
-
-    if (pair_valid && z_muxed_o.ready && mx_active) begin
-      pair_valid <= 1'b0;
+    mx_enable_q <= mx_enable_i;
+    if (mx_enable_i) begin
+      mx_mode_q <= 1'b1;
     end
   end
 end
 
+assign mx_active = mx_mode_q || mx_enable_i || pack_valid_q || (pack_count_q != '0) || block_valid_q;
+
+logic flush_partial;
+assign flush_partial = (pack_count_q != '0) && !pack_valid_q && !mx_enable_i && mx_enable_q;
+
+always_comb begin
+  pack_data_d  = pack_data_q;
+  pack_strb_d  = pack_strb_q;
+  pack_count_d = pack_count_q;
+  pack_valid_d = pack_valid_q;
+
+  if (pack_valid_q && z_muxed_o.ready && mx_active) begin
+    pack_valid_d = 1'b0;
+  end
+
+  if (mx_val_valid && mx_val_ready) begin
+    if (pack_count_q == '0) begin
+      pack_data_d = '0;
+      pack_strb_d = '0;
+    end
+    pack_data_d[MX_BLOCK_WIDTH*pack_count_q +: MX_BLOCK_WIDTH] = mx_val_data;
+    pack_strb_d[MX_BLOCK_BYTES*pack_count_q +: MX_BLOCK_BYTES] = {MX_BLOCK_BYTES{1'b1}};
+    if (pack_count_q == BLOCKS_PER_BEAT-1) begin
+      pack_valid_d = 1'b1;
+      pack_count_d = '0;
+    end else begin
+      pack_count_d = pack_count_q + 1'b1;
+    end
+  end
+
+  if (flush_partial) begin
+    pack_valid_d = 1'b1;
+    pack_count_d = '0;
+  end
+end
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    pack_data_q  <= '0;
+    pack_strb_q  <= '0;
+    pack_count_q <= '0;
+    pack_valid_q <= 1'b0;
+  end else if (clear_i) begin
+    pack_data_q  <= '0;
+    pack_strb_q  <= '0;
+    pack_count_q <= '0;
+    pack_valid_q <= 1'b0;
+  end else begin
+    pack_data_q  <= pack_data_d;
+    pack_strb_q  <= pack_strb_d;
+    pack_count_q <= pack_count_d;
+    pack_valid_q <= pack_valid_d;
+  end
+end
+
 // MUX: Select between latched MX output and engine bypass
-assign z_muxed_o.data  = mx_active ? pair_data : z_engine_stream_i.data;
-assign z_muxed_o.strb  = mx_active ? pair_strb : z_engine_stream_i.strb;
-assign z_muxed_o.valid = mx_active ? pair_valid : z_engine_stream_i.valid;
+assign z_muxed_o.data  = mx_active ? pack_data_q : z_engine_stream_i.data;
+assign z_muxed_o.strb  = mx_active ? pack_strb_q : z_engine_stream_i.strb;
+assign z_muxed_o.valid = mx_active ? pack_valid_q : z_engine_stream_i.valid;
 
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
 assign z_engine_stream_i.ready = mx_active ? fifo_grant_o : z_muxed_o.ready;
