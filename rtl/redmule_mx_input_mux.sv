@@ -45,6 +45,7 @@ module redmule_mx_input_mux
 
 localparam int unsigned OUTPUT_NUM_LANES = DATAW_ALIGN / BITW;
 localparam int unsigned CHUNK_WIDTH      = MX_NUM_LANES * BITW;
+localparam int unsigned CHUNK_BYTES      = CHUNK_WIDTH / 8;
 localparam int unsigned PACK_RATIO       = OUTPUT_NUM_LANES / MX_NUM_LANES;
 localparam int unsigned PACK_CNT_W       = (PACK_RATIO > 1) ? $clog2(PACK_RATIO) : 1;
 localparam int unsigned ROW_CNT_W        = (PACK_RATIO > 1) ? $clog2(PACK_RATIO + 1) : 1;
@@ -62,6 +63,8 @@ end
 
 logic [DATAW_ALIGN-1:0]      x_pack_data_q, x_pack_data_d;
 logic [DATAW_ALIGN-1:0]      w_pack_data_q, w_pack_data_d;
+logic [STRB_WIDTH-1:0]       x_pack_strb_q, x_pack_strb_d;
+logic [STRB_WIDTH-1:0]       w_pack_strb_q, w_pack_strb_d;
 logic [PACK_CNT_W-1:0]       x_pack_count_q, w_pack_count_q;
 logic [PACK_CNT_W-1:0]       x_pack_count_d, w_pack_count_d;
 logic [ROW_CNT_W-1:0]        x_row_chunks_eff, w_row_chunks_eff;
@@ -89,6 +92,7 @@ assign w_accept_chunk = mx_enable_i && target_is_w_i && w_decoded_valid_i && w_d
 
 always_comb begin
   x_pack_data_d  = x_pack_data_q;
+  x_pack_strb_d  = x_pack_strb_q;
   x_pack_count_d = x_pack_count_q;
   x_pack_valid_d = x_pack_valid_q;
 
@@ -99,8 +103,10 @@ always_comb begin
   if (x_accept_chunk) begin
     if (x_pack_count_q == '0) begin
       x_pack_data_d = '0;
+      x_pack_strb_d = '0;
     end
     x_pack_data_d[CHUNK_WIDTH*x_pack_count_q +: CHUNK_WIDTH] = x_decoded_data_i;
+    x_pack_strb_d[CHUNK_BYTES*x_pack_count_q +: CHUNK_BYTES] = {CHUNK_BYTES{1'b1}};
     if ((x_pack_count_q + 1'b1) == x_row_chunks_eff) begin
       x_pack_valid_d = 1'b1;
       x_pack_count_d = '0;
@@ -112,6 +118,7 @@ end
 
 always_comb begin
   w_pack_data_d  = w_pack_data_q;
+  w_pack_strb_d  = w_pack_strb_q;
   w_pack_count_d = w_pack_count_q;
   w_pack_valid_d = w_pack_valid_q;
 
@@ -122,8 +129,10 @@ always_comb begin
   if (w_accept_chunk) begin
     if (w_pack_count_q == '0) begin
       w_pack_data_d = '0;
+      w_pack_strb_d = '0;
     end
     w_pack_data_d[CHUNK_WIDTH*w_pack_count_q +: CHUNK_WIDTH] = w_decoded_data_i;
+    w_pack_strb_d[CHUNK_BYTES*w_pack_count_q +: CHUNK_BYTES] = {CHUNK_BYTES{1'b1}};
     if ((w_pack_count_q + 1'b1) == w_row_chunks_eff) begin
       w_pack_valid_d = 1'b1;
       w_pack_count_d = '0;
@@ -136,23 +145,29 @@ end
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
     x_pack_data_q  <= '0;
+    x_pack_strb_q  <= '0;
     x_pack_count_q <= '0;
     x_pack_valid_q <= 1'b0;
     w_pack_data_q  <= '0;
+    w_pack_strb_q  <= '0;
     w_pack_count_q <= '0;
     w_pack_valid_q <= 1'b0;
   end else if (clear_i || !mx_enable_i) begin
     x_pack_data_q  <= '0;
+    x_pack_strb_q  <= '0;
     x_pack_count_q <= '0;
     x_pack_valid_q <= 1'b0;
     w_pack_data_q  <= '0;
+    w_pack_strb_q  <= '0;
     w_pack_count_q <= '0;
     w_pack_valid_q <= 1'b0;
   end else begin
     x_pack_data_q  <= x_pack_data_d;
+    x_pack_strb_q  <= x_pack_strb_d;
     x_pack_count_q <= x_pack_count_d;
     x_pack_valid_q <= x_pack_valid_d;
     w_pack_data_q  <= w_pack_data_d;
+    w_pack_strb_q  <= w_pack_strb_d;
     w_pack_count_q <= w_pack_count_d;
     w_pack_valid_q <= w_pack_valid_d;
   end
@@ -161,12 +176,12 @@ end
 // Output muxing
 assign x_muxed_o.valid = mx_enable_i ? x_pack_valid_q : x_raw_i.valid;
 assign x_muxed_o.data  = mx_enable_i ? x_pack_data_q  : x_raw_i.data;
-assign x_muxed_o.strb  = mx_enable_i ? {STRB_WIDTH{1'b1}} : x_raw_i.strb;
+assign x_muxed_o.strb  = mx_enable_i ? x_pack_strb_q  : x_raw_i.strb;
 assign x_raw_i.ready   = mx_enable_i ? 1'b0 : x_muxed_o.ready;
 
 assign w_muxed_o.valid = mx_enable_i ? w_pack_valid_q : w_raw_i.valid;
 assign w_muxed_o.data  = mx_enable_i ? w_pack_data_q  : w_raw_i.data;
-assign w_muxed_o.strb  = mx_enable_i ? {STRB_WIDTH{1'b1}} : w_raw_i.strb;
+assign w_muxed_o.strb  = mx_enable_i ? w_pack_strb_q  : w_raw_i.strb;
 assign w_raw_i.ready   = mx_enable_i ? 1'b0 : w_muxed_o.ready;
 
 endmodule : redmule_mx_input_mux

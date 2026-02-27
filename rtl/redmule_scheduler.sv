@@ -250,8 +250,9 @@ module redmule_scheduler
 
   always @(posedge clk_i) begin
     if (dbg_sched && w_rows_iter_en) begin
-      $display("[DBG][SCHED] LOAD_W cycle: w_rows_iter_q=%0d -> %0d, W_ITERS[31:16]=%0d, x_shift_cnt=%0d",
-               w_rows_iter_q, w_rows_iter_d, reg_file_i.hwpe_params[W_ITERS][31:16], x_shift_cnt_q);
+      $display("[DBG][SCHED] LOAD_W cycle: w_rows_iter_q=%0d -> %0d, W_ITERS[31:16]=%0d, x_shift_cnt=%0d, x_slots=%0d, x_width=%0d, w_width=%0d, w_height=%0d",
+               w_rows_iter_q, w_rows_iter_d, reg_file_i.hwpe_params[W_ITERS][31:16], x_shift_cnt_q,
+               cntrl_x_buffer_o.slots, cntrl_x_buffer_o.width, cntrl_w_buffer_o.width, cntrl_w_buffer_o.height);
     end
   end
 
@@ -302,7 +303,8 @@ module redmule_scheduler
   assign cntrl_w_buffer_o.height = w_rows_iter_q >= reg_file_i.hwpe_params[W_ITERS][31:16]-(PIPE_REGS+1) && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : H;
   assign cntrl_w_buffer_o.width  = w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
 
-  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && ~stall_engine;
+  // Keep W row updates aligned with accepted W stream beats in MX mode.
+  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && w_valid_i && ~stall_engine;
   assign cntrl_w_buffer_o.shift = (current_state == LOAD_W || current_state == WAIT) && ~stall_engine;
 
   /****************************

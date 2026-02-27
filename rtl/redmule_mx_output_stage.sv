@@ -56,6 +56,9 @@ localparam int unsigned MX_FP16_PER_BEAT = DATAW_ALIGN / BITW;
 localparam int unsigned MX_CHUNK_RATIO   = MX_FP16_PER_BEAT / MX_NUM_LANES;
 localparam int unsigned MX_CHUNK_WIDTH   = MX_NUM_LANES * BITW;
 localparam int unsigned MX_CHUNK_CNT_W   = (MX_CHUNK_RATIO > 1) ? $clog2(MX_CHUNK_RATIO) : 1;
+localparam int unsigned MX_CHUNK_COUNT_W = (MX_CHUNK_RATIO > 1) ? $clog2(MX_CHUNK_RATIO + 1) : 1;
+localparam int unsigned FIFO_META_W      = 16;
+localparam int unsigned FIFO_DATA_W      = DATAW_ALIGN + FIFO_META_W;
 
 initial begin
   if (DATAW_ALIGN % BITW != 0) begin
@@ -98,14 +101,34 @@ always_comb begin
   end
   any_pe_valid = |width_valid; // OR all Width stages
 end
-assign fifo_push = z_engine_stream_i.valid && mx_enable_i && fifo_grant_o;
 
 // Engine FIFO
-logic [DATAW_ALIGN-1:0] fifo_data_in;
-assign fifo_data_in = z_engine_stream_i.data;
+logic [DATAW_ALIGN-1:0] fifo_data_in_masked;
+logic [MX_CHUNK_COUNT_W-1:0] fifo_chunk_count_in, fifo_chunk_count_out;
+logic [FIFO_DATA_W-1:0] fifo_data_in, fifo_data_out_full;
+
+always_comb begin
+  fifo_data_in_masked = '0;
+  for (int byte_idx = 0; byte_idx < DATAW_ALIGN/8; byte_idx++) begin
+    fifo_data_in_masked[8*byte_idx +: 8] =
+      z_engine_stream_i.strb[byte_idx] ? z_engine_stream_i.data[8*byte_idx +: 8] : 8'h00;
+  end
+end
+
+always_comb begin
+  fifo_chunk_count_in = '0;
+  for (int chunk = 0; chunk < MX_CHUNK_RATIO; chunk++) begin
+    if (|z_engine_stream_i.strb[(MX_CHUNK_WIDTH/8)*chunk +: (MX_CHUNK_WIDTH/8)]) begin
+      fifo_chunk_count_in = fifo_chunk_count_in + 1'b1;
+    end
+  end
+end
+
+assign fifo_push = z_engine_stream_i.valid && mx_enable_i && fifo_grant_o && (fifo_chunk_count_in != '0);
+assign fifo_data_in = {{(FIFO_META_W-MX_CHUNK_COUNT_W){1'b0}}, fifo_chunk_count_in, fifo_data_in_masked};
 
 redmule_mx_fifo #(
-  .DATA_WIDTH ( DATAW_ALIGN ),
+  .DATA_WIDTH ( FIFO_DATA_W ),
   .FIFO_DEPTH ( 4          )
 ) i_engine_fifo (
   .clk_i      ( clk_i            ),
@@ -116,8 +139,11 @@ redmule_mx_fifo #(
   .data_i     ( fifo_data_in     ),
   .pop_i      ( fifo_pop         ),
   .valid_o    ( fifo_valid       ),
-  .data_o     ( fifo_data_out    )
+  .data_o     ( fifo_data_out_full )
 );
+
+assign fifo_data_out      = fifo_data_out_full[DATAW_ALIGN-1:0];
+assign fifo_chunk_count_out = fifo_data_out_full[DATAW_ALIGN +: MX_CHUNK_COUNT_W];
 
 // MX Encoder signals
 logic [MX_DATA_W-1:0] mx_val_data;  // 256 bits for 32 FP8 elements
@@ -129,6 +155,7 @@ logic encoder_ready;
 logic [DATAW_ALIGN-1:0] block_data_q;
 logic block_valid_q;
 logic [MX_CHUNK_CNT_W-1:0] chunk_index_q;
+logic [MX_CHUNK_COUNT_W-1:0] block_chunk_count_q;
 logic load_block;
 
 assign load_block = mx_enable_i && fifo_valid && !block_valid_q;
@@ -142,17 +169,21 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     block_valid_q <= 1'b0;
     block_data_q  <= '0;
     chunk_index_q <= '0;
+    block_chunk_count_q <= '0;
   end else if (clear_i || !mx_enable_i) begin
     block_valid_q <= 1'b0;
     block_data_q  <= '0;
     chunk_index_q <= '0;
+    block_chunk_count_q <= '0;
   end else begin
     if (load_block) begin
       block_valid_q <= 1'b1;
       block_data_q  <= fifo_data_out;
       chunk_index_q <= '0;
+      block_chunk_count_q <= (fifo_chunk_count_out == '0) ? {{(MX_CHUNK_COUNT_W-1){1'b0}}, 1'b1}
+                                                           : fifo_chunk_count_out;
     end else if (block_valid_q && encoder_ready) begin
-      if (chunk_index_q == MX_CHUNK_RATIO-1) begin
+      if ((chunk_index_q + 1'b1) >= block_chunk_count_q) begin
         block_valid_q <= 1'b0;
         chunk_index_q <= '0;
       end else begin

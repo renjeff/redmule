@@ -52,16 +52,38 @@ module redmule_memory_scheduler
 
   logic [$clog2(W):0] num_x_reads;
 
-  logic [15:0] m_size, n_size, k_size;
+  // NOTE: reg_file_i is the post-tiler map (MCFIG0/1 are aliased to X/W iters),
+  // so derive MX dimensions from X/W iteration and leftover fields.
+  logic [15:0] x_rows_iter_cfg, w_rows_iter_cfg, w_cols_iter_cfg;
+  logic [7:0]  x_rows_lftovr_cfg, w_rows_lftovr_cfg, w_cols_lftovr_cfg;
+  logic [31:0] m_size_unpacked, n_size_unpacked, k_size_unpacked;
   logic [31:0] total_x_values, total_w_values;
   logic [31:0] x_exp_beats, w_exp_beats;
 
-  assign m_size = reg_file_i.hwpe_params[MCFIG0][15:0];
-  assign k_size = reg_file_i.hwpe_params[MCFIG0][31:16];
-  assign n_size = reg_file_i.hwpe_params[MCFIG1][15:0];
+  assign x_rows_iter_cfg   = reg_file_i.hwpe_params[X_ITERS][31:16];
+  assign w_rows_iter_cfg   = reg_file_i.hwpe_params[W_ITERS][31:16];
+  assign w_cols_iter_cfg   = reg_file_i.hwpe_params[W_ITERS][15:0];
+  assign x_rows_lftovr_cfg = reg_file_i.hwpe_params[LEFTOVERS][31:24];
+  assign w_rows_lftovr_cfg = reg_file_i.hwpe_params[LEFTOVERS][15:8];
+  assign w_cols_lftovr_cfg = reg_file_i.hwpe_params[LEFTOVERS][7:0];
 
-  assign total_x_values = m_size * MX_PACK_FACTOR * k_size;
-  assign total_w_values = n_size * MX_PACK_FACTOR * k_size;
+  // Unpacked M from X row iterations/leftovers.
+  assign m_size_unpacked = (x_rows_lftovr_cfg != '0) ?
+      (((x_rows_iter_cfg > 16'd0) ? (x_rows_iter_cfg - 16'd1) : 16'd0) * W + x_rows_lftovr_cfg) :
+      (x_rows_iter_cfg * W);
+
+  // Unpacked N from W row iterations/leftovers.
+  assign n_size_unpacked = (w_rows_lftovr_cfg != '0) ?
+      (((w_rows_iter_cfg > H) ? (w_rows_iter_cfg - H) : 16'd0) + w_rows_lftovr_cfg) :
+      w_rows_iter_cfg;
+
+  // Unpacked K from W column iterations/leftovers.
+  assign k_size_unpacked = (w_cols_lftovr_cfg != '0) ?
+      (((w_cols_iter_cfg > 16'd0) ? (w_cols_iter_cfg - 16'd1) : 16'd0) * D + w_cols_lftovr_cfg) :
+      (w_cols_iter_cfg * D);
+
+  assign total_x_values = m_size_unpacked * k_size_unpacked;
+  assign total_w_values = n_size_unpacked * k_size_unpacked;
 
   // Calculate exponent beats based on actual matrix dimensions
   // X exponents: 1 byte per block, blocks = (M*K)/32
@@ -169,7 +191,7 @@ module redmule_memory_scheduler
   logic [31:0]        x_total_words;
   assign num_x_reads_raw = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
   assign x_rows_packed = (num_x_reads_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
-  assign x_total_words = x_rows_packed * k_size;
+  assign x_total_words = x_rows_packed * k_size_unpacked;
   assign num_x_reads = cntrl_flags_i.mx_enable ? ((x_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT) : num_x_reads_raw;
 
   // Here we initialize the streamer source signals
@@ -204,7 +226,9 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[W_ADDR];
   logic [31:0] w_total_words;
   logic [31:0] w_beats;
-  assign w_total_words = k_size * n_size;
+  logic [31:0] w_rows_packed;
+  assign w_rows_packed = (w_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  assign w_total_words = k_size_unpacked * w_rows_packed;
   assign w_beats = (w_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
 
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
@@ -221,17 +245,23 @@ module redmule_memory_scheduler
   logic [31:0] y_load_tot_len;
   logic [31:0] z_store_d0_stride;
   logic [31:0] z_store_d2_stride;
-  // Keep legacy non-MX semantics (row-based lengths). The addressgen for this
-  // path already accounts for beat width, so dividing by blocks-per-beat here
-  // truncates the transaction count and drops the tail rows.
-  assign y_load_tot_len = cntrl_flags_i.mx_enable ?
-                          ((reg_file_i.hwpe_params[Z_TOT_LEN] + FP16_BLOCKS_PER_BEAT - 1) / FP16_BLOCKS_PER_BEAT) :
-                          reg_file_i.hwpe_params[Z_TOT_LEN];
+  logic [31:0] z_store_d0_len;
+  logic [31:0] z_store_d1_len;
+  logic [31:0] z_store_d1_stride;
+  logic [1:0]  z_store_dim_enable;
+  // Keep legacy row-based semantics for Y preload also in MX mode.
+  // z_buffer consumes one logical Y row per handshake; scaling tot_len by
+  // beat packing drops rows on wide buses (e.g. 1024b -> tail mismatch).
+  assign y_load_tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
   assign z_store_tot_len = cntrl_flags_i.mx_enable ?
                            ((reg_file_i.hwpe_params[Z_TOT_LEN] + Z_BLOCKS_PER_BEAT - 1) / Z_BLOCKS_PER_BEAT) :
                            reg_file_i.hwpe_params[Z_TOT_LEN];
-  assign z_store_d0_stride = reg_file_i.hwpe_params[Z_D0_STRIDE];
+  assign z_store_d0_stride = cntrl_flags_i.mx_enable ? (DW/8) : reg_file_i.hwpe_params[Z_D0_STRIDE];
   assign z_store_d2_stride = reg_file_i.hwpe_params[Z_D2_STRIDE];
+  assign z_store_d0_len = cntrl_flags_i.mx_enable ? 32'd1 : W;
+  assign z_store_d1_len = cntrl_flags_i.mx_enable ? z_store_tot_len : reg_file_i.hwpe_params[W_ITERS][15:0];
+  assign z_store_d1_stride = cntrl_flags_i.mx_enable ? (DW/8) : JMP;
+  assign z_store_dim_enable = cntrl_flags_i.mx_enable ? 2'b01 : 2'b11;
 
   assign cntrl_streamer_o.y_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load && reg_file_i.hwpe_params[OP_SELECTION][0] && flgs_streamer_i.y_stream_source_flags.ready_start;
   assign cntrl_streamer_o.y_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
@@ -248,12 +278,12 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.z_stream_sink_ctrl.req_start = cntrl_scheduler_i.first_load && flgs_streamer_i.z_stream_sink_flags.ready_start;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.tot_len = z_store_tot_len;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_len = W;
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_len = z_store_d0_len;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_stride = z_store_d0_stride;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_len = reg_file_i.hwpe_params[W_ITERS][15:0];
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_stride = JMP;
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_len = z_store_d1_len;
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d1_stride = z_store_d1_stride;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d2_stride = z_store_d2_stride;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = z_store_dim_enable;
 
   // MX exponent streams (linear addressing, enabled only when MX mode is active)
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&

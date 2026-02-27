@@ -119,7 +119,7 @@ always_comb begin
     logic w_needs_priority;
     x_can_decode = x_req && x_fifo_has_space;
     w_can_decode = w_req && w_fifo_has_space;
-    
+
     // Priority logic: W gets priority if its FIFO is empty
     // This prevents scheduler stalls waiting for W data
     w_needs_priority = w_fifo_flgs_i.empty;

@@ -373,6 +373,7 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW ) ) out_stream [NumStreamSources-
 
 hci_package::hci_streamer_ctrl_t  [NumStreamSources-1:0] source_ctrl;
 hci_package::hci_streamer_flags_t [NumStreamSources-1:0] source_flags;
+localparam int unsigned LoadFifoDepth = 4;
 
 // Assign input control buses to the relative ID in the vector.
 assign source_ctrl[XsourceStreamId]      = ctrl_i.x_stream_source_ctrl;
@@ -390,7 +391,7 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
   end
 
   hci_core_fifo #(
-    .FIFO_DEPTH  ( 4  ), // to avoid protocol violations, as the consumer has a throughput
+    .FIFO_DEPTH  ( LoadFifoDepth  ), // to avoid protocol violations, as the consumer has a throughput
                          // of 1 packet over 4 cycles, we need a depth of 4 elements.
     .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(ldst_tcdm) )
   ) i_load_tcdm_fifo (
@@ -401,6 +402,75 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
     .tcdm_target    ( load_fifo_q[i] ),
     .tcdm_initiator ( load_fifo_d[i] )
   );
+
+`ifndef SYNTHESIS
+  int unsigned req_occ_q, req_occ_d, req_occ_peak_q;
+  int unsigned rsp_occ_q, rsp_occ_d, rsp_occ_peak_q;
+  int unsigned req_backpressure_cycles_q;
+  int unsigned rsp_in_backpressure_cycles_q;
+  int unsigned rsp_out_backpressure_cycles_q;
+  logic req_push, req_pop, rsp_push, rsp_pop;
+
+  assign req_push = load_fifo_q[i].req     && load_fifo_q[i].gnt;
+  assign req_pop  = load_fifo_d[i].req     && load_fifo_d[i].gnt;
+  assign rsp_push = load_fifo_d[i].r_valid && load_fifo_d[i].r_ready;
+  assign rsp_pop  = load_fifo_q[i].r_valid && load_fifo_q[i].r_ready;
+
+  always_comb begin
+    req_occ_d = req_occ_q;
+    rsp_occ_d = rsp_occ_q;
+    unique case ({req_push, req_pop})
+      2'b10: req_occ_d = req_occ_q + 1;
+      2'b01: req_occ_d = req_occ_q - 1;
+      default: ;
+    endcase
+    unique case ({rsp_push, rsp_pop})
+      2'b10: rsp_occ_d = rsp_occ_q + 1;
+      2'b01: rsp_occ_d = rsp_occ_q - 1;
+      default: ;
+    endcase
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni || clear_i) begin
+      req_occ_q <= '0;
+      req_occ_peak_q <= '0;
+      rsp_occ_q <= '0;
+      rsp_occ_peak_q <= '0;
+      req_backpressure_cycles_q <= '0;
+      rsp_in_backpressure_cycles_q <= '0;
+      rsp_out_backpressure_cycles_q <= '0;
+    end else begin
+      if (req_push && !req_pop && (req_occ_q >= LoadFifoDepth)) begin
+        $error("load_fifo[%0d] request path overflow: occ=%0d depth=%0d", i, req_occ_q, LoadFifoDepth);
+      end
+      if (!req_push && req_pop && (req_occ_q == 0)) begin
+        $error("load_fifo[%0d] request path underflow", i);
+      end
+      if (rsp_push && !rsp_pop && (rsp_occ_q >= LoadFifoDepth)) begin
+        $error("load_fifo[%0d] response path overflow: occ=%0d depth=%0d", i, rsp_occ_q, LoadFifoDepth);
+      end
+      if (!rsp_push && rsp_pop && (rsp_occ_q == 0)) begin
+        $error("load_fifo[%0d] response path underflow", i);
+      end
+
+      req_occ_q <= req_occ_d;
+      rsp_occ_q <= rsp_occ_d;
+      if (req_occ_d > req_occ_peak_q) req_occ_peak_q <= req_occ_d;
+      if (rsp_occ_d > rsp_occ_peak_q) rsp_occ_peak_q <= rsp_occ_d;
+
+      if (load_fifo_q[i].req && !load_fifo_q[i].gnt) req_backpressure_cycles_q <= req_backpressure_cycles_q + 1;
+      if (load_fifo_d[i].r_valid && !load_fifo_d[i].r_ready) rsp_in_backpressure_cycles_q <= rsp_in_backpressure_cycles_q + 1;
+      if (load_fifo_q[i].r_valid && !load_fifo_q[i].r_ready) rsp_out_backpressure_cycles_q <= rsp_out_backpressure_cycles_q + 1;
+    end
+  end
+
+  final begin
+    $display("[load_fifo %0d] depth=%0d req_peak=%0d rsp_peak=%0d req_bp=%0d rsp_in_bp=%0d rsp_out_bp=%0d",
+      i, LoadFifoDepth, req_occ_peak_q, rsp_occ_peak_q, req_backpressure_cycles_q,
+      rsp_in_backpressure_cycles_q, rsp_out_backpressure_cycles_q);
+  end
+`endif
 
   // Load cast unit
   // Exponent streams bypass the cast stage since they already carry raw bytes

@@ -154,6 +154,7 @@ cntrl_flags_t  cntrl_flags;
 
 // X streaming interface + X FIFO interface
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_d         ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_packed    ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_muxed     ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_fifo      ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_raw       ( .clk( clk_i ) );
@@ -161,6 +162,7 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_slot      ( .c
 
 // W streaming interface + W FIFO interface
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_d         ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_packed    ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_muxed     ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_fifo      ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_raw       ( .clk( clk_i ) );
@@ -235,8 +237,8 @@ logic [$clog2(TOT_DEPTH):0] w_nominal_width;
 localparam int unsigned X_SLOT_STRB_W = DATAW_ALIGN/8;
 logic [X_SLOT_STRB_W-1:0] x_slot_strb_mask;
 logic [$clog2(TOT_DEPTH):0] x_valid_lanes;
-logic [$clog2(TOT_DEPTH):0] x_row_chunks;
-logic [$clog2(TOT_DEPTH):0] w_row_chunks;
+logic [7:0] x_row_chunks;
+logic [7:0] w_row_chunks;
 
 // Route streamer outputs either to MX slot path or raw path
 assign x_valid_lanes = mx_mode_active ? reg_file.hwpe_params[X_SLOTS][$clog2(TOT_DEPTH):0] : x_buffer_ctrl.height;
@@ -330,6 +332,7 @@ localparam int unsigned MX_NUM_LANES = (MX_BEAT_NUM_LANES < MX_INPUT_NUM_ELEMS) 
                                        MX_BEAT_NUM_LANES : MX_INPUT_NUM_ELEMS;
 localparam int unsigned MX_INPUT_NUM_GROUPS  = MX_INPUT_NUM_ELEMS / MX_NUM_LANES;
 localparam int unsigned MX_EXP_VECTOR_W      = MX_INPUT_NUM_GROUPS * 8;
+localparam int unsigned MX_ROW_CHUNKS        = MX_BEAT_NUM_LANES / MX_NUM_LANES;
 localparam int unsigned MX_SLOT_FIFO_DEPTH   = 16;  // Restore depth to avoid stressing dummy TCDM
 
 initial begin
@@ -478,11 +481,13 @@ assign w_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_va
 assign x_mx_fp16_data  = mx_dec_fp16_data;
 assign w_mx_fp16_data  = mx_dec_fp16_data;
 
-// Row chunk counts for padding beats to DATAW_ALIGN
-assign x_row_chunks = (x_valid_lanes == '0) ? 1 :
-                      ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
-assign w_row_chunks = (w_valid_lanes == '0) ? 1 :
-                      ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+// In MX mode, pack according to bus width (512b -> 1 chunk, 1024b -> 2 chunks).
+assign x_row_chunks = mx_mode_active ? MX_ROW_CHUNKS[7:0] :
+                      ((x_valid_lanes == '0) ? 8'd1 :
+                       ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
+assign w_row_chunks = mx_mode_active ? MX_ROW_CHUNKS[7:0] :
+                      ((w_valid_lanes == '0) ? 8'd1 :
+                       ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
 
 // Instantiate MX input mux
 redmule_mx_input_mux #(
@@ -506,8 +511,36 @@ redmule_mx_input_mux #(
   .w_decoded_ready_o  ( w_mx_fp16_ready    ),
   .x_decoded_data_i   ( x_mx_fp16_data     ),
   .w_decoded_data_i   ( w_mx_fp16_data     ),
-  .x_muxed_o          ( x_buffer_muxed     ),
-  .w_muxed_o          ( w_buffer_muxed     )
+  .x_muxed_o          ( x_buffer_packed    ),
+  .w_muxed_o          ( w_buffer_packed    )
+);
+
+// Legacy X/W load path consumes one logical row per beat.
+// Unpack MX-packed beats (2 rows @1024b) back into row beats at this boundary.
+redmule_mx_beat_unpack #(
+  .DATAW_ALIGN  ( DATAW_ALIGN  ),
+  .BITW         ( BITW         ),
+  .MX_NUM_LANES ( MX_NUM_LANES )
+) i_x_mx_beat_unpack (
+  .clk_i       ( clk_i            ),
+  .rst_ni      ( rst_ni           ),
+  .clear_i     ( clear            ),
+  .mx_enable_i ( cntrl_flags.mx_enable ),
+  .in_i        ( x_buffer_packed  ),
+  .out_o       ( x_buffer_muxed   )
+);
+
+redmule_mx_beat_unpack #(
+  .DATAW_ALIGN  ( DATAW_ALIGN  ),
+  .BITW         ( BITW         ),
+  .MX_NUM_LANES ( MX_NUM_LANES )
+) i_w_mx_beat_unpack (
+  .clk_i       ( clk_i            ),
+  .rst_ni      ( rst_ni           ),
+  .clear_i     ( clear            ),
+  .mx_enable_i ( cntrl_flags.mx_enable ),
+  .in_i        ( w_buffer_packed  ),
+  .out_o       ( w_buffer_muxed   )
 );
 
 // Decoder ready routing
