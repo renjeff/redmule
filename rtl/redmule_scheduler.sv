@@ -175,7 +175,6 @@ module redmule_scheduler
    ******************************/
   logic x_reload_q;
   logic x_reload_en, x_reload_rst;
-  logic x_prefetch_en;
 
   logic x_empty;
 
@@ -201,14 +200,7 @@ module redmule_scheduler
     end
   end
 
-  // Allow the X streamer to prefetch the next tile as soon as the consumer drops the
-  // "full" flag (after the write index reset).  This overlaps the next fetch with the
-  // current computation instead of waiting until the buffer drains completely.
-  assign x_prefetch_en = (~first_load) && ~x_done &&
-                         (current_state == LOAD_W || current_state == WAIT) &&
-                         ~flgs_x_buffer_i.full && ~x_reload_q;
-
-  assign x_reload_en  = start || x_cols_iter_en || (x_empty && ~flgs_x_buffer_i.full) || x_prefetch_en;
+  assign x_reload_en  = start || x_cols_iter_en || x_empty && ~flgs_x_buffer_i.full;
   assign x_reload_rst = flgs_x_buffer_i.full && ~x_reload_en;
 
   assign cntrl_x_buffer_o.pad_setup   = current_state == PRELOAD && next_state == LOAD_W;
@@ -303,8 +295,7 @@ module redmule_scheduler
   assign cntrl_w_buffer_o.height = w_rows_iter_q >= reg_file_i.hwpe_params[W_ITERS][31:16]-(PIPE_REGS+1) && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : H;
   assign cntrl_w_buffer_o.width  = w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
 
-  // Keep W row updates aligned with accepted W stream beats in MX mode.
-  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && w_valid_i && ~stall_engine;
+  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && ~stall_engine;
   assign cntrl_w_buffer_o.shift = (current_state == LOAD_W || current_state == WAIT) && ~stall_engine;
 
   /****************************
@@ -577,12 +568,8 @@ module redmule_scheduler
   assign check_x_full_en   = x_refill && x_shift_cnt_q == H-1 && ~x_done;
 
   // Check if the new Y rows are loaded and ready to be pushed
-  // Also consider the case where we are currently pushing rows: this keeps the
-  // engine running while the store path drains rather than idling on the
-  // loaded flag toggling back and forth.
-  logic y_buffer_can_accept;
-  assign y_buffer_can_accept = flgs_z_buffer_i.loaded || y_push_en;
-  assign check_y_loaded      = y_buffer_can_accept;
+  // Only enable this check when the results of an iteration are available
+  assign check_y_loaded    = flgs_z_buffer_i.loaded;
   assign check_y_loaded_en = z_wait_counter_q == PIPE_REGS && ~w_done;
 
   /******************************
