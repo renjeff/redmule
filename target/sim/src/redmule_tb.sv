@@ -73,7 +73,9 @@ module redmule_tb
   logic core_sleep;
   int errors;
   integer f_engine_x, f_engine_w, f_engine_z;
+  integer f_engine_feed;
   integer f_dec_fp16, f_dec_exp, f_dec_target;
+  longint unsigned engine_x_line_idx, engine_w_line_idx, engine_z_line_idx;
 
   function automatic longint unsigned ceil_div(longint unsigned num,
                                                longint unsigned den);
@@ -192,6 +194,7 @@ module redmule_tb
     if (f_engine_x) $fclose(f_engine_x);
     if (f_engine_w) $fclose(f_engine_w);
     if (f_engine_z) $fclose(f_engine_z);
+    if (f_engine_feed) $fclose(f_engine_feed);
     if (f_dec_fp16) $fclose(f_dec_fp16);
     if (f_dec_exp) $fclose(f_dec_exp);
     if (f_dec_target) $fclose(f_dec_target);
@@ -219,6 +222,12 @@ module redmule_tb
     if (f_engine_z == 0) begin
       $fatal(1, "[TB] Failed to open engine_z_outputs.txt");
     end
+    f_engine_feed = $fopen("engine_feed_trace.csv", "w");
+    if (f_engine_feed == 0) begin
+      $fatal(1, "[TB] Failed to open engine_feed_trace.csv");
+    end
+    $fdisplay(f_engine_feed,
+              "time,event,line_idx,mx_enable,target_x,target_w,pairdup,l0,l1,l2,l3,l4,l5,l6,l7");
     f_dec_fp16 = $fopen("mx_decoder_fp16_outputs.txt", "w");
     if (f_dec_fp16 == 0) begin
       $fatal(1, "[TB] Failed to open mx_decoder_fp16_outputs.txt");
@@ -447,6 +456,9 @@ module redmule_tb
   logic [MP-1:0]       tcdm_gnt;
   logic [MP-1:0][31:0] tcdm_r_data;
   logic [MP-1:0]       tcdm_r_valid;
+    logic [DW-1:0]       redmule_r_data_prev_q;
+    logic                redmule_r_valid_prev_q;
+    int unsigned         redmule_rsp_stability_viol_q;
 
   typedef struct packed {
     logic        req;
@@ -518,12 +530,36 @@ module redmule_tb
     assign tcdm_r_valid[ii] = tcdm[ii].r_valid;
     assign tcdm_r_data[ii]  = tcdm[ii].r_data;
   end
+
   assign redmule_tcdm.gnt     = &tcdm_gnt;
   assign redmule_tcdm.r_data  = { >> {tcdm_r_data} };
   assign redmule_tcdm.r_valid = &tcdm_r_valid;
   assign redmule_tcdm.r_id    = '0;
   assign redmule_tcdm.r_opc   = '0;
   assign redmule_tcdm.r_user  = '0;
+
+`ifndef SYNTHESIS
+  always_ff @(posedge clk_i or negedge rst_ni) begin : monitor_redmule_tcdm_rsp
+    if (~rst_ni) begin
+      redmule_r_data_prev_q      <= '0;
+      redmule_r_valid_prev_q     <= 1'b0;
+      redmule_rsp_stability_viol_q <= '0;
+    end else begin
+      if (redmule_r_valid_prev_q && !redmule_tcdm.r_ready) begin
+        if (!redmule_tcdm.r_valid || (redmule_tcdm.r_data != redmule_r_data_prev_q)) begin
+          redmule_rsp_stability_viol_q <= redmule_rsp_stability_viol_q + 1;
+          if (redmule_rsp_stability_viol_q < 8) begin
+            $warning("[TB][RSPCHK] redmule_tcdm changed under backpressure at %0t: prev_valid=%0b prev_data=0x%0h now_valid=%0b now_data=0x%0h r_ready=%0b",
+              $time, redmule_r_valid_prev_q, redmule_r_data_prev_q, redmule_tcdm.r_valid, redmule_tcdm.r_data, redmule_tcdm.r_ready);
+          end
+        end
+      end
+
+      redmule_r_valid_prev_q <= redmule_tcdm.r_valid;
+      redmule_r_data_prev_q  <= redmule_tcdm.r_data;
+    end
+  end
+`endif
 
   if (USE_ECC) begin : gen_ecc
     logic [EW-1:0] tcdm_r_ecc;
@@ -817,10 +853,32 @@ module redmule_tb
                     i_dut.i_redmule_top.mx_dec_fp16_data,
                     "-");
       end
+
+      if (!i_dut.i_redmule_top.cntrl_flags.mx_enable &&
+          i_dut.i_redmule_top.z_buffer_muxed.valid &&
+          i_dut.i_redmule_top.z_buffer_muxed.ready) begin
+        $display("[TB][MXDBG][%0t] ZHS data=%h strb=%h",
+                 $time,
+                 i_dut.i_redmule_top.z_buffer_muxed.data,
+                 i_dut.i_redmule_top.z_buffer_muxed.strb);
+        if (mx_debug_fd)
+          $fdisplay(mx_debug_fd,
+                    "%0t,ZHS,Z,%h,%h",
+                    $time,
+                    i_dut.i_redmule_top.z_buffer_muxed.data,
+                    i_dut.i_redmule_top.z_buffer_muxed.strb);
+      end
     end
 
     // Engine input/output file captures - always active (not gated by mx_debug_dump)
     if (x_buf_read_q) begin
+      logic x_pairdup;
+      x_pairdup = 1'b1;
+      for (int p = 0; p < ARRAY_WIDTH; p += 2) begin
+        if (i_dut.i_redmule_top.x_buffer_q[p][0] !== i_dut.i_redmule_top.x_buffer_q[p+1][0]) begin
+          x_pairdup = 1'b0;
+        end
+      end
       if (mx_debug_fd)
         $fdisplay(mx_debug_fd,
                   "%0t,XBUFQ,X,%h,%s",
@@ -836,9 +894,35 @@ module redmule_tb
         end
         $fwrite(f_engine_x, "\n");
       end
+      if (f_engine_feed) begin
+        $fdisplay(f_engine_feed,
+                  "%0t,XBUFQ,%0d,%0b,%0b,%0b,%0b,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h",
+                  $time,
+                  engine_x_line_idx,
+                  i_dut.i_redmule_top.cntrl_flags.mx_enable,
+                  i_dut.i_redmule_top.target_is_x,
+                  i_dut.i_redmule_top.target_is_w,
+                  x_pairdup,
+                  i_dut.i_redmule_top.x_buffer_q[0][0],
+                  i_dut.i_redmule_top.x_buffer_q[1][0],
+                  i_dut.i_redmule_top.x_buffer_q[2][0],
+                  i_dut.i_redmule_top.x_buffer_q[3][0],
+                  i_dut.i_redmule_top.x_buffer_q[4][0],
+                  i_dut.i_redmule_top.x_buffer_q[5][0],
+                  i_dut.i_redmule_top.x_buffer_q[6][0],
+                  i_dut.i_redmule_top.x_buffer_q[7][0]);
+      end
+      engine_x_line_idx <= engine_x_line_idx + 1;
     end
 
     if (w_buf_read_q) begin
+      logic w_pairdup;
+      w_pairdup = 1'b1;
+      for (int p = 0; p < ARRAY_HEIGHT; p += 2) begin
+        if (i_dut.i_redmule_top.w_buffer_q[p] !== i_dut.i_redmule_top.w_buffer_q[p+1]) begin
+          w_pairdup = 1'b0;
+        end
+      end
       if (mx_debug_fd)
         $fdisplay(mx_debug_fd,
                   "%0t,WBUFQ,W,%h,%s",
@@ -852,6 +936,25 @@ module redmule_tb
         end
         $fwrite(f_engine_w, "\n");
       end
+      if (f_engine_feed) begin
+        $fdisplay(f_engine_feed,
+                  "%0t,WBUFQ,%0d,%0b,%0b,%0b,%0b,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h",
+                  $time,
+                  engine_w_line_idx,
+                  i_dut.i_redmule_top.cntrl_flags.mx_enable,
+                  i_dut.i_redmule_top.target_is_x,
+                  i_dut.i_redmule_top.target_is_w,
+                  w_pairdup,
+                  i_dut.i_redmule_top.w_buffer_q[0],
+                  i_dut.i_redmule_top.w_buffer_q[1],
+                  i_dut.i_redmule_top.w_buffer_q[2],
+                  i_dut.i_redmule_top.w_buffer_q[3],
+                  i_dut.i_redmule_top.w_buffer_q[4],
+                  i_dut.i_redmule_top.w_buffer_q[5],
+                  i_dut.i_redmule_top.w_buffer_q[6],
+                  i_dut.i_redmule_top.w_buffer_q[7]);
+      end
+      engine_w_line_idx <= engine_w_line_idx + 1;
     end
 
     if ((i_dut.i_redmule_top.cntrl_flags.mx_enable &&
@@ -860,6 +963,46 @@ module redmule_tb
         (!i_dut.i_redmule_top.cntrl_flags.mx_enable &&
          i_dut.i_redmule_top.z_buffer_muxed.valid &&
          i_dut.i_redmule_top.z_buffer_muxed.ready)) begin
+          logic z_pairdup;
+          logic [BITW-1:0] z0, z1, z2, z3, z4, z5, z6, z7;
+          z_pairdup = 1'b1;
+          for (int p = 0; p < ARRAY_WIDTH; p += 2) begin
+       if ((i_dut.i_redmule_top.cntrl_flags.mx_enable
+        ? i_dut.i_redmule_top.fifo_data_out[p*BITW +: BITW]
+        : i_dut.i_redmule_top.z_buffer_muxed.data[p*BITW +: BITW])
+           !==
+           (i_dut.i_redmule_top.cntrl_flags.mx_enable
+        ? i_dut.i_redmule_top.fifo_data_out[(p+1)*BITW +: BITW]
+        : i_dut.i_redmule_top.z_buffer_muxed.data[(p+1)*BITW +: BITW])) begin
+         z_pairdup = 1'b0;
+       end
+          end
+
+          z0 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[0*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[0*BITW +: BITW];
+          z1 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[1*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[1*BITW +: BITW];
+          z2 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[2*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[2*BITW +: BITW];
+          z3 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[3*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[3*BITW +: BITW];
+          z4 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[4*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[4*BITW +: BITW];
+          z5 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[5*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[5*BITW +: BITW];
+          z6 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[6*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[6*BITW +: BITW];
+          z7 = i_dut.i_redmule_top.cntrl_flags.mx_enable
+            ? i_dut.i_redmule_top.fifo_data_out[7*BITW +: BITW]
+            : i_dut.i_redmule_top.z_buffer_muxed.data[7*BITW +: BITW];
+
       if (f_engine_z) begin
         for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
           $fwrite(f_engine_z, "%04h ",
@@ -869,6 +1012,18 @@ module redmule_tb
         end
         $fwrite(f_engine_z, "\n");
       end
+      if (f_engine_feed) begin
+        $fdisplay(f_engine_feed,
+                  "%0t,ZPOP,%0d,%0b,%0b,%0b,%0b,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h",
+                  $time,
+                  engine_z_line_idx,
+                  i_dut.i_redmule_top.cntrl_flags.mx_enable,
+                  i_dut.i_redmule_top.target_is_x,
+                  i_dut.i_redmule_top.target_is_w,
+                  z_pairdup,
+                  z0, z1, z2, z3, z4, z5, z6, z7);
+      end
+      engine_z_line_idx <= engine_z_line_idx + 1;
     end
   end
 
@@ -877,6 +1032,9 @@ module redmule_tb
     int cnt_rd, cnt_wr;
 
     errors = -1;
+    engine_x_line_idx = '0;
+    engine_w_line_idx = '0;
+    engine_z_line_idx = '0;
     if (!$value$plusargs("STIM_INSTR=%s", stim_instr)) stim_instr = "";
     if (!$value$plusargs("STIM_DATA=%s", stim_data)) stim_data = "";
     if (!$value$plusargs("STACK_INIT=%s", stack_init)) stack_init = "";

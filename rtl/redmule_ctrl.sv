@@ -50,6 +50,10 @@ module redmule_ctrl
 
   logic        clear, latch_clear;
   logic        tiler_setback, tiler_valid;
+  logic [31:0] x_stream_done_count_q;
+  logic [31:0] x_stream_done_target;
+  logic        z_store_done_seen_q;
+  logic        x_stream_done_all;
 
   typedef enum logic [2:0] {
     REDMULE_LATCH_RST,
@@ -220,6 +224,32 @@ module redmule_ctrl
     end
   end
 
+  // Track completion across pulses: Z done can assert before all X launches complete
+  // in MX mode. Keep controller in COMPUTING until both are observed.
+  assign x_stream_done_target = (reg_file_q.hwpe_params[TOT_X_READ] == 32'd0)
+                              ? 32'd1
+                              : reg_file_q.hwpe_params[TOT_X_READ];
+  assign x_stream_done_all    = (x_stream_done_count_q >= x_stream_done_target);
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : stream_done_tracking
+    if (~rst_ni) begin
+      x_stream_done_count_q <= '0;
+      z_store_done_seen_q   <= '0;
+    end else begin
+      if (clear || current == REDMULE_IDLE || current == REDMULE_FINISHED) begin
+        x_stream_done_count_q <= '0;
+        z_store_done_seen_q   <= '0;
+      end else begin
+        if (flgs_streamer_i.x_stream_source_flags.done) begin
+          x_stream_done_count_q <= x_stream_done_count_q + 1'b1;
+        end
+        if (flgs_streamer_i.z_stream_sink_flags.done) begin
+          z_store_done_seen_q <= 1'b1;
+        end
+      end
+    end
+  end
+
   /*---------------------------------------------------------------------------------------------*/
   /*                                   Register file assignment                                  */
   /*---------------------------------------------------------------------------------------------*/
@@ -269,7 +299,7 @@ module redmule_ctrl
       end
 
       REDMULE_COMPUTING: begin
-        if (flgs_streamer_i.z_stream_sink_flags.done) begin
+        if (z_store_done_seen_q && x_stream_done_all) begin
           next = REDMULE_FINISHED;
         end
       end

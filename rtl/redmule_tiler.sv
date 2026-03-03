@@ -276,9 +276,10 @@ assign config_d.yz_d0_stride = config_d.w_d0_stride;
 assign config_d.yz_d2_stride = ARRAY_WIDTH*config_d.w_d0_stride;
 // Calculate tot_x_read from sequential multipliers (now using memory iterations)
 logic [31:0] tot_x_read_raw;
-assign tot_x_read_raw = x_rows_by_w_cols_by_x_cols_iter[31:0];
-assign config_d.tot_x_read   = mx_enable ? ((tot_x_read_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
-                                         : tot_x_read_raw;
+// TOT_X_READ is the number of X-stream launches (scheduler restarts), which
+// follows compute/buffer tiling (unpacked rows), not packed-memory beats.
+assign tot_x_read_raw = config_d.x_rows_iter * config_d.w_cols_iter * config_d.x_cols_iter;
+assign config_d.tot_x_read   = tot_x_read_raw;
 assign config_d.x_tot_len    = '0; // not used
 
 // register configuration to avoid critical paths (maybe removable!)

@@ -210,6 +210,17 @@ cd golden-model && source setup-py.sh
 # Generate GEMM FP16 test data
 make -C golden-model gemm M=16 N=16 K=16 fp_fmt=FP16 SW=$(pwd)/inc
 
+
+# in remdule root directory:
+# build software switch bewteen MX and baseline with MX_ENABLE=0/1
+make sw-build MX_ENABLE=1 target=vsim
+
+#build RTL and run with vsim
+make hw-build target=vsim
+
+# run hw simulation with vsim
+make hw-run target=vsim
+
 # Compile RTL for simulation
 bender script verilator
 

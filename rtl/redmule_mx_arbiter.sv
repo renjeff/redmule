@@ -86,6 +86,9 @@ mx_dec_target_e mx_dec_owner;
 logic x_fifo_has_space, w_fifo_has_space;
 logic x_req_with_space, w_req_with_space;
 logic mx_dec_start_new;
+logic mx_arb_force_rr;
+logic mx_arb_strict_alt;
+logic mx_dec_owner_can_start;
 
 // FIFO space checking
 assign x_fifo_has_space = !x_fifo_flgs_i.full;
@@ -102,10 +105,11 @@ assign x_req_with_space = x_req && x_fifo_has_space;
 assign w_req_with_space = w_req && w_fifo_has_space;
 
 // Start new decode condition
+assign mx_dec_owner_can_start = ((mx_dec_owner == MX_DEC_X) && x_req_with_space) ||
+                                ((mx_dec_owner == MX_DEC_W) && w_req_with_space);
 assign mx_dec_start_new = (mx_dec_target_q == MX_DEC_NONE) &&
                           (mx_dec_owner != MX_DEC_NONE) &&
-                          ((mx_dec_owner == MX_DEC_X && x_req_with_space) ||
-                           (mx_dec_owner == MX_DEC_W && w_req_with_space));
+                          mx_dec_owner_can_start;
 
 // Consume signals
 assign consume_x_slot_o = mx_dec_start_new && (mx_dec_owner == MX_DEC_X);
@@ -124,13 +128,18 @@ always_comb begin
     // This prevents scheduler stalls waiting for W data
     w_needs_priority = w_fifo_flgs_i.empty;
 
-    unique case ({x_can_decode, w_can_decode})
+    // Strict alternation experiment: when both streams request, force turn ownership
+    // and do not fallback to the other stream on lack of FIFO space.
+    // This can intentionally stall decode start to preserve ordering.
+    if (mx_arb_strict_alt && x_req && w_req) begin
+      mx_dec_owner = mx_dec_turn_q ? MX_DEC_W : MX_DEC_X;
+    end else unique case ({x_can_decode, w_can_decode})
       2'b10: mx_dec_owner = MX_DEC_X;
       2'b01: mx_dec_owner = MX_DEC_W;
       2'b11: begin
         // If W FIFO is empty, prioritize W to prevent scheduler stalls
         // Otherwise use round-robin
-        if (w_needs_priority)
+        if (w_needs_priority && !mx_arb_force_rr)
           mx_dec_owner = MX_DEC_W;
         else
           mx_dec_owner = mx_dec_turn_q ? MX_DEC_W : MX_DEC_X;
@@ -153,6 +162,16 @@ assign mx_dec_val_data_o    = mx_dec_val_data_q;
 assign mx_dec_exp_data_o    = mx_dec_exp_data_q;
 assign mx_dec_vector_mode_o = mx_dec_vector_mode_q;
 assign mx_dec_target_o      = mx_dec_target_q;
+
+`ifndef SYNTHESIS
+bit dbg_mxarb;
+initial dbg_mxarb = $test$plusargs("MX_ARB_DBG") || $test$plusargs("MX_DEBUG_DUMP");
+assign mx_arb_force_rr = 1'b1;
+initial mx_arb_strict_alt = $test$plusargs("MX_ARB_STRICT_ALT");
+`else
+assign mx_arb_force_rr = 1'b1;
+assign mx_arb_strict_alt = 1'b0;
+`endif
 
 // Sequential logic
 always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -177,6 +196,29 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     mx_dec_exp_data_q <= mx_dec_exp_data_d;
     mx_dec_vector_mode_q <= mx_dec_vector_mode_d;
     mx_dec_turn_q <= mx_dec_turn_d;
+
+`ifndef SYNTHESIS
+    if (dbg_mxarb && mx_enable_i) begin
+      if (mx_dec_start_new) begin
+        $display("[DBG][MX_ARB][%0t] start owner=%s x_req=%0b w_req=%0b x_space=%0b w_space=%0b x_full=%0b w_full=%0b x_empty=%0b w_empty=%0b turn=%0b",
+                 $time,
+                 (mx_dec_owner == MX_DEC_X) ? "X" : ((mx_dec_owner == MX_DEC_W) ? "W" : "NONE"),
+                 x_req, w_req,
+                 x_fifo_has_space, w_fifo_has_space,
+                 x_fifo_flgs_i.full, w_fifo_flgs_i.full,
+                 x_fifo_flgs_i.empty, w_fifo_flgs_i.empty,
+                 mx_dec_turn_q);
+      end
+
+      if (mx_dec_fp16_valid_i && mx_dec_fp16_ready_i) begin
+        $display("[DBG][MX_ARB][%0t] dec_hs tgt=%s grp=%0d/%0d",
+                 $time,
+                 (mx_dec_target_q == MX_DEC_X) ? "X" : ((mx_dec_target_q == MX_DEC_W) ? "W" : "NONE"),
+                 mx_dec_group_cnt_q,
+                 MX_INPUT_NUM_GROUPS-1);
+      end
+    end
+`endif
   end
 end
 
@@ -222,5 +264,89 @@ always_comb begin
     end
   endcase
 end
+
+`ifndef SYNTHESIS
+  longint unsigned x_req_cycles_q, w_req_cycles_q, both_req_cycles_q;
+  longint unsigned x_blocked_fifo_q, w_blocked_fifo_q;
+  longint unsigned x_grant_q, w_grant_q;
+  longint unsigned rr_flip_q, w_priority_grant_q;
+  logic [1:0]      dbg_prev_target_q;
+  int unsigned     dbg_run_len_q;
+
+  logic dbg_decode_fire;
+  assign dbg_decode_fire = mx_dec_fp16_valid_i && mx_dec_fp16_ready_i;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : mxarb_debug_counters
+    if (!rst_ni) begin
+      x_req_cycles_q      <= '0;
+      w_req_cycles_q      <= '0;
+      both_req_cycles_q   <= '0;
+      x_blocked_fifo_q    <= '0;
+      w_blocked_fifo_q    <= '0;
+      x_grant_q           <= '0;
+      w_grant_q           <= '0;
+      rr_flip_q           <= '0;
+      w_priority_grant_q  <= '0;
+      dbg_prev_target_q   <= MX_DEC_NONE;
+      dbg_run_len_q       <= '0;
+    end else if (clear_i) begin
+      x_req_cycles_q      <= '0;
+      w_req_cycles_q      <= '0;
+      both_req_cycles_q   <= '0;
+      x_blocked_fifo_q    <= '0;
+      w_blocked_fifo_q    <= '0;
+      x_grant_q           <= '0;
+      w_grant_q           <= '0;
+      rr_flip_q           <= '0;
+      w_priority_grant_q  <= '0;
+      dbg_prev_target_q   <= MX_DEC_NONE;
+      dbg_run_len_q       <= '0;
+    end else begin
+      if (x_req) x_req_cycles_q <= x_req_cycles_q + 1;
+      if (w_req) w_req_cycles_q <= w_req_cycles_q + 1;
+      if (x_req && w_req) both_req_cycles_q <= both_req_cycles_q + 1;
+      if (x_req && !x_fifo_has_space) x_blocked_fifo_q <= x_blocked_fifo_q + 1;
+      if (w_req && !w_fifo_has_space) w_blocked_fifo_q <= w_blocked_fifo_q + 1;
+
+      if (mx_dec_start_new && mx_dec_owner == MX_DEC_X) x_grant_q <= x_grant_q + 1;
+      if (mx_dec_start_new && mx_dec_owner == MX_DEC_W) w_grant_q <= w_grant_q + 1;
+      if (mx_dec_start_new && x_req_with_space && w_req_with_space) rr_flip_q <= rr_flip_q + 1;
+      if (mx_dec_start_new && x_req_with_space && w_req_with_space && w_fifo_flgs_i.empty && mx_dec_owner == MX_DEC_W)
+        w_priority_grant_q <= w_priority_grant_q + 1;
+
+      // Track long contiguous decode runs for each target
+      if (dbg_decode_fire) begin
+        if (mx_dec_target_q == dbg_prev_target_q) begin
+          dbg_run_len_q <= dbg_run_len_q + 1;
+        end else begin
+          dbg_prev_target_q <= mx_dec_target_q;
+          dbg_run_len_q <= 1;
+        end
+
+        if (dbg_mxarb && dbg_run_len_q == 8 && (mx_dec_target_q == MX_DEC_X || mx_dec_target_q == MX_DEC_W)) begin
+          $display("[DBG][MXARB][%0t] long_run target=%s len>=%0d x_req=%0b w_req=%0b x_space=%0b w_space=%0b w_empty=%0b turn=%0b",
+                   $time,
+                   (mx_dec_target_q == MX_DEC_X) ? "X" : "W",
+                   dbg_run_len_q,
+                   x_req,
+                   w_req,
+                   x_fifo_has_space,
+                   w_fifo_has_space,
+                   w_fifo_flgs_i.empty,
+                   mx_dec_turn_q);
+        end
+      end
+    end
+  end
+
+  final begin
+    $display("[mx_arbiter] force_rr=%0b strict_alt=%0b x_req=%0d w_req=%0d both_req=%0d x_block_fifo=%0d w_block_fifo=%0d x_grant=%0d w_grant=%0d rr_flips=%0d w_prio_grants=%0d",
+             mx_arb_force_rr,
+         mx_arb_strict_alt,
+             x_req_cycles_q, w_req_cycles_q, both_req_cycles_q,
+             x_blocked_fifo_q, w_blocked_fifo_q,
+             x_grant_q, w_grant_q, rr_flip_q, w_priority_grant_q);
+  end
+`endif
 
 endmodule : redmule_mx_arbiter

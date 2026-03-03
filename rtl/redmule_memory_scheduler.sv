@@ -56,6 +56,7 @@ module redmule_memory_scheduler
   // so derive MX dimensions from X/W iteration and leftover fields.
   logic [15:0] x_rows_iter_cfg, w_rows_iter_cfg, w_cols_iter_cfg;
   logic [7:0]  x_rows_lftovr_cfg, w_rows_lftovr_cfg, w_cols_lftovr_cfg;
+  logic [31:0] m_size_systolic, n_size_systolic;
   logic [31:0] m_size_unpacked, n_size_unpacked, k_size_unpacked;
   logic [31:0] total_x_values, total_w_values;
   logic [31:0] x_exp_beats, w_exp_beats;
@@ -67,15 +68,20 @@ module redmule_memory_scheduler
   assign w_rows_lftovr_cfg = reg_file_i.hwpe_params[LEFTOVERS][15:8];
   assign w_cols_lftovr_cfg = reg_file_i.hwpe_params[LEFTOVERS][7:0];
 
-  // Unpacked M from X row iterations/leftovers.
-  assign m_size_unpacked = (x_rows_lftovr_cfg != '0) ?
+    // Systolic-space M from X row iterations/leftovers.
+    assign m_size_systolic = (x_rows_lftovr_cfg != '0) ?
       (((x_rows_iter_cfg > 16'd0) ? (x_rows_iter_cfg - 16'd1) : 16'd0) * W + x_rows_lftovr_cfg) :
       (x_rows_iter_cfg * W);
 
-  // Unpacked N from W row iterations/leftovers.
-  assign n_size_unpacked = (w_rows_lftovr_cfg != '0) ?
+    // Systolic-space N from W row iterations/leftovers.
+    assign n_size_systolic = (w_rows_lftovr_cfg != '0) ?
       (((w_rows_iter_cfg > H) ? (w_rows_iter_cfg - H) : 16'd0) + w_rows_lftovr_cfg) :
       w_rows_iter_cfg;
+
+    // M/N recovered from X/W iteration fields are already logical element-space
+    // dimensions. Do not de-pack again in MX mode.
+    assign m_size_unpacked = m_size_systolic;
+    assign n_size_unpacked = n_size_systolic;
 
   // Unpacked K from W column iterations/leftovers.
   assign k_size_unpacked = (w_cols_lftovr_cfg != '0) ?
@@ -227,8 +233,15 @@ module redmule_memory_scheduler
   logic [31:0] w_total_words;
   logic [31:0] w_beats;
   logic [31:0] w_rows_packed;
-  assign w_rows_packed = (w_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
-  assign w_total_words = k_size_unpacked * w_rows_packed;
+  logic [31:0] w_words_per_x_tile;
+  // W payload words in MX are packed over logical N rows (2 elements/word).
+  assign w_rows_packed = cntrl_flags_i.mx_enable ?
+                         ((n_size_unpacked + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR) :
+                         ((w_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR);
+  assign w_words_per_x_tile = k_size_unpacked * w_rows_packed;
+  // W payload is reused across X row tiles by the scheduler/buffer traversal.
+  // Program a single logical W pass in MX mode.
+  assign w_total_words = w_words_per_x_tile;
   assign w_beats = (w_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
 
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
@@ -253,9 +266,14 @@ module redmule_memory_scheduler
   // z_buffer consumes one logical Y row per handshake; scaling tot_len by
   // beat packing drops rows on wide buses (e.g. 1024b -> tail mismatch).
   assign y_load_tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
-  assign z_store_tot_len = cntrl_flags_i.mx_enable ?
-                           ((reg_file_i.hwpe_params[Z_TOT_LEN] + Z_BLOCKS_PER_BEAT - 1) / Z_BLOCKS_PER_BEAT) :
-                           reg_file_i.hwpe_params[Z_TOT_LEN];
+  logic [31:0] z_total_words;
+  logic [31:0] z_total_beats;
+  // In MX mode, Z payload is packed FP8 (2 elems/16b word) and streamed in
+  // DW-wide beats. Program sink length in beats to avoid overrun/underrun.
+  assign z_total_words = ((m_size_unpacked * n_size_unpacked) + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  assign z_total_beats = (z_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
+  assign z_store_tot_len = cntrl_flags_i.mx_enable ? z_total_beats
+                                                    : reg_file_i.hwpe_params[Z_TOT_LEN];
   assign z_store_d0_stride = cntrl_flags_i.mx_enable ? (DW/8) : reg_file_i.hwpe_params[Z_D0_STRIDE];
   assign z_store_d2_stride = reg_file_i.hwpe_params[Z_D2_STRIDE];
   assign z_store_d0_len = cntrl_flags_i.mx_enable ? 32'd1 : W;
@@ -310,6 +328,7 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_len = w_exp_beats;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d1_stride = BYTES_PER_BEAT;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.d2_stride = 32'd0;
+  // Only two dimensions (d0 then d1) required for exponent beats
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
 
   assign cntrl_streamer_o.input_cast_src_fmt  = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][15:13]);
@@ -319,4 +338,37 @@ module redmule_memory_scheduler
 
   assign cntrl_streamer_o.mx_enable = cntrl_flags_i.mx_enable;
   assign cntrl_streamer_o.z_priority = z_priority_i;
+
+`ifndef SYNTHESIS
+  bit dbg_msched;
+  initial dbg_msched = $test$plusargs("MX_DEBUG_DUMP");
+
+  always_ff @(posedge clk_i) begin
+    if (dbg_msched && cntrl_flags_i.mx_enable) begin
+      if (cntrl_streamer_o.x_stream_source_ctrl.req_start ||
+          flgs_streamer_i.x_stream_source_flags.done ||
+          cntrl_scheduler_i.first_load) begin
+        $display("[DBG][MSCHED][%0t] X req_start=%0b ready_start=%0b done=%0b first_load=%0b idle=%0b tot_x_read_q=%0d TOT_X_READ=%0d",
+                 $time,
+                 cntrl_streamer_o.x_stream_source_ctrl.req_start,
+                 flgs_streamer_i.x_stream_source_flags.ready_start,
+                 flgs_streamer_i.x_stream_source_flags.done,
+                 cntrl_scheduler_i.first_load,
+                 cntrl_flags_i.idle,
+                 tot_x_read_q,
+                 reg_file_i.hwpe_params[TOT_X_READ]);
+      end
+      if (cntrl_scheduler_i.first_load) begin
+        $display("[DBG][MSCHED][%0t] dims m_unpack=%0d n_unpack=%0d k_unpack=%0d total_x=%0d x_exp_beats=%0d num_x_reads=%0d",
+                 $time,
+                 m_size_unpacked,
+                 n_size_unpacked,
+                 k_size_unpacked,
+                 total_x_values,
+                 x_exp_beats,
+                 num_x_reads);
+      end
+    end
+  end
+`endif
 endmodule : redmule_memory_scheduler
