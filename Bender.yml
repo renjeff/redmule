@@ -33,6 +33,7 @@ sources:
     - rtl/redmule_scheduler.sv
     - rtl/redmule_castin.sv
     - rtl/redmule_castout.sv
+    - rtl/redmule_mux.sv
     - rtl/redmule_streamer.sv
     - rtl/x_buffer/redmule_x_buffer.sv
     - rtl/x_buffer/redmule_x_pad_scm.sv

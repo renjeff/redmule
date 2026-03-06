@@ -98,16 +98,6 @@ hci_core_intf #(
   .UW ( UW )
 ) ldst_tcdm_pre_r_valid ( .clk ( clk_i ) );
 
-hci_core_intf #(
-`ifndef SYNTHESIS
-  .WAIVE_RSP3_ASSERT ( 1'b1 ), // waive RSP-3 on memory-side of HCI FIFO
-  .WAIVE_RSP5_ASSERT ( 1'b1 ), // waive RSP-5 on memory-side of HCI FIFO
-  .WAIVE_RQ4_ASSERT  ( 1'b1 ),
-`endif
-  .DW ( DW ),
-  .UW ( UW )
-) yz_tcdm_pre_r_id ( .clk ( clk_i ) );
-
 if (EW > 1) begin : gen_ecc_encoder
   logic [ECC_N_CHUNK-1:0] data_single_err, data_multi_err;
   logic                   meta_single_err, meta_multi_err;
@@ -134,20 +124,6 @@ end else begin : gen_ldst_assign
   assign ecc_errors_o = '0;
 end
 
-// Virtual internal TCDM interface used by the y and z channels
-// * Channel 0 - y channel
-// * Channel 1 - z channel
-hci_core_intf #(
-`ifndef SYNTHESIS
-  .WAIVE_RSP3_ASSERT ( 1'b1 ), // waive RSP-3 on memory-side of HCI FIFO
-  .WAIVE_RSP5_ASSERT ( 1'b1 ), // waive RSP-5 on memory-side of HCI FIFO
-  .WAIVE_RQ3_ASSERT  ( 1'b1 ),
-  .WAIVE_RQ4_ASSERT  ( 1'b1 ),
-`endif
-  .DW ( DW ),
-  .UW ( UW )
-) yz_tcdm [0:1] ( .clk ( clk_i ) );
-
 // Virtual internal TCDM interface splitting the upstream TCDM
 hci_core_intf #(
 `ifndef SYNTHESIS
@@ -158,43 +134,15 @@ hci_core_intf #(
 `endif
   .DW ( DW ),
   .UW ( UW )
-) virt_tcdm [0:NumStreamSources-1] ( .clk ( clk_i ) );
+) virt_tcdm [0:NumStreamSources] ( .clk ( clk_i ) );
 
-
-hci_core_mux_ooo #(
-  .NB_CHAN              ( 2                          ),
-  .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(ldst_tcdm) )
-) i_yz_mux            (
-  .clk_i              ( clk_i                ),
-  .rst_ni             ( rst_ni               ),
-  .clear_i            ( clear_i              ),
-  .priority_force_i   ( ctrl_i.z_priority    ),
-  .priority_i         ( {1'b1, 1'b0}         ), // The z channel always has priority over the y channel
-  .in                 ( yz_tcdm              ),
-  .out                ( yz_tcdm_pre_r_id     )
-);
-
-hci_core_r_id_filter #(
-  .`HCI_SIZE_PARAM(tcdm_target)   (   `HCI_SIZE_PARAM(ldst_tcdm) )
-) i_yz_r_id_filter (
-  .clk_i          (   clk_i                      ),
-  .rst_ni         (   rst_ni                     ),
-  .clear_i        (   clear_i                    ),
-  .enable_i       (   1'b1                       ),
-  .tcdm_target    (   yz_tcdm_pre_r_id           ),
-  .tcdm_initiator (   virt_tcdm[YsourceStreamId] )
-);
-
-
-hci_core_mux_ooo #(
-  .NB_CHAN              ( NumStreamSources           ),
+redmule_mux #(
+  .NB_CHAN              ( NumStreamSources + 1       ),
   .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(ldst_tcdm) )
 ) i_ldst_mux          (
   .clk_i              ( clk_i                ),
   .rst_ni             ( rst_ni               ),
   .clear_i            ( clear_i              ),
-  .priority_force_i   ( '0                   ),
-  .priority_i         ( '0                   ),
   .in                 ( virt_tcdm            ),
   .out                ( ldst_tcdm_pre_r_id   )
 );
@@ -220,6 +168,85 @@ hci_core_r_valid_filter #(
     .tcdm_target    (  ldst_tcdm_pre_r_valid ),
     .tcdm_initiator (  ldst_tcdm             )
 );
+
+`ifndef SYNTHESIS
+bit dbg_rsp_trace_stage;
+
+logic          preid_prev_valid_q;
+logic [DW-1:0] preid_prev_data_q;
+logic [DEFAULT_IW-1:0] preid_prev_id_q;
+
+logic          preval_prev_valid_q;
+logic [DW-1:0] preval_prev_data_q;
+logic [DEFAULT_IW-1:0] preval_prev_id_q;
+
+logic          out_prev_valid_q;
+logic [DW-1:0] out_prev_data_q;
+logic [DEFAULT_IW-1:0] out_prev_id_q;
+
+initial begin
+  dbg_rsp_trace_stage = $test$plusargs("MX_RSP_TRACE");
+end
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni || clear_i) begin
+    preid_prev_valid_q <= 1'b0;
+    preid_prev_data_q  <= '0;
+    preid_prev_id_q    <= '0;
+    preval_prev_valid_q <= 1'b0;
+    preval_prev_data_q  <= '0;
+    preval_prev_id_q    <= '0;
+    out_prev_valid_q <= 1'b0;
+    out_prev_data_q  <= '0;
+    out_prev_id_q    <= '0;
+  end else begin
+    if (dbg_rsp_trace_stage) begin
+      if (preid_prev_valid_q && !ldst_tcdm_pre_r_id.r_ready &&
+          ((ldst_tcdm_pre_r_id.r_valid != preid_prev_valid_q) ||
+           (ldst_tcdm_pre_r_id.r_data  != preid_prev_data_q)  ||
+           (ldst_tcdm_pre_r_id.r_id    != preid_prev_id_q))) begin
+        $display("[DBG][RSP_STAGE][PRE_ID] t=%0t prev_valid=%0b prev_id=0x%0h prev_data=0x%0h now_valid=%0b now_id=0x%0h now_data=0x%0h r_ready=%0b",
+          $time,
+          preid_prev_valid_q, preid_prev_id_q, preid_prev_data_q,
+          ldst_tcdm_pre_r_id.r_valid, ldst_tcdm_pre_r_id.r_id, ldst_tcdm_pre_r_id.r_data,
+          ldst_tcdm_pre_r_id.r_ready);
+      end
+
+      if (preval_prev_valid_q && !ldst_tcdm_pre_r_valid.r_ready &&
+          ((ldst_tcdm_pre_r_valid.r_valid != preval_prev_valid_q) ||
+           (ldst_tcdm_pre_r_valid.r_data  != preval_prev_data_q)  ||
+           (ldst_tcdm_pre_r_valid.r_id    != preval_prev_id_q))) begin
+        $display("[DBG][RSP_STAGE][PRE_VALID] t=%0t prev_valid=%0b prev_id=0x%0h prev_data=0x%0h now_valid=%0b now_id=0x%0h now_data=0x%0h r_ready=%0b",
+          $time,
+          preval_prev_valid_q, preval_prev_id_q, preval_prev_data_q,
+          ldst_tcdm_pre_r_valid.r_valid, ldst_tcdm_pre_r_valid.r_id, ldst_tcdm_pre_r_valid.r_data,
+          ldst_tcdm_pre_r_valid.r_ready);
+      end
+
+      if (out_prev_valid_q && !ldst_tcdm.r_ready &&
+          ((ldst_tcdm.r_valid != out_prev_valid_q) ||
+           (ldst_tcdm.r_data  != out_prev_data_q)  ||
+           (ldst_tcdm.r_id    != out_prev_id_q))) begin
+        $display("[DBG][RSP_STAGE][OUT] t=%0t prev_valid=%0b prev_id=0x%0h prev_data=0x%0h now_valid=%0b now_id=0x%0h now_data=0x%0h r_ready=%0b",
+          $time,
+          out_prev_valid_q, out_prev_id_q, out_prev_data_q,
+          ldst_tcdm.r_valid, ldst_tcdm.r_id, ldst_tcdm.r_data,
+          ldst_tcdm.r_ready);
+      end
+    end
+
+    preid_prev_valid_q <= ldst_tcdm_pre_r_id.r_valid;
+    preid_prev_data_q  <= ldst_tcdm_pre_r_id.r_data;
+    preid_prev_id_q    <= ldst_tcdm_pre_r_id.r_id;
+    preval_prev_valid_q <= ldst_tcdm_pre_r_valid.r_valid;
+    preval_prev_data_q  <= ldst_tcdm_pre_r_valid.r_data;
+    preval_prev_id_q    <= ldst_tcdm_pre_r_valid.r_id;
+    out_prev_valid_q <= ldst_tcdm.r_valid;
+    out_prev_data_q  <= ldst_tcdm.r_data;
+    out_prev_id_q    <= ldst_tcdm.r_id;
+  end
+end
+`endif
 
 /************************************ Store Channel *************************************/
 /* The store channel of the streamer connects the incoming stream interface (Z stream)  *
@@ -323,7 +350,7 @@ hci_core_fifo #(
 );
 
 // Assigning the store FIFO output to the store side of the y/z multiplexer.
-hci_core_assign i_store_assign ( .tcdm_target (z_fifo_q), .tcdm_initiator (yz_tcdm[1]) );
+hci_core_assign i_store_assign ( .tcdm_target (z_fifo_q), .tcdm_initiator (virt_tcdm[NumStreamSources]) );
 
 /**************************************** Load Channel ****************************************/
 /* The load channel of the streamer connects the incoming TCDM interface to three different   *
@@ -384,11 +411,7 @@ assign source_ctrl[WExpSourceStreamId]   = ctrl_i.w_exp_stream_source_ctrl;
 
 for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
 
-  if (i != YsourceStreamId) begin
-    hci_core_assign i_load_assign ( .tcdm_target (load_fifo_d[i]), .tcdm_initiator (virt_tcdm[i]) );
-  end else begin
-    hci_core_assign i_load_assign ( .tcdm_target (load_fifo_d[i]), .tcdm_initiator (yz_tcdm[0]) );
-  end
+  hci_core_assign i_load_assign ( .tcdm_target (load_fifo_d[i]), .tcdm_initiator (virt_tcdm[i]) );
 
   hci_core_fifo #(
     .FIFO_DEPTH  ( LoadFifoDepth  ), // to avoid protocol violations, as the consumer has a throughput
@@ -409,7 +432,16 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
   int unsigned req_backpressure_cycles_q;
   int unsigned rsp_in_backpressure_cycles_q;
   int unsigned rsp_out_backpressure_cycles_q;
+  int unsigned cycle_q;
+  int unsigned viol_print_cnt_q;
+  bit          dbg_rsp_trace;
+  bit          dbg_fifo_chk;
   logic req_push, req_pop, rsp_push, rsp_pop;
+
+  initial begin
+    dbg_rsp_trace = $test$plusargs("MX_RSP_TRACE");
+    dbg_fifo_chk  = $test$plusargs("MX_FIFOCHK");
+  end
 
   assign req_push = load_fifo_q[i].req     && load_fifo_q[i].gnt;
   assign req_pop  = load_fifo_d[i].req     && load_fifo_d[i].gnt;
@@ -437,21 +469,52 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
       req_occ_peak_q <= '0;
       rsp_occ_q <= '0;
       rsp_occ_peak_q <= '0;
+      cycle_q <= '0;
+      viol_print_cnt_q <= '0;
       req_backpressure_cycles_q <= '0;
       rsp_in_backpressure_cycles_q <= '0;
       rsp_out_backpressure_cycles_q <= '0;
     end else begin
-      if (req_push && !req_pop && (req_occ_q >= LoadFifoDepth)) begin
+      cycle_q <= cycle_q + 1;
+      if (dbg_fifo_chk && req_push && !req_pop && (req_occ_q >= LoadFifoDepth)) begin
         $error("load_fifo[%0d] request path overflow: occ=%0d depth=%0d", i, req_occ_q, LoadFifoDepth);
+        if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
+          $display("[DBG][STREAMER][REQ_OVF] i=%0d cyc=%0d req_occ_q=%0d req_occ_d=%0d req_push=%0b req_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
+            i, cycle_q, req_occ_q, req_occ_d, req_push, req_pop,
+            load_fifo_q[i].req, load_fifo_q[i].gnt, load_fifo_d[i].req, load_fifo_d[i].gnt,
+            load_fifo_q[i].r_valid, load_fifo_q[i].r_ready, load_fifo_d[i].r_valid, load_fifo_d[i].r_ready);
+          viol_print_cnt_q <= viol_print_cnt_q + 1;
+        end
       end
-      if (!req_push && req_pop && (req_occ_q == 0)) begin
+      if (dbg_fifo_chk && !req_push && req_pop && (req_occ_q == 0)) begin
         $error("load_fifo[%0d] request path underflow", i);
+        if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
+          $display("[DBG][STREAMER][REQ_UDF] i=%0d cyc=%0d req_occ_q=%0d req_occ_d=%0d req_push=%0b req_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
+            i, cycle_q, req_occ_q, req_occ_d, req_push, req_pop,
+            load_fifo_q[i].req, load_fifo_q[i].gnt, load_fifo_d[i].req, load_fifo_d[i].gnt,
+            load_fifo_q[i].r_valid, load_fifo_q[i].r_ready, load_fifo_d[i].r_valid, load_fifo_d[i].r_ready);
+          viol_print_cnt_q <= viol_print_cnt_q + 1;
+        end
       end
-      if (rsp_push && !rsp_pop && (rsp_occ_q >= LoadFifoDepth)) begin
+      if (dbg_fifo_chk && rsp_push && !rsp_pop && (rsp_occ_q >= LoadFifoDepth)) begin
         $error("load_fifo[%0d] response path overflow: occ=%0d depth=%0d", i, rsp_occ_q, LoadFifoDepth);
+        if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
+          $display("[DBG][STREAMER][RSP_OVF] i=%0d cyc=%0d rsp_occ_q=%0d rsp_occ_d=%0d rsp_push=%0b rsp_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
+            i, cycle_q, rsp_occ_q, rsp_occ_d, rsp_push, rsp_pop,
+            load_fifo_q[i].req, load_fifo_q[i].gnt, load_fifo_d[i].req, load_fifo_d[i].gnt,
+            load_fifo_q[i].r_valid, load_fifo_q[i].r_ready, load_fifo_d[i].r_valid, load_fifo_d[i].r_ready);
+          viol_print_cnt_q <= viol_print_cnt_q + 1;
+        end
       end
-      if (!rsp_push && rsp_pop && (rsp_occ_q == 0)) begin
+      if (dbg_fifo_chk && !rsp_push && rsp_pop && (rsp_occ_q == 0)) begin
         $error("load_fifo[%0d] response path underflow", i);
+        if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
+          $display("[DBG][STREAMER][RSP_UDF] i=%0d cyc=%0d rsp_occ_q=%0d rsp_occ_d=%0d rsp_push=%0b rsp_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
+            i, cycle_q, rsp_occ_q, rsp_occ_d, rsp_push, rsp_pop,
+            load_fifo_q[i].req, load_fifo_q[i].gnt, load_fifo_d[i].req, load_fifo_d[i].gnt,
+            load_fifo_q[i].r_valid, load_fifo_q[i].r_ready, load_fifo_d[i].r_valid, load_fifo_d[i].r_ready);
+          viol_print_cnt_q <= viol_print_cnt_q + 1;
+        end
       end
 
       req_occ_q <= req_occ_d;

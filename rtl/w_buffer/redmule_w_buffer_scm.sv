@@ -112,4 +112,36 @@ module redmule_w_buffer_scm
     end
   end
 
+`ifndef SYNTHESIS
+  bit dbg_bufchk;
+  logic dbg_write_activity;
+  logic [ROWS-1:0][COLS-1:0][ELMS-1:0][WORD_SIZE-1:0] buffer_prev_q;
+
+  if (USE_LATCHES) begin : gen_dbg_write_activity_latches
+    always_comb begin
+      dbg_write_activity = '0;
+      for (int r = 0; r < ROWS; r++) begin
+        dbg_write_activity |= clk_w[r];
+      end
+    end
+  end else begin : gen_dbg_write_activity_ff
+    assign dbg_write_activity = write_en_i;
+  end
+
+  initial begin
+    dbg_bufchk = $test$plusargs("MX_BUFCHK");
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : dbg_buffer_integrity
+    if (!rst_ni) begin
+      buffer_prev_q <= '0;
+    end else begin
+      if (dbg_bufchk && !clear_i && !dbg_write_activity && (buffer_q !== buffer_prev_q)) begin
+        $error("[DBG][BUFCHK][W_SCM] content changed without write_en at t=%0t", $time);
+      end
+      buffer_prev_q <= buffer_q;
+    end
+  end
+`endif
+
 endmodule : redmule_w_buffer_scm

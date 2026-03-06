@@ -17,7 +17,9 @@ module redmule_mx_beat_unpack
   input  logic mx_enable_i,
 
   hwpe_stream_intf_stream.sink   in_i,
-  hwpe_stream_intf_stream.source out_o
+  hwpe_stream_intf_stream.source out_o,
+
+  output logic                   pending_o
 );
 
 localparam int unsigned CHUNK_WIDTH = MX_NUM_LANES * BITW;
@@ -65,8 +67,11 @@ always_comb begin
   mx_out_data = '0;
   mx_out_strb = '0;
   if (pending_q) begin
-    mx_out_data[CHUNK_WIDTH-1:0] = beat_q[CHUNK_WIDTH*chunk_idx_q +: CHUNK_WIDTH];
-    mx_out_strb[CHUNK_BYTES-1:0] = strb_q[CHUNK_BYTES*chunk_idx_q +: CHUNK_BYTES];
+    // Pass the full beat through; the upstream input_mux already packed all
+    // PACK_RATIO chunks side-by-side into DATAW_ALIGN bits, and the downstream
+    // x/w buffers (DW=DATAW_ALIGN) consume the whole beat in one load.
+    mx_out_data = beat_q;
+    mx_out_strb = strb_q;
   end
 end
 
@@ -101,7 +106,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
           if (in_fire) begin
             beat_q <= in_i.data;
             strb_q <= in_i.strb;
-            chunk_count_q <= count_chunks(in_i.strb);
+            chunk_count_q <= CHUNK_CNT_W'(1);
             chunk_idx_q <= '0;
             pending_q <= 1'b1;
           end else begin
@@ -116,11 +121,13 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     end else if (in_fire) begin
       beat_q <= in_i.data;
       strb_q <= in_i.strb;
-      chunk_count_q <= count_chunks(in_i.strb);
+      chunk_count_q <= CHUNK_CNT_W'(1);
       chunk_idx_q <= '0;
       pending_q <= 1'b1;
     end
   end
 end
+
+assign pending_o = mx_enable_i & pending_q;
 
 endmodule : redmule_mx_beat_unpack

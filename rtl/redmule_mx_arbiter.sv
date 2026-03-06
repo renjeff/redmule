@@ -166,10 +166,10 @@ assign mx_dec_target_o      = mx_dec_target_q;
 `ifndef SYNTHESIS
 bit dbg_mxarb;
 initial dbg_mxarb = $test$plusargs("MX_ARB_DBG") || $test$plusargs("MX_DEBUG_DUMP");
-assign mx_arb_force_rr = 1'b1;
+assign mx_arb_force_rr = 1'b0;
 initial mx_arb_strict_alt = $test$plusargs("MX_ARB_STRICT_ALT");
 `else
-assign mx_arb_force_rr = 1'b1;
+assign mx_arb_force_rr = 1'b0;
 assign mx_arb_strict_alt = 1'b0;
 `endif
 

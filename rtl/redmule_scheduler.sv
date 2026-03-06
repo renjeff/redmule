@@ -27,6 +27,7 @@ module redmule_scheduler
   input  logic                            rst_ni           ,
   input  logic                            test_mode_i      ,
   input  logic                            clear_i          ,
+  input  logic                            mx_enable_i      ,
 
   input  logic                            x_valid_i        ,
   input  logic                            w_valid_i        ,
@@ -44,6 +45,12 @@ module redmule_scheduler
 
   input  flgs_engine_t                    flgs_engine_i    ,
   input  cntrl_scheduler_t                cntrl_scheduler_i,
+
+  // MX beat-unpack pending flags: high while a packed beat is still
+  // being emitted.  Used to keep the handoff stall active until the
+  // MX ingress pipeline has drained.
+  input  logic                            mx_x_pending_i   ,
+  input  logic                            mx_w_pending_i   ,
 
   /********************************************************/
   /*                       Outputs                        */
@@ -221,6 +228,7 @@ module redmule_scheduler
                w_mat_iters_en, w_done_en;
 
   logic        w_stride_cnt;
+  logic        w_needs_stream_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_rows_iteration
     if(~rst_ni) begin
@@ -234,7 +242,11 @@ module redmule_scheduler
     end
   end
 
-  assign w_rows_iter_en = current_state == LOAD_W && w_valid_i && ~stall_engine;
+  // In MX mode W payload is loaded once and then reused across following
+  // matrix passes. Require stream-valid only for the first pass.
+  assign w_needs_stream_valid = ~mx_enable_i || (w_mat_iters_q == '0);
+  assign w_rows_iter_en = current_state == LOAD_W && ~stall_engine &&
+                          (w_valid_i || ~w_needs_stream_valid);
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
 
   bit dbg_sched;
@@ -295,7 +307,9 @@ module redmule_scheduler
   assign cntrl_w_buffer_o.height = w_rows_iter_q >= reg_file_i.hwpe_params[W_ITERS][31:16]-(PIPE_REGS+1) && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : H;
   assign cntrl_w_buffer_o.width  = w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
 
-  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && ~stall_engine;
+  // Only load into W buffer when a new FIFO word is valid. In MX reuse passes
+  // (after first pass) we keep shifting without re-loading.
+  assign cntrl_w_buffer_o.load  = current_state == LOAD_W && ~stall_engine && w_valid_i;
   assign cntrl_w_buffer_o.shift = (current_state == LOAD_W || current_state == WAIT) && ~stall_engine;
 
   /****************************
@@ -559,13 +573,18 @@ module redmule_scheduler
   logic check_y_loaded, check_y_loaded_en;
 
   // Check if the next w row is valid
+  // Keep the check active while MX unpack still has a beat in flight,
+  // even after w_done fires, so the scheduler stalls until the last
+  // unpacked row reaches the FIFO.
   assign check_w_valid     = w_valid_i;
-  assign check_w_valid_en  = ~w_done;
+  assign check_w_valid_en  = (~w_done | mx_w_pending_i) && w_needs_stream_valid;
 
   // Check if the x buffer is full
-  // Only enable this check when a new set of x columns is to be loaded
+  // Only enable this check when a new set of x columns is to be loaded.
+  // Extend the guard while MX unpack is still draining so that the
+  // scheduler does not release the handoff before unpacked X data lands.
   assign check_x_full      = flgs_x_buffer_i.full;
-  assign check_x_full_en   = x_refill && x_shift_cnt_q == H-1 && ~x_done;
+  assign check_x_full_en   = x_refill && x_shift_cnt_q == H-1 && (~x_done | mx_x_pending_i);
 
   // Check if the new Y rows are loaded and ready to be pushed
   // Only enable this check when the results of an iteration are available

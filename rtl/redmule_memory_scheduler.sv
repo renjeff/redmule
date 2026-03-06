@@ -43,7 +43,6 @@ module redmule_memory_scheduler
                       x_rows_iters_d, x_rows_iters_q;
 
   logic [15:0]        w_iters_d, w_iters_q;
-
   logic [15:0]        tot_x_read_d, tot_x_read_q;
 
   // MX mode: latch addresses at first_load to survive regfile clearing
@@ -60,6 +59,14 @@ module redmule_memory_scheduler
   logic [31:0] m_size_unpacked, n_size_unpacked, k_size_unpacked;
   logic [31:0] total_x_values, total_w_values;
   logic [31:0] x_exp_beats, w_exp_beats;
+`ifndef SYNTHESIS
+  bit dbg_disable_exp_req;
+  initial begin
+    dbg_disable_exp_req = $test$plusargs("MX_DISABLE_EXP_REQ");
+  end
+`else
+  localparam bit dbg_disable_exp_req = 1'b0;
+`endif
 
   assign x_rows_iter_cfg   = reg_file_i.hwpe_params[X_ITERS][31:16];
   assign w_rows_iter_cfg   = reg_file_i.hwpe_params[W_ITERS][31:16];
@@ -226,9 +233,7 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.d2_stride = '0;
   assign cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b11;
 
-  assign cntrl_streamer_o.w_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load &&
-                                                           flgs_streamer_i.z_stream_sink_flags.ready_start &&
-                                                           flgs_streamer_i.w_stream_source_flags.ready_start;
+
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[W_ADDR];
   logic [31:0] w_total_words;
   logic [31:0] w_beats;
@@ -244,8 +249,13 @@ module redmule_memory_scheduler
   assign w_total_words = w_words_per_x_tile;
   assign w_beats = (w_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
 
-  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
+  assign cntrl_streamer_o.w_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load &&
+                                                           flgs_streamer_i.z_stream_sink_flags.ready_start &&
+                                                           flgs_streamer_i.w_stream_source_flags.ready_start;
+
+    assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_len   = cntrl_flags_i.mx_enable ? 32'd1 : reg_file_i.hwpe_params[W_ITERS][31:16];
+
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_stride= cntrl_flags_i.mx_enable ? 32'd0 : reg_file_i.hwpe_params[W_D0_STRIDE];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_ITERS][15:0];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_stride= cntrl_flags_i.mx_enable ? (DW/8) : JMP;
@@ -304,7 +314,8 @@ module redmule_memory_scheduler
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = z_store_dim_enable;
 
   // MX exponent streams (linear addressing, enabled only when MX mode is active)
-  assign cntrl_streamer_o.x_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+    assign cntrl_streamer_o.x_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+      !dbg_disable_exp_req &&
       cntrl_scheduler_i.first_load && flgs_streamer_i.x_exp_stream_source_flags.ready_start;
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.base_addr =
       reg_file_i.hwpe_params[X_EXP_ADDR];
@@ -318,7 +329,8 @@ module redmule_memory_scheduler
   // Only two dimensions (d0 then d1) required for exponent beats
   assign cntrl_streamer_o.x_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
 
-  assign cntrl_streamer_o.w_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+    assign cntrl_streamer_o.w_exp_stream_source_ctrl.req_start = cntrl_flags_i.mx_enable &&
+      !dbg_disable_exp_req &&
       cntrl_scheduler_i.first_load && flgs_streamer_i.w_exp_stream_source_flags.ready_start;
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.base_addr =
       reg_file_i.hwpe_params[W_EXP_ADDR];

@@ -517,6 +517,8 @@ redmule_mx_input_mux #(
 
 // Legacy X/W load path consumes one logical row per beat.
 // Unpack MX-packed beats (2 rows @1024b) back into row beats at this boundary.
+logic x_mx_unpack_pending, w_mx_unpack_pending;
+
 redmule_mx_beat_unpack #(
   .DATAW_ALIGN  ( DATAW_ALIGN  ),
   .BITW         ( BITW         ),
@@ -527,7 +529,8 @@ redmule_mx_beat_unpack #(
   .clear_i     ( clear            ),
   .mx_enable_i ( cntrl_flags.mx_enable ),
   .in_i        ( x_buffer_packed  ),
-  .out_o       ( x_buffer_muxed   )
+  .out_o       ( x_buffer_muxed   ),
+  .pending_o   ( x_mx_unpack_pending )
 );
 
 redmule_mx_beat_unpack #(
@@ -540,7 +543,8 @@ redmule_mx_beat_unpack #(
   .clear_i     ( clear            ),
   .mx_enable_i ( cntrl_flags.mx_enable ),
   .in_i        ( w_buffer_packed  ),
-  .out_o       ( w_buffer_muxed   )
+  .out_o       ( w_buffer_muxed   ),
+  .pending_o   ( w_mx_unpack_pending )
 );
 
 // Decoder ready routing
@@ -858,6 +862,7 @@ redmule_scheduler #(
   .rst_ni            ( rst_ni              ),
   .test_mode_i       ( test_mode_i         ),
   .clear_i           ( clear               ),
+  .mx_enable_i       ( cntrl_flags.mx_enable ),
   .x_valid_i         ( x_buffer_fifo.valid ),
   .w_valid_i         ( w_buffer_fifo.valid ),
   .y_valid_i         ( y_buffer_fifo.valid ),
@@ -870,6 +875,8 @@ redmule_scheduler #(
   .flgs_z_buffer_i   ( z_buffer_flgs       ),
   .flgs_engine_i     ( flgs_engine         ),
   .cntrl_scheduler_i ( cntrl_scheduler     ),
+  .mx_x_pending_i    ( x_mx_unpack_pending ),
+  .mx_w_pending_i    ( w_mx_unpack_pending ),
   .reg_enable_o      ( reg_enable          ),
   .cntrl_engine_o    ( cntrl_engine        ),
   .cntrl_x_buffer_o  ( x_buffer_ctrl       ),

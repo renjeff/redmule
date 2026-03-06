@@ -129,7 +129,7 @@ assign fifo_data_in = {{(FIFO_META_W-MX_CHUNK_COUNT_W){1'b0}}, fifo_chunk_count_
 
 redmule_mx_fifo #(
   .DATA_WIDTH ( FIFO_DATA_W ),
-  .FIFO_DEPTH ( 4          )
+  .FIFO_DEPTH ( 32          ) // =z_width  decouple Z drain from MX serialization
 ) i_engine_fifo (
   .clk_i      ( clk_i            ),
   .rst_ni     ( rst_ni           ),
