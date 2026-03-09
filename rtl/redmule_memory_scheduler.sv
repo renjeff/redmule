@@ -107,7 +107,7 @@ module redmule_memory_scheduler
   assign w_blocks = (total_w_values + 31) >> 5;  // ceil(N*K / 32)
   
   assign x_exp_bytes = x_blocks;              // 1 byte per X block
-  assign w_exp_bytes = w_blocks;              // 1 byte per W block (same as X)
+  assign w_exp_bytes = w_blocks << 2;              // 4 byte per W block
   
   assign x_exp_beats = (x_exp_bytes + BYTES_PER_BEAT - 1) / BYTES_PER_BEAT;
   assign w_exp_beats = (w_exp_bytes + BYTES_PER_BEAT - 1) / BYTES_PER_BEAT;

@@ -186,7 +186,8 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_exp_stream_buffered (
 logic [7:0]  x_exp_buf_data;
 logic        x_exp_buf_valid;
 logic        x_exp_buf_consume;
-logic [7:0] w_exp_buf_data;   // W exponent is 8 bits (unpacked from packed format)
+logic [7:0] w_exp_buf_data;   // W exponent byte forwarded to decoder (NUM_GROUPS==1)
+logic [31:0] w_exp_buf_word;  // Raw compact-32bit exponent word from W exp stream
 logic        w_exp_buf_valid;
 logic        w_exp_buf_consume;
 
@@ -304,10 +305,10 @@ redmule_exp_buffer #(
   .consume_i  ( x_exp_buf_consume    )
 );
 
-// W exponent buffer: extracts 8-bit exponents from packed beats (same as X)
-// 512/8 = 64 exponents per beat, buffer depth 1024 for up to 1024 weight blocks
+// W exponent buffer: compact-32bit format (1 exponent word per W block).
+// Consume one 32-bit word per block to avoid byte-wise over-consumption.
 redmule_exp_buffer #(
-  .EXP_WIDTH     ( 8           ),  // 8-bit exponents for W (unpacked from 32-bit packed words)
+  .EXP_WIDTH     ( 32          ),  // 32-bit compact W exponent word per block
   .BUFFER_DEPTH  ( 1024        ),  // Buffer for up to 1024 weight blocks
   .BEAT_WIDTH    ( DATAW_ALIGN )
 ) i_w_exp_buffer (
@@ -315,10 +316,14 @@ redmule_exp_buffer #(
   .rst_ni     ( rst_ni               ),
   .clear_i    ( clear                ),
   .stream_i   ( w_exp_stream_buffered ),
-  .data_o     ( w_exp_buf_data       ),
+  .data_o     ( w_exp_buf_word       ),
   .valid_o    ( w_exp_buf_valid      ),
   .consume_i  ( w_exp_buf_consume    )
 );
+
+// In current MX config (NUM_GROUPS==1), decoder uses one shared exponent byte.
+// The compact-32bit stream replicates the value across bytes, so select [7:0].
+assign w_exp_buf_data = w_exp_buf_word[7:0];
 
 /*---------------------------------------------------------------*/
 /* |                   MX MODULES (INPUT SIDE)                 | */
