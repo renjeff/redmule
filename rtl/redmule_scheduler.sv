@@ -242,9 +242,9 @@ module redmule_scheduler
     end
   end
 
-  // In MX mode W payload is loaded once and then reused across following
-  // matrix passes. Require stream-valid only for the first pass.
-  assign w_needs_stream_valid = ~mx_enable_i || (w_mat_iters_q == '0);
+  // Always require w_valid_i so the scheduler stalls until decoded W data is
+  // available in the FIFO on every M-tile pass.
+  assign w_needs_stream_valid = 1'b1;
   assign w_rows_iter_en = current_state == LOAD_W && ~stall_engine &&
                           (w_valid_i || ~w_needs_stream_valid);
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
@@ -507,7 +507,7 @@ module redmule_scheduler
 
   logic reg_enable_d, reg_enable_q;
 
-  assign reg_enable_d = computing & ~stall_engine;
+  assign reg_enable_d = computing;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : reg_enable_register
     if (~rst_ni) begin

@@ -211,6 +211,8 @@ cd golden-model && source setup-py.sh
 make -C golden-model gemm M=16 N=16 K=16 fp_fmt=FP16 SW=$(pwd)/inc
 
 
+# generate golden
+make golden M=32 N=32 K=32
 # in remdule root directory:
 # build software switch bewteen MX and baseline with MX_ENABLE=0/1
 make sw-build MX_ENABLE=1 target=vsim

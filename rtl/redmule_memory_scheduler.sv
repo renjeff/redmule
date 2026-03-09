@@ -244,19 +244,27 @@ module redmule_memory_scheduler
                          ((n_size_unpacked + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR) :
                          ((w_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR);
   assign w_words_per_x_tile = k_size_unpacked * w_rows_packed;
-  // W payload is reused across X row tiles by the scheduler/buffer traversal.
-  // Program a single logical W pass in MX mode.
+  // Single-pass W beat count: covers one full W matrix read.
+  // tot_len is multiplied by x_rows_iter_cfg so the hwpe addressgen cycles the
+  // same W_ADDR..W_ADDR+(w_beats-1) address window once per M-tile pass,
+  // matching the baseline FP16 strategy: d1 wraps back to 0 every w_beats
+  // beats while tot_len keeps the stream open for all passes.
   assign w_total_words = w_words_per_x_tile;
   assign w_beats = (w_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
 
-  assign cntrl_streamer_o.w_stream_source_ctrl.req_start = cntrl_scheduler_i.first_load &&
-                                                           flgs_streamer_i.z_stream_sink_flags.ready_start &&
-                                                           flgs_streamer_i.w_stream_source_flags.ready_start;
+  // Fire W req_start exactly once (same as baseline), then let tot_len cover
+  // all x_rows_iter M-tile passes with the addressgen cycling W addresses.
+  assign cntrl_streamer_o.w_stream_source_ctrl.req_start =
+      cntrl_scheduler_i.first_load &&
+      flgs_streamer_i.z_stream_sink_flags.ready_start &&
+      flgs_streamer_i.w_stream_source_flags.ready_start;
 
-    assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_TOT_LEN];
+  assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats * x_rows_iter_cfg : reg_file_i.hwpe_params[W_TOT_LEN];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_len   = cntrl_flags_i.mx_enable ? 32'd1 : reg_file_i.hwpe_params[W_ITERS][31:16];
 
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_stride= cntrl_flags_i.mx_enable ? 32'd0 : reg_file_i.hwpe_params[W_D0_STRIDE];
+  // d1_len = w_beats (single pass) so the addressgen wraps back to W_ADDR
+  // after each pass, providing fresh W data for subsequent M-tile passes.
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_len   = cntrl_flags_i.mx_enable ? w_beats : reg_file_i.hwpe_params[W_ITERS][15:0];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d1_stride= cntrl_flags_i.mx_enable ? (DW/8) : JMP;
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d2_stride = 'd0;

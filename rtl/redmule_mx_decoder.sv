@@ -1,14 +1,20 @@
 // MX decoder shared between the X (single shared exponent) and W (per-group
-// shared exponent) data paths. A single parameter selects whether the exponent
-// input carries one broadcast value or a vector with one entry per element
-// group.
+// shared exponent) data paths.  Pipelined version: 2 internal stages for
+// 1-block-per-cycle sustained throughput (NUM_GROUPS must be 1).
+//
+//   Stage 0 (S0): Latch input, combinationally convert FP8 → FP16 (unscaled).
+//   Stage 1 (S1): Combinationally apply MX scale, register final FP16 output.
+//
+// An opaque tag is pipelined alongside the data so the arbiter target
+// information arrives at the output aligned with the decoded values.
 
 module redmule_mx_decoder
 #(
   parameter int unsigned DATA_W = 256,
   parameter int unsigned BITW = 16,
   parameter int unsigned NUM_LANES = 1,
-  parameter int unsigned MX_EXP_WIDTH = ((DATA_W / 8) / NUM_LANES) * 8
+  parameter int unsigned MX_EXP_WIDTH = ((DATA_W / 8) / NUM_LANES) * 8,
+  parameter int unsigned TAG_WIDTH = 2
 )(
   input  logic                    clk_i,
   input  logic                    rst_ni,
@@ -22,6 +28,10 @@ module redmule_mx_decoder
   input  logic [MX_EXP_WIDTH-1:0] mx_exp_data_i,
   input  logic                    vector_shared_exp_i,
 
+  // Opaque tag pipelined with data (e.g. arbiter target: X / W)
+  input  logic [TAG_WIDTH-1:0]    tag_i,
+  output logic [TAG_WIDTH-1:0]    tag_o,
+
   output logic                    fp16_valid_o,
   input  logic                    fp16_ready_i,
   output logic [NUM_LANES*BITW-1:0] fp16_data_o
@@ -30,83 +40,23 @@ module redmule_mx_decoder
   localparam int unsigned ELEM_WIDTH  = 8;
   localparam int unsigned NUM_ELEMS   = DATA_W / ELEM_WIDTH;
   localparam int unsigned NUM_GROUPS  = NUM_ELEMS / NUM_LANES;
-  localparam int unsigned GROUP_IDX_W = (NUM_GROUPS > 1) ? $clog2(NUM_GROUPS) : 1;
 
   initial begin
-    if (NUM_LANES == 0) begin
+    if (NUM_LANES == 0)
       $fatal(1, "MX decoder: NUM_LANES must be > 0");
-    end
-    if (NUM_ELEMS % NUM_LANES != 0) begin
+    if (NUM_ELEMS % NUM_LANES != 0)
       $fatal(1, "MX decoder: NUM_ELEMS (%0d) must be divisible by NUM_LANES (%0d)",
              NUM_ELEMS, NUM_LANES);
-    end
-    if (NUM_GROUPS*8 != MX_EXP_WIDTH) begin
-      $fatal(1, "MX decoder: MX_EXP_WIDTH (%0d) must be NUM_GROUPS*8 (%0d)",
-             MX_EXP_WIDTH, NUM_GROUPS*8);
-    end
+    if (NUM_GROUPS != 1)
+      $fatal(1, "Pipelined MX decoder requires NUM_GROUPS == 1 (got %0d)", NUM_GROUPS);
   end
 
-  typedef enum logic [0:0] {
-    IDLE,
-    DECODE
-  } redmule_mx_decode_state_e;
-
-  redmule_mx_decode_state_e current_state, next_state;
+  // ---------------------------------------------------------------
+  //  Conversion functions (unchanged)
+  // ---------------------------------------------------------------
 
   localparam int BIAS_FP8  = 7;
   localparam int BIAS_FP16 = 15;
-
-  logic [DATA_W-1:0]      val_reg_q, val_reg_d;
-  logic [7:0]             scale_reg_q, scale_reg_d;
-  logic [7:0]             scale_per_group_q [NUM_GROUPS];
-  logic [7:0]             scale_per_group_d [NUM_GROUPS];
-  logic [GROUP_IDX_W-1:0] group_idx_q, group_idx_d;
-  logic                   vector_mode_q, vector_mode_d;
-
-  logic [ELEM_WIDTH-1:0] elem_mx [NUM_LANES];
-  logic [BITW-1:0]       elem_fp16_unscaled [NUM_LANES];
-  logic [BITW-1:0]       elem_fp16_scaled [NUM_LANES];
-
-  logic [7:0] current_scale;
-  assign current_scale = vector_mode_q ? scale_per_group_q[group_idx_q] : scale_reg_q;
-
-  genvar lane;
-  generate
-    for (lane = 0; lane < NUM_LANES; lane++) begin : gen_lanes
-      logic [$clog2(NUM_ELEMS)-1:0] elem_idx_lane;
-      assign elem_idx_lane = group_idx_q * NUM_LANES + lane;
-      assign elem_mx[lane] = val_reg_q[ELEM_WIDTH*elem_idx_lane +: ELEM_WIDTH];
-
-      always_comb begin
-        logic [15:0] tmp;
-        tmp = fp8_e4m3_to_fp16(elem_mx[lane]);
-        elem_fp16_unscaled[lane] = tmp;
-        elem_fp16_scaled[lane]   = mx_scale_fp16(tmp, current_scale);
-      end
-    end
-  endgenerate
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      current_state <= IDLE;
-      val_reg_q     <= '0;
-      scale_reg_q   <= '0;
-      group_idx_q   <= '0;
-      vector_mode_q <= 1'b0;
-      for (int g = 0; g < NUM_GROUPS; g++) begin
-        scale_per_group_q[g] <= 8'd127;
-      end
-    end else begin
-      current_state <= next_state;
-      val_reg_q     <= val_reg_d;
-      scale_reg_q   <= scale_reg_d;
-      group_idx_q   <= group_idx_d;
-      vector_mode_q <= vector_mode_d;
-      for (int g = 0; g < NUM_GROUPS; g++) begin
-        scale_per_group_q[g] <= scale_per_group_d[g];
-      end
-    end
-  end
 
   function automatic logic [15:0] fp8_e4m3_to_fp16 (input logic [7:0] in);
     logic       s;
@@ -155,10 +105,6 @@ module redmule_mx_decoder
       if (e16 == 5'b0 || e16 == 5'b11111) begin
         mx_scale_fp16 = val_fp16;
       end else begin
-        // MX scaling: shared_exp encodes the scale bias in E8M0 format (biased by 127)
-        // The fp8_e4m3_to_fp16 function already converted e8 to e16 by adding (BIAS_FP16-BIAS_FP8)=8
-        // So val_fp16 already has the correctly biased FP16 exponent from FP8
-        // Now we just need to apply the MX scale: add (shared_exp - 127) to the FP16 exponent
         delta   = int'(shared_exp) - 127;
         new_e16 = int'(e16) + delta;
         if (new_e16 <= 0) begin
@@ -172,57 +118,100 @@ module redmule_mx_decoder
     end
   endfunction
 
-  always_comb begin
-    next_state  = current_state;
-    val_reg_d   = val_reg_q;
-    scale_reg_d = scale_reg_q;
-    group_idx_d = group_idx_q;
-    vector_mode_d = vector_mode_q;
-    for (int g = 0; g < NUM_GROUPS; g++) begin
-      scale_per_group_d[g] = scale_per_group_q[g];
-    end
+  // ---------------------------------------------------------------
+  //  Pipeline registers
+  // ---------------------------------------------------------------
 
-    mx_val_ready_o = 1'b0;
-    mx_exp_ready_o = 1'b0;
-    fp16_valid_o   = 1'b0;
-    fp16_data_o    = '0;
+  // --- Stage 0: input latch + FP8→FP16 conversion result ---
+  logic                          s0_valid_q;
+  logic [NUM_LANES-1:0][BITW-1:0] s0_unscaled_q;
+  logic [7:0]                    s0_scale_q;
+  logic [TAG_WIDTH-1:0]          s0_tag_q;
 
-    unique case (current_state)
-      IDLE: begin
-        mx_val_ready_o = 1'b1;
-        mx_exp_ready_o = 1'b1;
-        if (mx_val_valid_i && mx_exp_valid_i) begin
-          val_reg_d      = mx_val_data_i;
-          group_idx_d    = '0;
-          vector_mode_d  = vector_shared_exp_i;
-          if (vector_shared_exp_i) begin
-            for (int g = 0; g < NUM_GROUPS; g++) begin
-              scale_per_group_d[g] = mx_exp_data_i[8*g +: 8];
-            end
-          end else begin
-            scale_reg_d = mx_exp_data_i[7:0];
-          end
-          next_state = DECODE;
-        end
-      end
-      DECODE: begin
-        fp16_valid_o = 1'b1;
-        for (int i = 0; i < NUM_LANES; i++) begin
-          fp16_data_o[BITW*i +: BITW] = elem_fp16_scaled[i];
-        end
-        if (fp16_ready_i) begin
-          if (group_idx_q == NUM_GROUPS-1) begin
-            group_idx_d = '0;
-            next_state  = IDLE;
-          end else begin
-            group_idx_d = group_idx_q + 1'b1;
-          end
-        end
-      end
-      default: begin
-        next_state = IDLE;
-      end
-    endcase
+  // --- Stage 1: scaled output ---
+  logic                          s1_valid_q;
+  logic [NUM_LANES*BITW-1:0]     s1_data_q;
+  logic [TAG_WIDTH-1:0]          s1_tag_q;
+
+  // ---------------------------------------------------------------
+  //  Pipeline advancement (elastic, with bubble collapsing)
+  // ---------------------------------------------------------------
+
+  logic s1_advance, s0_advance;
+  assign s1_advance = !s1_valid_q || fp16_ready_i;
+  assign s0_advance = !s0_valid_q || s1_advance;
+
+  // ---------------------------------------------------------------
+  //  Input handshake
+  // ---------------------------------------------------------------
+
+  logic input_fire;
+  assign mx_val_ready_o = s0_advance;
+  assign mx_exp_ready_o = s0_advance;
+  assign input_fire     = mx_val_valid_i && mx_exp_valid_i && s0_advance;
+
+  // ---------------------------------------------------------------
+  //  Combinational: FP8 → FP16 (from input data, latched into S0)
+  // ---------------------------------------------------------------
+
+  logic [NUM_LANES-1:0][BITW-1:0] input_unscaled;
+
+  for (genvar i = 0; i < NUM_LANES; i++) begin : gen_convert
+    assign input_unscaled[i] = fp8_e4m3_to_fp16(mx_val_data_i[ELEM_WIDTH*i +: ELEM_WIDTH]);
   end
+
+  // ---------------------------------------------------------------
+  //  Combinational: MX scale (from S0 registered data, into S1)
+  // ---------------------------------------------------------------
+
+  logic [NUM_LANES*BITW-1:0] s0_scaled;
+
+  for (genvar i = 0; i < NUM_LANES; i++) begin : gen_scale
+    assign s0_scaled[i*BITW +: BITW] = mx_scale_fp16(s0_unscaled_q[i], s0_scale_q);
+  end
+
+  // ---------------------------------------------------------------
+  //  Sequential logic
+  // ---------------------------------------------------------------
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      s0_valid_q    <= 1'b0;
+      s0_unscaled_q <= '0;
+      s0_scale_q    <= '0;
+      s0_tag_q      <= '0;
+      s1_valid_q    <= 1'b0;
+      s1_data_q     <= '0;
+      s1_tag_q      <= '0;
+    end else begin
+      // --- Stage 1 ---
+      if (s1_advance) begin
+        s1_valid_q <= s0_valid_q;
+        if (s0_valid_q) begin
+          s1_data_q <= s0_scaled;
+          s1_tag_q  <= s0_tag_q;
+        end
+      end
+
+      // --- Stage 0 ---
+      if (s0_advance) begin
+        s0_valid_q <= input_fire;
+        if (input_fire) begin
+          s0_unscaled_q <= input_unscaled;
+          // NUM_GROUPS==1: single scale regardless of vector mode
+          s0_scale_q    <= mx_exp_data_i[7:0];
+          s0_tag_q      <= tag_i;
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------
+  //  Output
+  // ---------------------------------------------------------------
+
+  assign fp16_valid_o = s1_valid_q;
+  assign fp16_data_o  = s1_data_q;
+  assign tag_o        = s1_tag_q;
 
 endmodule : redmule_mx_decoder

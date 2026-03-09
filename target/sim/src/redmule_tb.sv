@@ -72,11 +72,11 @@ module redmule_tb
   logic redmule_busy;
   logic core_sleep;
   int errors;
-  integer f_engine_x, f_engine_w, f_engine_z;
+  integer f_engine_x, f_engine_w, f_engine_z, f_engine_cycle;
   integer f_engine_feed;
   integer f_z_src, f_z_src_acc, f_z_q, f_z_mux, f_z_path_trace, f_engine_boundary, f_ingress_ctrl, f_w_path_trace;
   integer f_dec_fp16, f_dec_exp, f_dec_target;
-  longint unsigned engine_x_line_idx, engine_w_line_idx, engine_z_line_idx;
+  longint unsigned engine_x_line_idx, engine_w_line_idx, engine_z_line_idx, engine_cycle_line_idx;
   longint unsigned z_src_line_idx, z_src_acc_line_idx, z_q_line_idx, z_mux_line_idx;
   logic z_hold_prev_q;
   longint unsigned z_hold_cycles;
@@ -216,6 +216,7 @@ module redmule_tb
     if (f_engine_x) $fclose(f_engine_x);
     if (f_engine_w) $fclose(f_engine_w);
     if (f_engine_z) $fclose(f_engine_z);
+    if (f_engine_cycle) $fclose(f_engine_cycle);
     if (f_engine_feed) $fclose(f_engine_feed);
     if (f_z_src) $fclose(f_z_src);
     if (f_z_src_acc) $fclose(f_z_src_acc);
@@ -284,6 +285,10 @@ module redmule_tb
     if (f_ingress_ctrl == 0) begin
       $fatal(1, "[TB] Failed to open engine_ingress_ctrl_trace.csv");
     end
+    f_engine_cycle = $fopen("engine_compute_trace.csv", "w");
+    if (f_engine_cycle == 0) begin
+      $fatal(1, "[TB] Failed to open engine_compute_trace.csv");
+    end
     f_w_path_trace = $fopen("w_path_cycle_trace.csv", "w");
     if (f_w_path_trace == 0) begin
       $fatal(1, "[TB] Failed to open w_path_cycle_trace.csv");
@@ -296,8 +301,10 @@ module redmule_tb
               "time,z_src_line_idx,mx_enable,target_x,target_w,x_line_idx,w_line_idx,out_ready,cntrl_out_ready,fifo_grant,fill,ready,y_push_enable,sched_y_push_en,sched_y_push_clr,sched_y_push_counter,stall_engine,check_w_valid_en,check_x_full_en,check_y_loaded_en,y_valid,first_load,load_en,store_en,z_state,fill_shift,w_index,d_index,store_shift,z0,z1,z2,z3,z4,z5,z6,z7");
     $fdisplay(f_ingress_ctrl,
               "time,event,line_idx,mx_enable,target_x,target_w,stall_engine,check_w_valid,check_w_valid_en,check_x_full,check_x_full_en,check_y_loaded,check_y_loaded_en,state,next_state,x_shift_cnt,x_refill,w_done,x_done,w_rows_iter,w_cols_iter,w_mat_iters,x_buf_full,x_buf_empty,w_valid_i,z_loaded,x_pack_valid,x_pack_count,w_pack_valid,w_pack_count,x_unpack_pending,w_unpack_pending,x_packed_valid,x_packed_ready,w_packed_valid,w_packed_ready,x_mux_valid,x_mux_ready,w_mux_valid,w_mux_ready,x_fifo_valid,x_fifo_ready,w_fifo_valid,w_fifo_ready,l0,l1,l2,l3,l4,l5,l6,l7");
+    $fdisplay(f_engine_cycle,
+              "time,cycle_idx,mx_enable,accepted,reg_enable,in_valid,all_in_ready,any_in_ready,out_ready,fifo_grant,stall_engine,check_w_valid_en,check_x_full_en,check_y_loaded_en,state,next_state,x_shift_cnt,w_rows_iter,w_cols_iter,w_mat_iters,target_x,target_w,w_done,x_done,x0,x1,x2,x3,x4,x5,x6,x7,w0,w1,w2,w3,w4,w5,w6,w7,y0,y1,y2,y3,y4,y5,y6,y7");
     $fdisplay(f_w_path_trace,
-              "time,state,next_state,stall,check_w_valid,check_w_valid_en,w_done,w_rows,w_cols,w_mat,target_w,mx_dec_v,mx_dec_r,w_raw_v,w_raw_r,w_packed_v,w_packed_r,w_unpack_pending,w_mux_v,w_mux_r,w_fifo_v,w_fifo_r,w_valid_i,w_load,w_shift");
+              "time,state,next_state,stall,check_w_valid,check_w_valid_en,w_done,w_rows,w_cols,w_mat,target_w,mx_dec_v,mx_dec_r,w_raw_v,w_raw_r,w_packed_v,w_packed_r,w_unpack_pending,w_mux_v,w_mux_r,w_fifo_v,w_fifo_r,w_valid_i,w_load,w_shift,x_full,z_loaded,y_valid,y_ready,z_load_en,z_state,z_w_index,z_y_width");
     f_dec_fp16 = $fopen("mx_decoder_fp16_outputs.txt", "w");
     if (f_dec_fp16 == 0) begin
       $fatal(1, "[TB] Failed to open mx_decoder_fp16_outputs.txt");
@@ -877,7 +884,7 @@ module redmule_tb
   always_ff @(posedge clk_i) begin
     if (rst_ni && f_w_path_trace && i_dut.i_redmule_top.cntrl_flags.mx_enable) begin
       $fdisplay(f_w_path_trace,
-                "%0t,%0d,%0d,%0b,%0b,%0b,%0b,%0d,%0d,%0d,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b",
+                "%0t,%0d,%0d,%0b,%0b,%0b,%0b,%0d,%0d,%0d,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0d,%0d,%0d",
                 $time,
                 i_dut.i_redmule_top.i_scheduler.current_state,
                 i_dut.i_redmule_top.i_scheduler.next_state,
@@ -902,7 +909,15 @@ module redmule_tb
                 i_dut.i_redmule_top.w_buffer_fifo.ready,
                 i_dut.i_redmule_top.i_scheduler.w_valid_i,
                 i_dut.i_redmule_top.w_buffer_ctrl.load,
-                i_dut.i_redmule_top.w_buffer_ctrl.shift);
+                i_dut.i_redmule_top.w_buffer_ctrl.shift,
+                i_dut.i_redmule_top.x_buffer_flgs.full,
+                i_dut.i_redmule_top.z_buffer_flgs.loaded,
+                i_dut.i_redmule_top.y_buffer_fifo.valid,
+                i_dut.i_redmule_top.z_buffer_flgs.y_ready,
+                i_dut.i_redmule_top.i_z_buffer.load_en,
+                i_dut.i_redmule_top.i_z_buffer.current_state,
+                i_dut.i_redmule_top.i_z_buffer.w_index,
+                i_dut.i_redmule_top.z_buffer_ctrl.y_width);
     end
   end
 
@@ -1100,6 +1115,80 @@ module redmule_tb
                     $time,
                     i_dut.i_redmule_top.z_buffer_muxed.data,
                     i_dut.i_redmule_top.z_buffer_muxed.strb);
+      end
+    end
+
+    // Per-cycle engine compute trace: logs the exact cycle where the engine is
+    // stepped (reg_enable=1), plus whether input handshake was actually ready.
+    begin
+      logic engine_step_fire;
+      logic engine_accept_fire;
+      logic all_in_ready;
+      logic any_in_ready;
+      engine_step_fire   = i_dut.i_redmule_top.reg_enable;
+      all_in_ready       = 1'b1;
+      any_in_ready       = 1'b0;
+      for (int w = 0; w < ARRAY_WIDTH; w++) begin
+        for (int h = 0; h < ARRAY_HEIGHT; h++) begin
+          all_in_ready &= i_dut.i_redmule_top.flgs_engine.in_ready[w][h];
+          any_in_ready |= i_dut.i_redmule_top.flgs_engine.in_ready[w][h];
+        end
+      end
+      engine_accept_fire = engine_step_fire &&
+                           i_dut.i_redmule_top.in_valid &&
+                           all_in_ready;
+      if (f_engine_cycle && engine_step_fire) begin
+        $fdisplay(f_engine_cycle,
+                  "%0t,%0d,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0b,%0d,%0d,%0d,%0d,%0d,%0d,%0b,%0b,%0b,%0b,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h,%04h",
+                  $time,
+                  engine_cycle_line_idx,
+                  i_dut.i_redmule_top.cntrl_flags.mx_enable,
+                  engine_accept_fire,
+                  i_dut.i_redmule_top.reg_enable,
+                  i_dut.i_redmule_top.in_valid,
+                  all_in_ready,
+                  any_in_ready,
+                  i_dut.i_redmule_top.out_ready,
+                  i_dut.i_redmule_top.fifo_grant,
+                  i_dut.i_redmule_top.i_scheduler.stall_engine,
+                  i_dut.i_redmule_top.i_scheduler.check_w_valid_en,
+                  i_dut.i_redmule_top.i_scheduler.check_x_full_en,
+                  i_dut.i_redmule_top.i_scheduler.check_y_loaded_en,
+                  i_dut.i_redmule_top.i_scheduler.current_state,
+                  i_dut.i_redmule_top.i_scheduler.next_state,
+                  i_dut.i_redmule_top.i_scheduler.x_shift_cnt_q,
+                  i_dut.i_redmule_top.i_scheduler.w_rows_iter_q,
+                  i_dut.i_redmule_top.i_scheduler.w_cols_iter_q,
+                  i_dut.i_redmule_top.i_scheduler.w_mat_iters_q,
+                  i_dut.i_redmule_top.target_is_x,
+                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.i_scheduler.w_done,
+                  i_dut.i_redmule_top.i_scheduler.x_done,
+                  i_dut.i_redmule_top.x_buffer_q[0][0],
+                  i_dut.i_redmule_top.x_buffer_q[1][0],
+                  i_dut.i_redmule_top.x_buffer_q[2][0],
+                  i_dut.i_redmule_top.x_buffer_q[3][0],
+                  i_dut.i_redmule_top.x_buffer_q[4][0],
+                  i_dut.i_redmule_top.x_buffer_q[5][0],
+                  i_dut.i_redmule_top.x_buffer_q[6][0],
+                  i_dut.i_redmule_top.x_buffer_q[7][0],
+                  i_dut.i_redmule_top.w_buffer_q[0],
+                  i_dut.i_redmule_top.w_buffer_q[1],
+                  i_dut.i_redmule_top.w_buffer_q[2],
+                  i_dut.i_redmule_top.w_buffer_q[3],
+                  i_dut.i_redmule_top.w_buffer_q[4],
+                  i_dut.i_redmule_top.w_buffer_q[5],
+                  i_dut.i_redmule_top.w_buffer_q[6],
+                  i_dut.i_redmule_top.w_buffer_q[7],
+                  i_dut.i_redmule_top.y_bias_q[0],
+                  i_dut.i_redmule_top.y_bias_q[1],
+                  i_dut.i_redmule_top.y_bias_q[2],
+                  i_dut.i_redmule_top.y_bias_q[3],
+                  i_dut.i_redmule_top.y_bias_q[4],
+                  i_dut.i_redmule_top.y_bias_q[5],
+                  i_dut.i_redmule_top.y_bias_q[6],
+                  i_dut.i_redmule_top.y_bias_q[7]);
+        engine_cycle_line_idx <= engine_cycle_line_idx + 1;
       end
     end
 
@@ -1548,6 +1637,7 @@ module redmule_tb
     engine_x_line_idx = '0;
     engine_w_line_idx = '0;
     engine_z_line_idx = '0;
+    engine_cycle_line_idx = '0;
     z_src_line_idx = '0;
     z_src_acc_line_idx = '0;
     z_q_line_idx = '0;

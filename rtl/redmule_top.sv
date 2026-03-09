@@ -377,8 +377,6 @@ typedef enum logic [1:0] {
   MX_DEC_X,
   MX_DEC_W
 } mx_dec_target_e;
-mx_dec_target_e mx_dec_target;
-
 // Instantiate MX slot buffer
 redmule_mx_slot_buffer #(
   .DATAW_ALIGN       ( DATAW_ALIGN       ),
@@ -414,9 +412,11 @@ redmule_mx_slot_buffer #(
 
 // Instantiate MX arbiter
 logic [1:0] mx_dec_target_raw;
+logic [1:0] dec_output_tag;  // pipelined target from decoder output
 logic target_is_x, target_is_w;
-assign target_is_x = (mx_dec_target == MX_DEC_X);
-assign target_is_w = (mx_dec_target == MX_DEC_W);
+// Route decoder OUTPUT based on pipelined tag (aligned with decoded data)
+assign target_is_x = (dec_output_tag == MX_DEC_X);
+assign target_is_w = (dec_output_tag == MX_DEC_W);
 
 redmule_mx_arbiter #(
   .MX_DATA_W           ( MX_DATA_W           ),
@@ -453,13 +453,11 @@ redmule_mx_arbiter #(
   .mx_dec_target_o      ( mx_dec_target_raw  )
 );
 
-// Cast target to enum
-assign mx_dec_target = mx_dec_target_e'(mx_dec_target_raw);
-
 redmule_mx_decoder #(
   .DATA_W    ( MX_DATA_W    ),
   .BITW      ( BITW         ),
-  .NUM_LANES ( MX_NUM_LANES )
+  .NUM_LANES ( MX_NUM_LANES ),
+  .TAG_WIDTH ( 2             )
 ) i_mx_decoder_shared (
   .clk_i               ( clk_i             ),
   .rst_ni              ( rst_ni            ),
@@ -470,6 +468,8 @@ redmule_mx_decoder #(
   .mx_exp_ready_o      ( mx_dec_exp_ready  ),
   .mx_exp_data_i       ( mx_dec_exp_data   ),
   .vector_shared_exp_i ( mx_dec_vector_mode ),
+  .tag_i               ( mx_dec_target_raw ),
+  .tag_o               ( dec_output_tag    ),
   .fp16_valid_o        ( mx_dec_fp16_valid ),
   .fp16_ready_i        ( mx_dec_fp16_ready ),
   .fp16_data_o         ( mx_dec_fp16_data  )
@@ -481,13 +481,13 @@ assign w_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_va
 assign x_mx_fp16_data  = mx_dec_fp16_data;
 assign w_mx_fp16_data  = mx_dec_fp16_data;
 
-// In MX mode, pack according to bus width (512b -> 1 chunk, 1024b -> 2 chunks).
-assign x_row_chunks = mx_mode_active ? MX_ROW_CHUNKS[7:0] :
-                      ((x_valid_lanes == '0) ? 8'd1 :
-                       ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
-assign w_row_chunks = mx_mode_active ? MX_ROW_CHUNKS[7:0] :
-                      ((w_valid_lanes == '0) ? 8'd1 :
-                       ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
+// Row chunking must follow the effective valid lanes of the current tile.
+// For K=32 this evaluates to 1 chunk (avoid merging two rows into one beat),
+// while K=64 keeps 2 chunks on a 1024b bus.
+assign x_row_chunks = (x_valid_lanes == '0) ? 8'd1 :
+                      ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+assign w_row_chunks = (w_valid_lanes == '0) ? 8'd1 :
+                      ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
 
 // Instantiate MX input mux
 redmule_mx_input_mux #(
