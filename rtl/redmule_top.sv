@@ -191,8 +191,12 @@ logic [31:0] w_exp_buf_word;  // Raw compact-32bit exponent word from W exp stre
 logic        w_exp_buf_valid;
 logic        w_exp_buf_consume;
 
+// MX exponent mark/rewind signals (from scheduler FSM)
+logic x_exp_mark, x_exp_rewind;
+logic w_exp_mark, w_exp_rewind;
+
 // MX output stage signals
-logic fifo_grant;  
+logic fifo_grant;
 logic fifo_valid;
 logic fifo_pop;
 logic [DATAW_ALIGN-1:0] fifo_data_out;
@@ -252,8 +256,9 @@ assign x_buffer_raw.data   = x_buffer_d.data;
 assign x_buffer_raw.strb   = x_buffer_d.strb;
 assign x_buffer_d.ready    = mx_mode_active ? x_buffer_slot.ready : x_buffer_raw.ready;
 
-assign w_nominal_width = (mx_mode_active && reg_file.hwpe_params[LEFTOVERS][7:0] != '0) ?
-                                reg_file.hwpe_params[LEFTOVERS][7:0] : w_buffer_ctrl.width;
+// w_nominal_width / w_valid_lanes kept for legacy (non-MX) path.
+// In MX mode, w_row_chunks is driven by the decode position counter instead.
+assign w_nominal_width = w_buffer_ctrl.width;
 assign w_valid_lanes = w_nominal_width;
 assign w_slot_strb_mask = {W_SLOT_STRB_W{1'b1}};
 assign w_buffer_slot.valid = mx_mode_active ? w_buffer_d.valid : 1'b0;
@@ -302,7 +307,9 @@ redmule_exp_buffer #(
   .stream_i   ( x_exp_stream_buffered ),
   .data_o     ( x_exp_buf_data       ),
   .valid_o    ( x_exp_buf_valid      ),
-  .consume_i  ( x_exp_buf_consume    )
+  .consume_i  ( x_exp_buf_consume    ),
+  .mark_i     ( x_exp_mark           ),
+  .rewind_i   ( x_exp_rewind         )
 );
 
 // W exponent buffer: compact-32bit format (1 exponent word per W block).
@@ -318,7 +325,9 @@ redmule_exp_buffer #(
   .stream_i   ( w_exp_stream_buffered ),
   .data_o     ( w_exp_buf_word       ),
   .valid_o    ( w_exp_buf_valid      ),
-  .consume_i  ( w_exp_buf_consume    )
+  .consume_i  ( w_exp_buf_consume    ),
+  .mark_i     ( w_exp_mark           ),
+  .rewind_i   ( w_exp_rewind         )
 );
 
 // In current MX config (NUM_GROUPS==1), decoder uses one shared exponent byte.
@@ -486,13 +495,62 @@ assign w_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_va
 assign x_mx_fp16_data  = mx_dec_fp16_data;
 assign w_mx_fp16_data  = mx_dec_fp16_data;
 
-// Row chunking must follow the effective valid lanes of the current tile.
-// For K=32 this evaluates to 1 chunk (avoid merging two rows into one beat),
-// while K=64 keeps 2 chunks on a 1024b bus.
+// ---- W decode position tracker for K-tile-aware packing ----
+// The input_mux packs decoded MX chunks into bus-width FIFO entries.
+// The packing ratio depends on which K-tile the data belongs to:
+//   Full K-tiles: D/MX_NUM_LANES chunks per row (=2 for 64/32)
+//   Leftover K-tile: LEFTOVERS/MX_NUM_LANES chunks per row (=1 for 32/32)
+// Data arrives K-tile-major (K0 rows first, then K1 rows), so a position
+// counter on W decode acceptances determines the correct packing.
+// Without this, the scheduler's live w_cols_iter_q drives packing, which
+// can mismatch the data when the decoder runs ahead of the scheduler.
+localparam int unsigned W_CHUNKS_FULL_K = (TOT_DEPTH + MX_NUM_LANES - 1) / MX_NUM_LANES;
+
+logic [15:0] w_dec_pos_q;
+logic        w_dec_accept;
+logic        w_has_k_leftovers;
+logic [7:0]  w_chunks_lftovr_k;
+logic [15:0] w_num_full_k_tiles;
+logic [15:0] w_slots_full_k;
+logic [15:0] w_slots_per_pass;
+
+assign w_has_k_leftovers  = (reg_file.hwpe_params[LEFTOVERS][7:0] != '0);
+assign w_chunks_lftovr_k  = w_has_k_leftovers ?
+    8'((reg_file.hwpe_params[LEFTOVERS][7:0] + MX_NUM_LANES - 1) / MX_NUM_LANES) :
+    8'(W_CHUNKS_FULL_K);
+assign w_num_full_k_tiles = w_has_k_leftovers ?
+    (reg_file.hwpe_params[W_ITERS][15:0] - 16'd1) :
+    reg_file.hwpe_params[W_ITERS][15:0];
+assign w_slots_full_k     = reg_file.hwpe_params[W_ITERS][31:16]
+                            * 16'(W_CHUNKS_FULL_K)
+                            * w_num_full_k_tiles;
+assign w_slots_per_pass   = w_slots_full_k
+                            + (w_has_k_leftovers
+                               ? (reg_file.hwpe_params[W_ITERS][31:16] * 16'(w_chunks_lftovr_k))
+                               : 16'd0);
+
+assign w_dec_accept = mx_mode_active && w_mx_fp16_valid && w_mx_fp16_ready;
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    w_dec_pos_q <= '0;
+  end else if (clear) begin
+    w_dec_pos_q <= '0;
+  end else if (w_dec_accept) begin
+    if (w_dec_pos_q == w_slots_per_pass - 16'd1)
+      w_dec_pos_q <= '0;
+    else
+      w_dec_pos_q <= w_dec_pos_q + 16'd1;
+  end
+end
+
+// Row chunking: X uses static config, W uses data-position-aware packing.
 assign x_row_chunks = (x_valid_lanes == '0) ? 8'd1 :
                       ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
-assign w_row_chunks = (w_valid_lanes == '0) ? 8'd1 :
-                      ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+assign w_row_chunks = mx_mode_active ?
+    ((w_dec_pos_q < w_slots_full_k) ? 8'(W_CHUNKS_FULL_K) : w_chunks_lftovr_k) :
+    ((w_valid_lanes == '0) ? 8'd1 :
+     ((w_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
 
 // Instantiate MX input mux
 redmule_mx_input_mux #(
@@ -720,6 +778,50 @@ always_comb begin
   end
 end
 
+// ============ DEBUG: Incrementing W override ============
+// When +W_INCR_OVERRIDE is passed, replaces W buffer output with incrementing
+// FP16 values so engine consumption order is immediately visible.
+// Each shift cycle: w[h] = 0x4b00 + shift_count (same value for all h)
+// This makes fill_shift output directly reveal which W shift produced each K position.
+`ifndef SYNTHESIS
+logic [Height-1:0][BITW-1:0] w_engine_input;
+bit dbg_w_incr;
+initial dbg_w_incr = $test$plusargs("W_INCR_OVERRIDE");
+
+logic [15:0] w_shift_cnt_dbg;
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni || clear) begin
+    w_shift_cnt_dbg <= '0;
+  end else if (w_buffer_ctrl.shift) begin
+    w_shift_cnt_dbg <= w_shift_cnt_dbg + 1;
+  end
+end
+
+always_comb begin
+  if (dbg_w_incr) begin
+    for (int h = 0; h < Height; h++) begin
+      w_engine_input[h] = 16'h4b00 + w_shift_cnt_dbg[9:0];
+    end
+  end else begin
+    w_engine_input = w_buffer_q;
+  end
+end
+
+// Dump engine output during fill when override is active
+bit dbg_w_incr_fill;
+initial dbg_w_incr_fill = $test$plusargs("W_INCR_OVERRIDE");
+always @(posedge clk_i) begin
+  if (dbg_w_incr_fill && z_buffer_ctrl.fill) begin
+    $display("[DBG][WINCR] fill z_buf_d r0=0x%04h r1=0x%04h r15=0x%04h r31=0x%04h",
+             z_buffer_d[0], z_buffer_d[1], z_buffer_d[15], z_buffer_d[31]);
+  end
+end
+`else
+logic [Height-1:0][BITW-1:0] w_engine_input;
+assign w_engine_input = w_buffer_q;
+`endif
+// ============ END DEBUG ============
+
 // Engine instance
 redmule_engine     #(
   .FpFormat        ( FpFormat      ),
@@ -887,7 +989,11 @@ redmule_scheduler #(
   .cntrl_x_buffer_o  ( x_buffer_ctrl       ),
   .cntrl_w_buffer_o  ( w_buffer_ctrl       ),
   .cntrl_z_buffer_o  ( z_buffer_ctrl       ),
-  .flgs_scheduler_o  ( flgs_scheduler      )
+  .flgs_scheduler_o  ( flgs_scheduler      ),
+  .x_exp_mark_o      ( x_exp_mark          ),
+  .x_exp_rewind_o    ( x_exp_rewind        ),
+  .w_exp_mark_o      ( w_exp_mark          ),
+  .w_exp_rewind_o    ( w_exp_rewind        )
 );
 
 endmodule : redmule_top

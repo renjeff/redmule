@@ -2,15 +2,19 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 //
-// Exponent prefetch buffer: Unpacks individual exponents from compact 512-bit beats
+// Exponent prefetch buffer: Unpacks individual exponents from compact beats
 // and stores them. Output is direct register access (NO streaming protocol).
 //
 // Purpose: Completely decouple exponent fetch from data processing by buffering
 // all exponents upfront. No backpressure during computation.
 //
-// Input format: Exponents packed tightly in 512-bit beats (no padding)
-//   X: 64 exponents per beat (8 bits each)
-//   W: 16 exponent vectors per beat (32 bits each)
+// Mark/Rewind: Supports replaying exponents for multi-K-tile and multi-M-tile.
+//   mark_i: save current read pointer (call at start of each replay group)
+//   rewind_i: restore read pointer to saved mark (call to replay same exponents)
+//
+// Input format: Exponents packed tightly in beats (no padding)
+//   X: 128 exponents per 1024-bit beat (8 bits each)
+//   W: 32 exponent vectors per 1024-bit beat (32 bits each)
 
 module redmule_exp_buffer #(
   parameter int unsigned EXP_WIDTH = 8,       // Width of each exponent (8 for X, 32 for W)
@@ -21,13 +25,17 @@ module redmule_exp_buffer #(
   input  logic rst_ni,
   input  logic clear_i,
 
-  // Input: streaming interface from streamer (compact exponents in 512-bit beats)
+  // Input: streaming interface from streamer (compact exponents in beats)
   hwpe_stream_intf_stream.sink stream_i,
 
   // Output: direct register access (NO streaming protocol)
   output logic [EXP_WIDTH-1:0] data_o,
   output logic                  valid_o,
-  input  logic                  consume_i
+  input  logic                  consume_i,
+
+  // Mark/Rewind for multi-tile replay
+  input  logic                  mark_i,    // Save current read_ptr
+  input  logic                  rewind_i   // Restore read_ptr to saved mark
 );
 
   localparam int unsigned PTR_WIDTH = $clog2(BUFFER_DEPTH);
@@ -37,6 +45,10 @@ module redmule_exp_buffer #(
   logic [EXP_WIDTH-1:0] buffer [BUFFER_DEPTH-1:0];
   logic [PTR_WIDTH-1:0] write_ptr_q, read_ptr_q;
   logic [PTR_WIDTH:0]   occupancy_q;  // Extra bit to distinguish full/empty
+
+  // Mark register for replay
+  logic [PTR_WIDTH-1:0] mark_ptr_q;
+  logic [PTR_WIDTH:0]   mark_occupancy_q;
 
   // Buffer status
   logic buffer_full, buffer_empty;
@@ -60,49 +72,83 @@ module redmule_exp_buffer #(
     read_ptr_d  = read_ptr_q;
     occupancy_d = occupancy_q;
 
-    // Update pointers
-    if (input_accept) begin
-      write_ptr_d = (write_ptr_q + EXPS_PER_BEAT >= BUFFER_DEPTH) ?
-                    (write_ptr_q + EXPS_PER_BEAT - BUFFER_DEPTH) :
-                    (write_ptr_q + EXPS_PER_BEAT);
-    end
+    // Rewind takes priority over normal consume
+    if (rewind_i) begin
+      read_ptr_d  = mark_ptr_q;
+      // Occupancy increases by the number of exponents we're "un-consuming"
+      // New occupancy = write_ptr - mark_ptr (mod BUFFER_DEPTH)
+      if (write_ptr_q >= mark_ptr_q)
+        occupancy_d = write_ptr_q - mark_ptr_q;
+      else
+        occupancy_d = BUFFER_DEPTH - mark_ptr_q + write_ptr_q;
 
-    if (consume_i && !buffer_empty) begin
-      read_ptr_d  = (read_ptr_q + 1 >= BUFFER_DEPTH) ? 0 : (read_ptr_q + 1);
-    end
+      // If also accepting input during rewind, add those
+      if (input_accept) begin
+        write_ptr_d = (write_ptr_q + EXPS_PER_BEAT >= BUFFER_DEPTH) ?
+                      (write_ptr_q + EXPS_PER_BEAT - BUFFER_DEPTH) :
+                      (write_ptr_q + EXPS_PER_BEAT);
+        occupancy_d = occupancy_d + EXPS_PER_BEAT;
+      end
+    end else begin
+      // Normal operation
+      if (input_accept) begin
+        write_ptr_d = (write_ptr_q + EXPS_PER_BEAT >= BUFFER_DEPTH) ?
+                      (write_ptr_q + EXPS_PER_BEAT - BUFFER_DEPTH) :
+                      (write_ptr_q + EXPS_PER_BEAT);
+      end
 
-    // Calculate occupancy based on simultaneous operations
-    if (input_accept && (consume_i && !buffer_empty)) begin
-      // Both write and read: net change is +EXPS_PER_BEAT -1
-      occupancy_d = occupancy_q + EXPS_PER_BEAT - 1;
-    end else if (input_accept) begin
-      // Only write
-      occupancy_d = occupancy_q + EXPS_PER_BEAT;
-    end else if (consume_i && !buffer_empty) begin
-      // Only read
-      occupancy_d = occupancy_q - 1;
+      if (consume_i && !buffer_empty) begin
+        read_ptr_d  = (read_ptr_q + 1 >= BUFFER_DEPTH) ? 0 : (read_ptr_q + 1);
+      end
+
+      // Calculate occupancy based on simultaneous operations
+      if (input_accept && (consume_i && !buffer_empty)) begin
+        occupancy_d = occupancy_q + EXPS_PER_BEAT - 1;
+      end else if (input_accept) begin
+        occupancy_d = occupancy_q + EXPS_PER_BEAT;
+      end else if (consume_i && !buffer_empty) begin
+        occupancy_d = occupancy_q - 1;
+      end
     end
   end
 
   // Ready signal: depends only on registered occupancy to prevent combinational glitches
-  // The buffer can accept when current occupancy plus one beat fits within capacity
-  // Use buffer_full signal which already has proper margin (BUFFER_DEPTH - EXPS_PER_BEAT)
   assign stream_i.ready = !buffer_full;
 
   // Sequential logic
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      write_ptr_q <= '0;
-      read_ptr_q  <= '0;
-      occupancy_q <= '0;
+      write_ptr_q    <= '0;
+      read_ptr_q     <= '0;
+      occupancy_q    <= '0;
+      mark_ptr_q     <= '0;
+      mark_occupancy_q <= '0;
     end else if (clear_i) begin
-      write_ptr_q <= '0;
-      read_ptr_q  <= '0;
-      occupancy_q <= '0;
+      write_ptr_q    <= '0;
+      read_ptr_q     <= '0;
+      occupancy_q    <= '0;
+      mark_ptr_q     <= '0;
+      mark_occupancy_q <= '0;
     end else begin
       write_ptr_q <= write_ptr_d;
       read_ptr_q  <= read_ptr_d;
       occupancy_q <= occupancy_d;
+
+      // Save mark position
+      if (mark_i) begin
+        mark_ptr_q       <= read_ptr_q;
+        mark_occupancy_q <= occupancy_q;
+`ifndef SYNTHESIS
+        $display("[DBG][EXPBUF][%m] MARK at t=%0t  read_ptr=%0d  write_ptr=%0d  occ=%0d",
+                 $time, read_ptr_q, write_ptr_q, occupancy_q);
+`endif
+      end
+      if (rewind_i) begin
+`ifndef SYNTHESIS
+        $display("[DBG][EXPBUF][%m] REWIND at t=%0t  read_ptr %0d -> mark %0d  occ %0d -> %0d",
+                 $time, read_ptr_q, mark_ptr_q, occupancy_q, occupancy_d);
+`endif
+      end
 
       // Write all exponents from the beat into buffer
       if (input_accept) begin

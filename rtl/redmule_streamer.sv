@@ -400,7 +400,7 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW ) ) out_stream [NumStreamSources-
 
 hci_package::hci_streamer_ctrl_t  [NumStreamSources-1:0] source_ctrl;
 hci_package::hci_streamer_flags_t [NumStreamSources-1:0] source_flags;
-localparam int unsigned LoadFifoDepth = 4;
+localparam int unsigned LoadFifoDepth = 32;
 
 // Assign input control buses to the relative ID in the vector.
 assign source_ctrl[XsourceStreamId]      = ctrl_i.x_stream_source_ctrl;

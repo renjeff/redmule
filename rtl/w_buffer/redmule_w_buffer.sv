@@ -128,4 +128,18 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : row_load_counter
   end
 end
 
+`ifndef SYNTHESIS
+  bit dbg_wbuf;
+  initial dbg_wbuf = $test$plusargs("MX_WBUF_DUMP");
+  always @(posedge clk_i) begin
+    if (dbg_wbuf && ctrl_i.load) begin
+      // Print element 57 (K=57): column 28, element 1
+      $display("[DBG][WBUF] t=%0t row=%0d d57=0x%04h d56=0x%04h d58=0x%04h d25=0x%04h d0=0x%04h d31=0x%04h d32=0x%04h d63=0x%04h",
+               $time, w_row,
+               w_data[57], w_data[56], w_data[58],
+               w_data[25], w_data[0], w_data[31], w_data[32], w_data[63]);
+    end
+  end
+`endif
+
 endmodule : redmule_w_buffer

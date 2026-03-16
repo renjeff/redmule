@@ -76,7 +76,7 @@ package redmule_pkg;
   parameter int unsigned Z_D2_STRIDE = 13; // 0x34
   parameter int unsigned X_ROWS_OFFS = 14; // 0x38
   parameter int unsigned X_SLOTS     = 15; // 0x3C
-  parameter int unsigned IN_TOT_LEN  = 16; // 0x40
+  parameter int unsigned Z_OUT_ADDR  = 16; // 0x40 – MX mode Z store base (was IN_TOT_LEN, always '0)
   // One resgister is used for the round modes and operations of the Computing Elements.
   // [31:29] -> roundmode of the stage 1
   // [28:26] -> roundmode of the stage 2
@@ -270,7 +270,7 @@ package redmule_pkg;
     logic [31:0] yz_d2_stride;
     logic [31:0] x_rows_offs;
     logic [31:0] x_buffer_slots;
-    logic [31:0] x_tot_len;
+    logic [31:0] z_out_addr;
     rnd_mode_e stage_1_rnd_mode;
     rnd_mode_e stage_2_rnd_mode;
     fpu_op_e stage_1_op;

@@ -101,6 +101,8 @@ MX_GEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_test_vectors.py
 MX_GOLDEN_SCRIPT := $(RootDir)golden-model/MX/gen_mx_golden.py
 MX_NUM_LANES  := 32
 MX_BLOCK_SIZE := 32
+MX_TILE_COLS  := 64
+MX_ARRAY_WIDTH := 32
 X_INPUT_H   := $(SW)/inc/x_input.h
 W_INPUT_H   := $(SW)/inc/w_input.h
 Y_INPUT_H   := $(SW)/inc/y_input.h
@@ -187,7 +189,8 @@ $(W_MX_H) $(W_EXP_MX_H) $(W_EXP_TXT): $(W_INPUT_H) $(MX_GEN_SCRIPT)
 		--num-lanes $(MX_NUM_LANES) \
 		--block-size $(MX_BLOCK_SIZE) \
 		--pack-fp8 \
-		--exp-format compact-32bit
+		--exp-format compact-32bit \
+		--matrix-rows $(N) --matrix-cols $(K) --tile-cols $(MX_TILE_COLS)
 
 # MX golden generation - computes golden from MX inputs (includes quantization effects)
 # Depends on MX_DIM_FILE to regenerate when M, N, K change
@@ -204,7 +207,9 @@ $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H): $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_
 		-M $(M) -N $(N) -K $(K) \
 		--block-size $(MX_BLOCK_SIZE) \
 		--x-exp-format 8bit \
-		--w-exp-format 32bit
+		--w-exp-format 32bit \
+		--tile-cols $(MX_TILE_COLS) \
+		--array-width $(MX_ARRAY_WIDTH)
 
 mx-headers: $(MX_DIM_FILE) fp16-headers $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(X_EXP_TXT) $(W_EXP_TXT) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 	@echo "[MX] MX-encoded headers are up to date"

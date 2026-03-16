@@ -143,6 +143,28 @@ def write_c_header(filename, array_name, values, elem_type='uint16_t', values_pe
         f.write("};\n\n")
         f.write(f"#endif // {guard}\n")
 
+def reorder_ktile_major(vals, rows, cols, tile_cols):
+    """Reorder a row-major matrix to K-tile-major order.
+
+    Row-major: row0[col0..colK-1], row1[col0..colK-1], ...
+    K-tile-major: for each K-tile group of tile_cols columns,
+                  emit all rows for that column slice.
+
+    This ensures the MX-encoded data arrives at the accelerator
+    in K-tile-sequential order, matching the scheduler's consumption
+    pattern (all W rows for K-tile 0, then all for K-tile 1, etc.).
+    """
+    assert len(vals) >= rows * cols, \
+        f"reorder_ktile_major: need {rows*cols} vals, got {len(vals)}"
+    result = []
+    for k_start in range(0, cols, tile_cols):
+        k_end = min(k_start + tile_cols, cols)
+        for r in range(rows):
+            for c in range(k_start, k_end):
+                result.append(vals[r * cols + c])
+    return result
+
+
 def encode_fp16_blocks_to_mx(fp16_vals, block_size):
     """Encode FP16 values into MX blocks and return (mx_blocks, exp_blocks)."""
     num_blocks = (len(fp16_vals) + block_size - 1) // block_size
@@ -176,6 +198,13 @@ def main():
                         help='Exponent output format: padded (old 2/beat), compact-8bit (64/beat for X), compact-32bit (16/beat for W)')
     parser.add_argument('--total-blocks', type=int,
                         help='Force generation of this many MX blocks (pads FP16 input with zeros if needed)')
+    parser.add_argument('--matrix-rows', type=int, default=0,
+                        help='Number of rows in the matrix (for K-tile-major reordering)')
+    parser.add_argument('--matrix-cols', type=int, default=0,
+                        help='Number of columns in the matrix (for K-tile-major reordering)')
+    parser.add_argument('--tile-cols', type=int, default=0,
+                        help='K-tile width in elements (e.g. 64 for TILE=64). '
+                             'When set with --matrix-rows/cols, reorders data to K-tile-major.')
     args = parser.parse_args()
 
     # Validate: need at least one output format
@@ -185,6 +214,16 @@ def main():
         parser.error('Must specify at least one of --output-exp or --output-exp-header')
 
     fp16_vals = parse_fp16_header(args.input)
+
+    # K-tile-major reordering: when matrix dimensions and tile size are provided,
+    # reorder from row-major to K-tile-major so the MX-encoded data streams
+    # to the accelerator in K-tile-sequential order.
+    if args.matrix_rows > 0 and args.matrix_cols > 0 and args.tile_cols > 0:
+        fp16_vals = reorder_ktile_major(fp16_vals, args.matrix_rows,
+                                        args.matrix_cols, args.tile_cols)
+        print(f'Reordered {args.matrix_rows}x{args.matrix_cols} matrix to K-tile-major '
+              f'(tile_cols={args.tile_cols})')
+
     mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
     num_blocks = len(exp_blocks)
 

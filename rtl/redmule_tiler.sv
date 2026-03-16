@@ -136,41 +136,25 @@ hwpe_ctrl_seq_mult #(
   .prod_o   ( x_rows_by_w_cols_iter         )
 );
 
-// Sequential multiplier for BUFFER sizing (uses unpacked X buffer iterations)
+// Buffer-path product: x_rows_iter * w_cols_iter (unpacked M-tiles × K-tiles).
+// Computed as a direct combinational product instead of a sequential multiplier.
+// The sequential multiplier reads a_i/b_i continuously during its shift-and-add
+// loop, but config_d.x_rows_iter depends on mx_enable which settles after
+// start_cfg_i. By the time config_q latches (after the 3rd multiplier, ~48
+// cycles later), config_d is guaranteed stable, so a combinational product
+// sampled at latch time is correct.
 logic [31:0] buf_x_rows_by_w_cols_iter;
-logic        buf_x_rows_by_w_cols_iter_valid_d, buf_x_rows_by_w_cols_iter_valid_q, buf_x_rows_by_w_cols_iter_valid;
-logic        buf_x_rows_by_w_cols_iter_ready;
-hwpe_ctrl_seq_mult #(
-  .AW ( 16 ),
-  .BW ( 16 )
-) i_buf_x_rows_by_w_cols_seqmult (
-  .clk_i    ( clk_i                               ),
-  .rst_ni   ( rst_ni                              ),
-  .clear_i  ( clear_i | setback_i                 ),
-  .start_i  ( start_cfg_i                         ),
-  .a_i      ( config_d.x_rows_iter                ),  // Use buffer iterations (unpacked)
-  .b_i      ( config_d.w_cols_iter                ),
-  .invert_i ( 1'b0                                ),
-  .valid_o  ( buf_x_rows_by_w_cols_iter_valid_d   ),
-  .ready_o  ( buf_x_rows_by_w_cols_iter_ready     ),
-  .prod_o   ( buf_x_rows_by_w_cols_iter           )
-);
+assign buf_x_rows_by_w_cols_iter = config_d.x_rows_iter * config_d.w_cols_iter;
 always_ff @(posedge clk_int or negedge rst_ni) begin
   if(~rst_ni) begin
     x_rows_by_w_cols_iter_valid_q <= '0;
     x_rows_by_w_cols_iter_valid <= '0;
-    buf_x_rows_by_w_cols_iter_valid_q <= '0;
-    buf_x_rows_by_w_cols_iter_valid <= '0;
   end else if(clear_i | setback_i) begin
     x_rows_by_w_cols_iter_valid_q <= '0;
     x_rows_by_w_cols_iter_valid <= '0;
-    buf_x_rows_by_w_cols_iter_valid_q <= '0;
-    buf_x_rows_by_w_cols_iter_valid <= '0;
   end else begin
     x_rows_by_w_cols_iter_valid_q <= x_rows_by_w_cols_iter_valid_d;
     x_rows_by_w_cols_iter_valid <= ~x_rows_by_w_cols_iter_valid_q & x_rows_by_w_cols_iter_valid_d;
-    buf_x_rows_by_w_cols_iter_valid_q <= buf_x_rows_by_w_cols_iter_valid_d;
-    buf_x_rows_by_w_cols_iter_valid <= ~buf_x_rows_by_w_cols_iter_valid_q & buf_x_rows_by_w_cols_iter_valid_d;
   end
 end
 
@@ -266,8 +250,12 @@ assign config_d.gemm_selection   = config_d.gemm_ops == MATMUL ? 1'b0 : 1'b1;
 
 assign config_d.x_d1_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*mem_x_cols_iter_nolftovr) + mem_x_cols_lftovr);  // Use memory iterations for X addressing
 assign config_d.x_rows_offs = ARRAY_WIDTH*config_d.x_d1_stride;
+// W replay count uses buffer-path (unpacked) M-tiles, not memory-path (packed).
+// The engine replays W for each systolic M-tile (x_rows_iter), but the memory-path
+// multiplier uses mem_x_rows_iter (packed, smaller). Using the buffer-path product
+// ensures W_TOT_LEN provides enough beats for all M-tile replays.
 logic [31:0] w_tot_len_raw;
-assign w_tot_len_raw = x_rows_by_w_cols_by_w_rows_iter[31:0];
+assign w_tot_len_raw = config_d.w_rows_iter * buf_x_rows_by_w_cols_iter[15:0];
 assign config_d.w_tot_len   = mx_enable ? ((w_tot_len_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
                                         : w_tot_len_raw;
 assign config_d.w_d0_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*w_cols_iter_nolftovr) + config_d.w_cols_lftovr);
@@ -280,7 +268,7 @@ logic [31:0] tot_x_read_raw;
 // follows compute/buffer tiling (unpacked rows), not packed-memory beats.
 assign tot_x_read_raw = config_d.x_rows_iter * config_d.w_cols_iter * config_d.x_cols_iter;
 assign config_d.tot_x_read   = tot_x_read_raw;
-assign config_d.x_tot_len    = '0; // not used
+assign config_d.z_out_addr   = reg_file_i.hwpe_params[Z_OUT_ADDR];
 
 // register configuration to avoid critical paths (maybe removable!)
 bit dbg_tiler;
@@ -301,6 +289,9 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
                config_d.m_size, m_size_for_x_buffer, config_d.x_rows_lftovr, config_d.x_rows_iter);
       $display("[DBG][TILER] x_cols_lftovr=%0d x_buffer_slots=%0d x_cols_iter=%0d LEFTOVERS[31:24]=%0d",
                config_d.x_cols_lftovr, config_d.x_buffer_slots, config_d.x_cols_iter, config_d.x_rows_lftovr);
+      $display("[DBG][TILER] yz_tot_len=%0d w_tot_len=%0d tot_x_read=%0d tot_stores=%0d buf_xr_wc=%0d mem_xr_wc=%0d",
+               config_d.yz_tot_len, config_d.w_tot_len, config_d.tot_x_read, config_d.tot_stores,
+               buf_x_rows_by_w_cols_iter[15:0], x_rows_by_w_cols_iter[15:0]);
     end
   end
 end
@@ -343,7 +334,7 @@ assign reg_file_o.hwpe_params[ Z_D0_STRIDE]        = config_q.yz_d0_stride;
 assign reg_file_o.hwpe_params[ Z_D2_STRIDE]        = config_q.yz_d2_stride;
 assign reg_file_o.hwpe_params[ X_ROWS_OFFS]        = config_q.x_rows_offs;
 assign reg_file_o.hwpe_params[     X_SLOTS]        = config_q.x_buffer_slots;
-assign reg_file_o.hwpe_params[  IN_TOT_LEN]        = config_q.x_tot_len;
+assign reg_file_o.hwpe_params[ Z_OUT_ADDR]        = config_d.z_out_addr; // do not register (straight from regfile)
 assign reg_file_o.hwpe_params[OP_SELECTION][31:29] = config_q.stage_1_rnd_mode;
 assign reg_file_o.hwpe_params[OP_SELECTION][28:26] = config_q.stage_2_rnd_mode;
 assign reg_file_o.hwpe_params[OP_SELECTION][25:21] = config_q.stage_1_op;

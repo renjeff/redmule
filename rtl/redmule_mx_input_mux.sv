@@ -173,6 +173,32 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
   end
 end
 
+`ifndef SYNTHESIS
+// Debug: dump W packed beat when emitted (K=57 is position 57 in the 64-element beat)
+bit dbg_imux;
+initial dbg_imux = $test$plusargs("MX_IMUX_DUMP");
+int unsigned w_beat_cnt;
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni || clear_i) w_beat_cnt <= 0;
+  else if (mx_enable_i && w_pack_valid_q && w_muxed_o.ready) begin
+    if (dbg_imux && (w_beat_cnt < 5 || (w_beat_cnt >= 128 && w_beat_cnt < 133) || (w_beat_cnt >= 256 && w_beat_cnt < 261))) begin
+      // K=25 is element 25 in the beat (chunk0), K=57 is element 57 (chunk1 el25)
+      $display("[DBG][IMUX] W beat %0d  K25=0x%04h K56=0x%04h K57=0x%04h K58=0x%04h K0=0x%04h K31=0x%04h K32=0x%04h K63=0x%04h",
+               w_beat_cnt,
+               w_pack_data_q[25*BITW +: BITW],
+               w_pack_data_q[56*BITW +: BITW],
+               w_pack_data_q[57*BITW +: BITW],
+               w_pack_data_q[58*BITW +: BITW],
+               w_pack_data_q[0*BITW +: BITW],
+               w_pack_data_q[31*BITW +: BITW],
+               w_pack_data_q[32*BITW +: BITW],
+               w_pack_data_q[63*BITW +: BITW]);
+    end
+    w_beat_cnt <= w_beat_cnt + 1;
+  end
+end
+`endif
+
 // Output muxing
 assign x_muxed_o.valid = mx_enable_i ? x_pack_valid_q : x_raw_i.valid;
 assign x_muxed_o.data  = mx_enable_i ? x_pack_data_q  : x_raw_i.data;

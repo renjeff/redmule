@@ -29,6 +29,10 @@ static inline void redmule_z_add_set(unsigned int value) {
   HWPE_WRITE(value, REDMULE_REG_OFFS + REDMULE_REG_Z_PTR);
 }
 
+static inline void redmule_z_out_add_set(unsigned int value) {
+  HWPE_WRITE(value, REDMULE_REG_OFFS + REDMULE_REG_Z_OUT_PTR);
+}
+
 static inline void redmule_x_exp_add_set(unsigned int value) {
   HWPE_WRITE(value, REDMULE_REG_OFFS + REDMULE_REG_X_EXP_PTR);
 }
@@ -123,6 +127,10 @@ void redmule_cfg(unsigned int x, unsigned int w, unsigned int z,
 #ifdef MX_ENABLE
   redmule_x_exp_add_set((unsigned int)x_exp);
   redmule_w_exp_add_set((unsigned int)w_exp);
+  // Write MX Z output to z_oup buffer (separate from Y bias at z)
+  // to avoid overwriting unconsumed Y data for later K-tiles
+  extern uint16_t z_oup[];
+  redmule_z_out_add_set((unsigned int)z_oup);
 #endif
   redmule_mcfg_set((unsigned int)mcfg_reg0, (unsigned int)mcfg_reg1);
   redmule_arith_set((unsigned int)arith_reg);

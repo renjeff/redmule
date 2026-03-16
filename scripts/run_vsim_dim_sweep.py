@@ -112,21 +112,8 @@ def main():
             run_cmd(
                 [
                     "make",
-                    "-C",
-                    "golden-model",
-                    "gemm",
-                    "M={}".format(dim),
-                    "N={}".format(dim),
-                    "K={}".format(dim),
-                    "SW={}".format(sw_inc),
-                ],
-                cwd=repo_root,
-                dry_run=args.dry_run,
-            )
-            run_cmd(
-                [
-                    "make",
                     "golden",
+                    "OP=gemm",
                     "M={}".format(dim),
                     "N={}".format(dim),
                     "K={}".format(dim),
@@ -140,9 +127,6 @@ def main():
                     "sw-build",
                     "MX_ENABLE={}".format(mx_enable),
                     "target={}".format(args.target),
-                    "M={}".format(dim),
-                    "N={}".format(dim),
-                    "K={}".format(dim),
                 ],
                 cwd=repo_root,
                 dry_run=args.dry_run,

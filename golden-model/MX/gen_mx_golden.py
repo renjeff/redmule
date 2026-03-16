@@ -258,6 +258,14 @@ def main():
     parser.add_argument('--w-exp-format', choices=['8bit', '32bit'], default='32bit',
                         help='W exponent format (default: 32bit)')
 
+    # K-tile-major reordering (must match gen_mx_test_vectors.py settings)
+    parser.add_argument('--tile-cols', type=int, default=0,
+                        help='K-tile width. When >0, reverses K-tile-major W ordering before GEMM.')
+
+    # Hardware tiling parameters for Z output reordering
+    parser.add_argument('--array-width', type=int, default=32,
+                        help='Systolic array width (M-tile height, default: 32)')
+
     # Output array names
     parser.add_argument('--mx-array-name', default='golden_mx', help='Array name for MX data')
     parser.add_argument('--exp-array-name', default='golden_mx_exp', help='Array name for exponents')
@@ -311,6 +319,19 @@ def main():
     assert len(w_fp16) >= args.N * args.K, f"Not enough W data: {len(w_fp16)} < {args.N * args.K}"
     assert len(y_fp16) >= args.M * args.K, f"Not enough Y data: {len(y_fp16)} < {args.M * args.K}"
 
+    # If W data was encoded in K-tile-major order, reverse it to row-major for GEMM
+    if args.tile_cols > 0 and args.tile_cols < args.K:
+        print(f"   Reversing K-tile-major W ordering (tile_cols={args.tile_cols})")
+        w_row_major = [0] * (args.N * args.K)
+        idx = 0
+        for k_start in range(0, args.K, args.tile_cols):
+            k_end = min(k_start + args.tile_cols, args.K)
+            for r in range(args.N):
+                for c in range(k_start, k_end):
+                    w_row_major[r * args.K + c] = w_fp16[idx]
+                    idx += 1
+        w_fp16 = w_row_major
+
     # 3. Perform GEMM
     print(f"\n3. Performing bit-true GEMM...")
     z_fp16 = perform_gemm_fp16(x_fp16, w_fp16, y_fp16, args.M, args.N, args.K)
@@ -321,6 +342,40 @@ def main():
     for i in range(min(8, len(z_fp16))):
         val = fp16_bits_to_float(z_fp16[i])
         print(f"     [{i}]: 0x{z_fp16[i]:04x} = {val:.6f}")
+
+    # 3b. Reorder Z from row-major to hardware tile order
+    # The hardware drains the Z buffer tile-by-tile:
+    #   for m_tile in 0..ceil(M/array_width)-1:
+    #     for k_tile in 0..ceil(K/tile_cols)-1:
+    #       for row in 0..array_width-1:
+    #         emit Z[m_tile*array_width+row, k_tile*tile_cols : (k_tile+1)*tile_cols]
+    # The MX encoder then encodes this stream sequentially into blocks of block_size.
+    if args.tile_cols > 0 and args.tile_cols < args.K:
+        aw = args.array_width
+        tc = args.tile_cols
+        print(f"\n3b. Reordering Z to hardware tile order (array_width={aw}, tile_cols={tc})...")
+        z_tiled = []
+        for m_start in range(0, args.M, aw):
+            m_end = min(m_start + aw, args.M)
+            for k_start in range(0, args.K, tc):
+                k_end = min(k_start + tc, args.K)
+                for r in range(m_start, m_end):
+                    for c in range(k_start, k_end):
+                        z_tiled.append(z_fp16[r * args.K + c])
+        assert len(z_tiled) == len(z_fp16), \
+            f"Tile reorder size mismatch: {len(z_tiled)} vs {len(z_fp16)}"
+        z_fp16 = z_tiled
+        print(f"   Reordered {len(z_fp16)} values to tile order")
+    else:
+        print(f"\n3b. No Z reordering needed (K={args.K} <= tile_cols={args.tile_cols})")
+
+    # Dump reordered FP16 Z for comparison with hardware encoder inputs
+    z_fp16_dump = os.path.join(os.path.dirname(args.output_mx_header), 'golden_z_fp16_tiled.txt')
+    with open(z_fp16_dump, 'w') as f:
+        for i in range(0, len(z_fp16), 32):
+            block = z_fp16[i:i+32]
+            f.write(''.join(f'{v:04x}' for v in block) + '\n')
+    print(f"   Dumped {len(z_fp16)} tiled FP16 values to {z_fp16_dump}")
 
     # 4. Encode result to MX
     print(f"\n4. Encoding result to MX...")

@@ -59,6 +59,12 @@ module redmule_memory_scheduler
   logic [31:0] m_size_unpacked, n_size_unpacked, k_size_unpacked;
   logic [31:0] total_x_values, total_w_values;
   logic [31:0] x_exp_beats, w_exp_beats;
+  // Packed M-tile count for memory addressing: x_rows_iter_cfg is the unpacked
+  // value (m*2/ARRAY_WIDTH for MX). Divide by MX_PACK_FACTOR to get memory passes.
+  logic [15:0] mem_m_tiles;
+  assign mem_m_tiles = cntrl_flags_i.mx_enable
+      ? ((x_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
+      : x_rows_iter_cfg;
 `ifndef SYNTHESIS
   bit dbg_disable_exp_req;
   initial begin
@@ -95,7 +101,7 @@ module redmule_memory_scheduler
       (((w_cols_iter_cfg > 16'd0) ? (w_cols_iter_cfg - 16'd1) : 16'd0) * D + w_cols_lftovr_cfg) :
       (w_cols_iter_cfg * D);
 
-  assign total_x_values = m_size_unpacked * k_size_unpacked;
+  assign total_x_values = m_size_unpacked * n_size_unpacked;
   assign total_w_values = n_size_unpacked * k_size_unpacked;
 
   // Calculate exponent beats based on actual matrix dimensions
@@ -103,7 +109,7 @@ module redmule_memory_scheduler
   logic [31:0] x_blocks, w_blocks;
   logic [31:0] x_exp_bytes, w_exp_bytes;
   
-  assign x_blocks = (total_x_values + 31) >> 5;  // ceil(M*K / 32)
+  assign x_blocks = (total_x_values + 31) >> 5;  // ceil(M*N / 32)
   assign w_blocks = (total_w_values + 31) >> 5;  // ceil(N*K / 32)
   
   assign x_exp_bytes = x_blocks;              // 1 byte per X block
@@ -180,7 +186,8 @@ module redmule_memory_scheduler
     end
   end
 
-  assign x_cols_offs_d = x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1 ? '0 : x_cols_offs_q + JMP;
+  assign x_cols_offs_d = x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1 ? '0 :
+                          (cntrl_flags_i.mx_enable ? '0 : x_cols_offs_q + JMP);
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : x_rows_offs_register
     if (~rst_ni) begin
@@ -204,7 +211,7 @@ module redmule_memory_scheduler
   logic [31:0]        x_total_words;
   assign num_x_reads_raw = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
   assign x_rows_packed = (num_x_reads_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
-  assign x_total_words = x_rows_packed * k_size_unpacked;
+  assign x_total_words = x_rows_packed * n_size_unpacked;
   assign num_x_reads = cntrl_flags_i.mx_enable ? ((x_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT) : num_x_reads_raw;
 
   // Here we initialize the streamer source signals
@@ -259,6 +266,9 @@ module redmule_memory_scheduler
       flgs_streamer_i.z_stream_sink_flags.ready_start &&
       flgs_streamer_i.w_stream_source_flags.ready_start;
 
+  // x_rows_iter_cfg is the unpacked M-tile iteration count (matches scheduler FSM loops).
+  // w_beats already covers ALL K-tiles (computed from k_size_unpacked), so do NOT
+  // multiply by w_cols_iter_cfg again — that would double-count K.
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len   = cntrl_flags_i.mx_enable ? w_beats * x_rows_iter_cfg : reg_file_i.hwpe_params[W_TOT_LEN];
   assign cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.d0_len   = cntrl_flags_i.mx_enable ? 32'd1 : reg_file_i.hwpe_params[W_ITERS][31:16];
 
@@ -286,9 +296,9 @@ module redmule_memory_scheduler
   assign y_load_tot_len = reg_file_i.hwpe_params[Z_TOT_LEN];
   logic [31:0] z_total_words;
   logic [31:0] z_total_beats;
-  // In MX mode, Z payload is packed FP8 (2 elems/16b word) and streamed in
-  // DW-wide beats. Program sink length in beats to avoid overrun/underrun.
-  assign z_total_words = ((m_size_unpacked * n_size_unpacked) + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  // In MX mode, Z output is FP8 (8-bit per element). Two FP8 values pack into
+  // each 16-bit word slot, so divide total element count by MX_PACK_FACTOR.
+  assign z_total_words = ((m_size_unpacked * k_size_unpacked) + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
   assign z_total_beats = (z_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
   assign z_store_tot_len = cntrl_flags_i.mx_enable ? z_total_beats
                                                     : reg_file_i.hwpe_params[Z_TOT_LEN];
@@ -312,7 +322,11 @@ module redmule_memory_scheduler
   // Here we initialize the streamer sink signals for
   // the Z stream sink
   assign cntrl_streamer_o.z_stream_sink_ctrl.req_start = cntrl_scheduler_i.first_load && flgs_streamer_i.z_stream_sink_flags.ready_start;
-  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.base_addr = reg_file_i.hwpe_params[Z_ADDR];
+  // In MX mode, write Z output to a separate buffer (Z_OUT_ADDR) to avoid
+  // overwriting the FP16 Y bias that later K-tiles still need to consume.
+  assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.base_addr =
+      cntrl_flags_i.mx_enable ? reg_file_i.hwpe_params[Z_OUT_ADDR]
+                              : reg_file_i.hwpe_params[Z_ADDR];
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.tot_len = z_store_tot_len;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_len = z_store_d0_len;
   assign cntrl_streamer_o.z_stream_sink_ctrl.addressgen_ctrl.d0_stride = z_store_d0_stride;
@@ -387,6 +401,24 @@ module redmule_memory_scheduler
                  total_x_values,
                  x_exp_beats,
                  num_x_reads);
+        $display("[DBG][MSCHED][%0t] Y_STREAM: tot_len=%0d d0_len=%0d d1_len=%0d Z_TOT_LEN_REG=%0d z_store_tot_len=%0d z_total_words=%0d z_total_beats=%0d",
+                 $time,
+                 y_load_tot_len,
+                 W,
+                 reg_file_i.hwpe_params[W_ITERS][15:0],
+                 reg_file_i.hwpe_params[Z_TOT_LEN],
+                 z_store_tot_len,
+                 z_total_words,
+                 z_total_beats);
+        $display("[DBG][MSCHED][%0t] W_STREAM: tot_len=%0d w_beats=%0d w_rows_packed=%0d w_words=%0d x_rows_iter=%0d w_cols_iter=%0d W_TOT_LEN_REG=%0d",
+                 $time,
+                 cntrl_streamer_o.w_stream_source_ctrl.addressgen_ctrl.tot_len,
+                 w_beats,
+                 w_rows_packed,
+                 w_total_words,
+                 x_rows_iter_cfg,
+                 w_cols_iter_cfg,
+                 reg_file_i.hwpe_params[W_TOT_LEN]);
       end
     end
   end

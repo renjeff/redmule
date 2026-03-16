@@ -329,4 +329,62 @@ assign z_muxed_o.valid = mx_active ? pack_valid_q : z_engine_stream_i.valid;
 // Consume z_buffer when MX active, otherwise use backpressure from downstream
 assign z_engine_stream_i.ready = mx_active ? fifo_grant_o : z_muxed_o.ready;
 
+// Debug: dump key info about each FIFO push and encoder output
+`ifndef SYNTHESIS
+  bit dbg_mx_out;
+  initial dbg_mx_out = $test$plusargs("MX_OUT_DUMP");
+
+  int unsigned fifo_push_cnt;
+  int unsigned enc_block_cnt;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni || clear_i) begin
+      fifo_push_cnt <= 0;
+      enc_block_cnt <= 0;
+    end else begin
+      if (fifo_push) fifo_push_cnt <= fifo_push_cnt + 1;
+      if (mx_val_valid && mx_val_ready) enc_block_cnt <= enc_block_cnt + 1;
+    end
+  end
+
+  always @(posedge clk_i) begin
+    if (dbg_mx_out && fifo_push) begin
+      // Dump ALL FP16 elements for first few beats, selected elements for rest
+      if (fifo_push_cnt < 4 || fifo_push_cnt == 31 || fifo_push_cnt == 32 || fifo_push_cnt == 33) begin
+        for (int k = 0; k < 64; k += 8) begin
+          $display("[MX_OUT][BEAT_FULL] t=%0t beat=%0d k[%02d-%02d]: %04h %04h %04h %04h %04h %04h %04h %04h",
+                   $time, fifo_push_cnt, k, k+7,
+                   fifo_data_in_masked[(k+0)*16 +: 16],
+                   fifo_data_in_masked[(k+1)*16 +: 16],
+                   fifo_data_in_masked[(k+2)*16 +: 16],
+                   fifo_data_in_masked[(k+3)*16 +: 16],
+                   fifo_data_in_masked[(k+4)*16 +: 16],
+                   fifo_data_in_masked[(k+5)*16 +: 16],
+                   fifo_data_in_masked[(k+6)*16 +: 16],
+                   fifo_data_in_masked[(k+7)*16 +: 16]);
+        end
+      end else begin
+        $display("[MX_OUT][FIFO_PUSH] t=%0t beat=%0d chunks=%0d fp16[0]=0x%04h fp16[25]=0x%04h fp16[31]=0x%04h fp16[32]=0x%04h fp16[57]=0x%04h fp16[63]=0x%04h",
+                 $time, fifo_push_cnt, fifo_chunk_count_in,
+                 fifo_data_in_masked[15:0],
+                 fifo_data_in_masked[25*16 +: 16],
+                 fifo_data_in_masked[31*16 +: 16],
+                 fifo_data_in_masked[32*16 +: 16],
+                 fifo_data_in_masked[57*16 +: 16],
+                 fifo_data_in_masked[63*16 +: 16]);
+      end
+    end
+
+    if (dbg_mx_out && mx_val_valid && mx_val_ready) begin
+      // Dump the MX encoder output: shared exponent and a few FP8 samples
+      $display("[MX_OUT][ENC_DONE] t=%0t block=%0d shared_exp=0x%02h fp8[0]=0x%02h fp8[15]=0x%02h fp8[25]=0x%02h fp8[31]=0x%02h",
+               $time, enc_block_cnt, mx_exp_data,
+               mx_val_data[7:0],
+               mx_val_data[15*8 +: 8],
+               mx_val_data[25*8 +: 8],
+               mx_val_data[31*8 +: 8]);
+    end
+  end
+`endif
+
 endmodule : redmule_mx_output_stage

@@ -123,6 +123,7 @@ end
 
 // With very small leftovers on K it may happen that the z submatrix is completely stored before the current matrix of biases is fully pushed.
 // Therefore, we have to check that we are not in the process of pushing biases into the array before storing
+//
 assign load_en  = current_state == EMPTY && ~ctrl_i.fill && d_index == '0 && fill_shift == '0;
 assign store_en = current_state == PUSHED;
 
@@ -131,7 +132,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : buffer_fill_counter
   if(~rst_ni) begin
     fill_shift <= '0;
   end else begin
-    if (rst_fill || clear_i)
+    if (rst_fill || clear_i || (current_state == PUSHED && next_state == EMPTY))
       fill_shift <= '0;
     else if (ctrl_i.fill)
       fill_shift <= fill_shift + 1;
@@ -198,7 +199,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : depth_read_counter
   if(~rst_ni) begin
     d_index <= '0;
   end else begin
-    if (rst_d_count || clear_i)
+    if (rst_d_count || clear_i || (current_state == PUSHED && next_state == EMPTY))
       d_index <= '0;
     else if (ctrl_i.y_push_enable)
       d_index <= d_index + 1;
@@ -228,5 +229,67 @@ always_comb begin : z_strb_assignment
     z_strb_o[i*BITW/8+:BITW/8] = '1;
   end
 end
+
+// synthesis translate_off
+bit dbg_zbuf;
+initial dbg_zbuf = $test$plusargs("MX_DEBUG_DUMP");
+
+integer y_beats_consumed;
+always @(posedge clk_i or negedge rst_ni) begin
+  if (~rst_ni || clear_i)
+    y_beats_consumed <= 0;
+  else if (load_en && ctrl_i.y_valid)
+    y_beats_consumed <= y_beats_consumed + 1;
+end
+
+// Watchdog: fires once after Z buffer stuck in EMPTY waiting for Y for 500 cycles
+integer zbuf_wait_cnt;
+logic zbuf_wait_reported;
+always @(posedge clk_i or negedge rst_ni) begin
+  if (~rst_ni || clear_i) begin
+    zbuf_wait_cnt <= 0;
+    zbuf_wait_reported <= 0;
+  end else if (current_state == EMPTY && ~ctrl_i.fill && !ctrl_i.y_valid) begin
+    zbuf_wait_cnt <= zbuf_wait_cnt + 1;
+    if (dbg_zbuf && zbuf_wait_cnt == 500 && !zbuf_wait_reported) begin
+      zbuf_wait_reported <= 1;
+      $display("[DBG][ZBUF] STUCK EMPTY waiting for Y at t=%0t", $time);
+      $display("[DBG][ZBUF]   load_en=%b  fill=%b  d_idx=%0d  fill_sh=%0d  w_idx=%0d",
+               load_en, ctrl_i.fill, d_index, fill_shift, w_index);
+      $display("[DBG][ZBUF]   y_valid=%b  y_ready=%b  y_push_en=%b  y_width=%0d  y_height=%0d",
+               ctrl_i.y_valid, flags_o.y_ready, ctrl_i.y_push_enable,
+               ctrl_i.y_width, ctrl_i.y_height);
+      $display("[DBG][ZBUF]   z_width=%0d  z_height=%0d  ready=%b  first_load=%b",
+               ctrl_i.z_width, ctrl_i.z_height, ctrl_i.ready, ctrl_i.first_load);
+      $display("[DBG][ZBUF]   y_beats_consumed=%0d  store_shift_q=%0d",
+               y_beats_consumed, store_shift_q);
+    end
+  end else begin
+    zbuf_wait_cnt <= 0;
+  end
+end
+
+always @(posedge clk_i) begin
+  if (dbg_zbuf) begin
+    if (current_state != next_state) begin
+      $display("[DBG][ZBUF] t=%0t  %s -> %s  w_idx=%0d  fill_sh=%0d  d_idx=%0d  load_en=%b  y_valid=%b  y_beats=%0d",
+               $time,
+               current_state == EMPTY ? "EMPTY" : current_state == LOADED ? "LOADED" : "PUSHED",
+               next_state == EMPTY ? "EMPTY" : next_state == LOADED ? "LOADED" : "PUSHED",
+               w_index, fill_shift, d_index, load_en, ctrl_i.y_valid, y_beats_consumed);
+    end
+    // Dump engine output at fill_shift around K=57 (positions 55-59)
+    if (ctrl_i.fill && fill_shift >= 55 && fill_shift <= 59) begin
+      $display("[DBG][ZBUF] FILL fill_sh=%0d  r0=0x%04h r1=0x%04h r2=0x%04h r3=0x%04h r4=0x%04h r5=0x%04h r6=0x%04h r7=0x%04h",
+               fill_shift,
+               z_buffer_i[0], z_buffer_i[1], z_buffer_i[2], z_buffer_i[3],
+               z_buffer_i[4], z_buffer_i[5], z_buffer_i[6], z_buffer_i[7]);
+      $display("[DBG][ZBUF]      r24=0x%04h r25=0x%04h r26=0x%04h r27=0x%04h r28=0x%04h r29=0x%04h r30=0x%04h r31=0x%04h",
+               z_buffer_i[24], z_buffer_i[25], z_buffer_i[26], z_buffer_i[27],
+               z_buffer_i[28], z_buffer_i[29], z_buffer_i[30], z_buffer_i[31]);
+    end
+  end
+end
+// synthesis translate_on
 
 endmodule : redmule_z_buffer

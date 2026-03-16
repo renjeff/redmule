@@ -60,7 +60,12 @@ module redmule_scheduler
   output x_buffer_ctrl_t                  cntrl_x_buffer_o ,
   output w_buffer_ctrl_t                  cntrl_w_buffer_o ,
   output z_buffer_ctrl_t                  cntrl_z_buffer_o ,
-  output flgs_scheduler_t                 flgs_scheduler_o
+  output flgs_scheduler_t                 flgs_scheduler_o ,
+  // Exponent buffer mark/rewind for MX multi-tile replay
+  output logic                            x_exp_mark_o     ,
+  output logic                            x_exp_rewind_o   ,
+  output logic                            w_exp_mark_o     ,
+  output logic                            w_exp_rewind_o
 );
 
   typedef enum logic [1:0] {
@@ -80,6 +85,9 @@ module redmule_scheduler
         computing,
         x_refill,
         pushing_y;
+
+  // Forward declaration: engine clock gate (registered) used for fill alignment
+  logic [W-1:0] row_clk_en_d, row_clk_en_q;
 
   /************************
    * X Iteration counters *
@@ -260,6 +268,52 @@ module redmule_scheduler
     end
   end
 
+  // Stall watchdog — fires once after 2000 cycles of continuous stall
+  integer stall_cnt;
+  logic stall_reported;
+  always @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni || clear_i || cntrl_scheduler_i.rst) begin
+      stall_cnt <= 0;
+      stall_reported <= 0;
+    end else if (stall_engine) begin
+      stall_cnt <= stall_cnt + 1;
+      if (dbg_sched && stall_cnt == 2000 && !stall_reported) begin
+        stall_reported <= 1;
+        $display("[DBG][STALL] ====== HANG DETECTED at t=%0t ======", $time);
+        $display("[DBG][STALL] state=%0d (LOAD_W=2)", current_state);
+        $display("[DBG][STALL] w_valid=%b  w_valid_en=%b (w_done=%b)",
+                 w_valid_i, check_w_valid_en, w_done);
+        $display("[DBG][STALL] x_full=%b   x_full_en=%b  (x_refill=%b x_shift=%0d x_done=%b)",
+                 check_x_full, check_x_full_en, x_refill, x_shift_cnt_q, x_done);
+        $display("[DBG][STALL] y_loaded=%b y_loaded_en=%b (z_wait_cnt=%0d)",
+                 check_y_loaded, check_y_loaded_en, z_wait_counter_q);
+        $display("[DBG][STALL] w_rows_q=%0d/%0d  w_cols_q=%0d/%0d  w_mat_q=%0d",
+                 w_rows_iter_q, reg_file_i.hwpe_params[W_ITERS][31:16],
+                 w_cols_iter_q, reg_file_i.hwpe_params[W_ITERS][15:0],
+                 w_mat_iters_q);
+        $display("[DBG][STALL] x_cols_q=%0d/%0d  x_w_q=%0d  x_rows_q=%0d/%0d",
+                 x_cols_iter_q, reg_file_i.hwpe_params[X_ITERS][15:0],
+                 x_w_iters_q,
+                 x_rows_iter_q, reg_file_i.hwpe_params[X_ITERS][31:16]);
+        $display("[DBG][STALL] LEFTOVERS=0x%08h", reg_file_i.hwpe_params[LEFTOVERS]);
+        $display("[DBG][STALL] z_wait_en=%b z_avail_en=%b y_push_en=%b",
+                 z_wait_en, z_avail_en, y_push_en);
+        $display("[DBG][STALL] y_valid_i=%b z_ready_i=%b",
+                 y_valid_i, z_ready_i);
+        $display("[DBG][STALL] zbuf: loaded=%b empty=%b y_pushed=%b y_ready=%b z_valid=%b",
+                 flgs_z_buffer_i.loaded, flgs_z_buffer_i.empty,
+                 flgs_z_buffer_i.y_pushed, flgs_z_buffer_i.y_ready,
+                 flgs_z_buffer_i.z_valid);
+        $display("[DBG][STALL] y_cols_q=%0d y_rows_q=%0d  y_width=%0d y_height=%0d",
+                 y_cols_iter_q, y_rows_iter_q, y_width, y_height);
+        $display("[DBG][STALL] z_width=%0d z_height=%0d  reg_enable=%b",
+                 z_width, z_height, reg_enable_o);
+      end
+    end else begin
+      stall_cnt <= 0;
+    end
+  end
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_columns_iteration
     if(~rst_ni) begin
       w_cols_iter_q <= '0;
@@ -388,6 +442,27 @@ module redmule_scheduler
   assign z_wait_counter_d = z_wait_counter_q == PIPE_REGS ? '0 : z_wait_counter_q + 1;
   assign z_wait_clr       = z_wait_en && ~stall_engine && z_wait_counter_q == PIPE_REGS;
 
+  // Z buffer drain guard: prevent z_avail fill/counter during PUSHED state
+  logic z_buf_draining;
+  assign z_buf_draining = flgs_z_buffer_i.z_valid;  // Z buffer in PUSHED state
+
+  // Delayed drain flag: aligns fill resumption with engine clock gate (registered).
+  // Without this, fill resumes 1 cycle before the engine clock, causing a duplicate
+  // capture at the drain→fill transition.
+  logic z_buf_was_draining;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni)
+      z_buf_was_draining <= 1'b0;
+    else if (clear_i || cntrl_scheduler_i.rst)
+      z_buf_was_draining <= 1'b0;
+    else
+      z_buf_was_draining <= z_buf_draining;
+  end
+
+  // Combined guard: blocks fill for 1 extra cycle after drain ends
+  logic z_drain_guard;
+  assign z_drain_guard = z_buf_draining || z_buf_was_draining;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_avail_enable_register
     if(~rst_ni) begin
       z_avail_en <= '0;
@@ -406,14 +481,14 @@ module redmule_scheduler
     end else begin
       if (clear_i || cntrl_scheduler_i.rst) begin
         z_avail_counter_q <= '0;
-      end else if (z_avail_en && ~stall_engine) begin
+      end else if (z_avail_en && row_clk_en_q[0]) begin
         z_avail_counter_q <= z_avail_counter_d;
       end
     end
   end
 
   assign z_avail_counter_d = z_avail_counter_q == z_height-1 ? '0 : z_avail_counter_q + 1;
-  assign z_avail_clr       = z_avail_en && ~stall_engine && z_avail_counter_q == z_height-1;
+  assign z_avail_clr       = z_avail_en && row_clk_en_q[0] && z_avail_counter_q == z_height-1;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : y_push_enable_register
     if(~rst_ni) begin
@@ -472,7 +547,11 @@ module redmule_scheduler
   assign cntrl_z_buffer_o.ready         = z_ready_i;
   assign cntrl_z_buffer_o.y_valid       = y_valid_i;
   assign cntrl_z_buffer_o.y_push_enable = y_push_en && ~stall_engine;
-  assign cntrl_z_buffer_o.fill          = z_avail_en && reg_enable_o;
+  // Gate fill by registered row_clk_en_q to perfectly align with the engine
+  // clock gate (which is also derived from row_clk_en_q via tc_clk_gating).
+  // This prevents fill from advancing when the engine is frozen due to
+  // stall_engine or z_buf_draining transitions (1-cycle gate delay).
+  assign cntrl_z_buffer_o.fill          = z_avail_en && row_clk_en_q[0];
   assign cntrl_z_buffer_o.first_load    = y_cols_iter_q == '0 && y_rows_iter_q == '0;
 
   assign cntrl_z_buffer_o.y_width       = y_width;
@@ -535,12 +614,12 @@ module redmule_scheduler
   assign cntrl_engine_o.out_ready        = 1'b1;
   assign cntrl_engine_o.accumulate       = ~pushing_y;
 
-  logic [W-1:0] row_clk_en_d, row_clk_en_q;
-
   always_comb begin
     row_clk_en_d = '0;
 
-    if (computing && ~stall_engine) begin
+    // Pause engine during z_avail + drain overlap to prevent the systolic
+    // array from shifting output rows that cannot be captured by fill.
+    if (computing && ~stall_engine && ~(z_avail_en && z_drain_guard)) begin
       for (int i = 0; i < z_width; i++) begin
         row_clk_en_d[i] = 1'b1;
       end
@@ -600,6 +679,7 @@ module redmule_scheduler
                           ~check_x_full   && check_x_full_en   ||
                           ~check_y_loaded && check_y_loaded_en
                         );
+
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : first_load_register
     if(~rst_ni) begin
@@ -707,5 +787,31 @@ module redmule_scheduler
       end
     endcase
   end
+
+  /*************************************
+   * Exponent buffer mark/rewind logic *
+   *************************************/
+  // K-tile boundary (not last): rewind X exponents to replay same M-tile's exponents
+  logic k_tile_boundary_not_last;
+  assign k_tile_boundary_not_last = w_cols_iter_en &&
+      (w_cols_iter_q != reg_file_i.hwpe_params[W_ITERS][15:0]-1);
+
+  // M-tile boundary (not last): mark X exponents (new segment), rewind W exponents
+  logic m_tile_boundary_not_last;
+  assign m_tile_boundary_not_last = w_mat_iters_en && !w_done_en;
+
+  // X exp mark: save read_ptr at start of each M-tile
+  //   - start_computation: first M-tile (position 0)
+  //   - m_tile_boundary: subsequent M-tiles (position after previous M-tile's exponents)
+  assign x_exp_mark_o   = mx_enable_i && (start_computation || m_tile_boundary_not_last);
+
+  // X exp rewind: replay exponents for K-tile > 0 within same M-tile
+  assign x_exp_rewind_o = mx_enable_i && k_tile_boundary_not_last;
+
+  // W exp mark: save read_ptr at start (position 0, only once)
+  assign w_exp_mark_o   = mx_enable_i && start_computation;
+
+  // W exp rewind: replay all W exponents for each new M-tile
+  assign w_exp_rewind_o = mx_enable_i && m_tile_boundary_not_last;
 
 endmodule : redmule_scheduler
