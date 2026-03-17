@@ -381,8 +381,14 @@ logic consume_x_slot, consume_w_slot;
 
 // Decoder signals
 logic x_mx_fp16_valid, x_mx_fp16_ready;
-logic w_mx_fp16_valid, w_mx_fp16_ready;
-logic [MX_NUM_LANES*BITW-1:0] x_mx_fp16_data, w_mx_fp16_data;
+logic [MX_NUM_LANES*BITW-1:0] x_mx_fp16_data;
+
+// W decoded output mediated by elastic buffer (breaks W→X head-of-line blocking)
+logic w_dec_to_buf_valid;                       // decoder → buffer push valid
+logic w_dec_buf_ready;                          // buffer → decoder push ready
+logic w_buf_to_mux_valid;                       // buffer → input_mux pop valid
+logic [MX_NUM_LANES*BITW-1:0] w_buf_to_mux_data; // buffer → input_mux data
+logic w_buf_to_mux_ready;                       // input_mux → buffer pop ready
 
 // Decoder interface signals
 logic mx_dec_val_valid, mx_dec_exp_valid;
@@ -498,10 +504,64 @@ redmule_mx_decoder #(
 );
 
 // Route decoder output to X or W based on target
-assign x_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_x) ? mx_dec_fp16_valid : 1'b0;
-assign w_mx_fp16_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_valid : 1'b0;
-assign x_mx_fp16_data  = mx_dec_fp16_data;
-assign w_mx_fp16_data  = mx_dec_fp16_data;
+assign x_mx_fp16_valid  = (cntrl_flags.mx_enable && target_is_x) ? mx_dec_fp16_valid : 1'b0;
+assign x_mx_fp16_data   = mx_dec_fp16_data;
+// W decoded output routed through elastic buffer (w_dec_buf)
+assign w_dec_to_buf_valid = (cntrl_flags.mx_enable && target_is_w) ? mx_dec_fp16_valid : 1'b0;
+
+// ---------------------------------------------------------------
+//  W decoder output elastic buffer (depth 4)
+//  Absorbs in-flight W blocks when the downstream W path is blocked,
+//  freeing the shared decoder to continue processing X blocks.
+//  Without this, W backpressure stalls the decoder pipeline and
+//  prevents X from loading, causing a deadlock during PRELOAD.
+// ---------------------------------------------------------------
+localparam int unsigned W_DEC_BUF_DEPTH = 4;
+localparam int unsigned W_DEC_BUF_DW    = MX_NUM_LANES * BITW;
+localparam int unsigned W_DEC_BUF_PTR_W = $clog2(W_DEC_BUF_DEPTH);
+localparam int unsigned W_DEC_BUF_CNT_W = $clog2(W_DEC_BUF_DEPTH + 1);
+
+logic [W_DEC_BUF_DW-1:0]    w_dec_buf_mem [W_DEC_BUF_DEPTH];
+logic [W_DEC_BUF_PTR_W-1:0] w_dec_buf_head_q, w_dec_buf_tail_q;
+logic [W_DEC_BUF_CNT_W-1:0] w_dec_buf_count_q;
+
+logic w_dec_buf_push, w_dec_buf_pop;
+
+assign w_dec_buf_ready    = (w_dec_buf_count_q < W_DEC_BUF_CNT_W'(W_DEC_BUF_DEPTH));
+assign w_dec_buf_push     = w_dec_to_buf_valid && w_dec_buf_ready;
+assign w_dec_buf_pop      = w_buf_to_mux_valid && w_buf_to_mux_ready;
+
+assign w_buf_to_mux_valid = (w_dec_buf_count_q != '0);
+assign w_buf_to_mux_data  = w_dec_buf_mem[w_dec_buf_head_q];
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    w_dec_buf_head_q  <= '0;
+    w_dec_buf_tail_q  <= '0;
+    w_dec_buf_count_q <= '0;
+  end else if (clear) begin
+    w_dec_buf_head_q  <= '0;
+    w_dec_buf_tail_q  <= '0;
+    w_dec_buf_count_q <= '0;
+  end else begin
+    if (w_dec_buf_push)
+      w_dec_buf_tail_q <= (w_dec_buf_tail_q == W_DEC_BUF_PTR_W'(W_DEC_BUF_DEPTH-1)) ?
+                          '0 : w_dec_buf_tail_q + 1'b1;
+    if (w_dec_buf_pop)
+      w_dec_buf_head_q <= (w_dec_buf_head_q == W_DEC_BUF_PTR_W'(W_DEC_BUF_DEPTH-1)) ?
+                          '0 : w_dec_buf_head_q + 1'b1;
+    case ({w_dec_buf_push, w_dec_buf_pop})
+      2'b10:   w_dec_buf_count_q <= w_dec_buf_count_q + 1'b1;
+      2'b01:   w_dec_buf_count_q <= w_dec_buf_count_q - 1'b1;
+      default: ;
+    endcase
+  end
+end
+
+always_ff @(posedge clk_i) begin
+  if (w_dec_buf_push)
+    w_dec_buf_mem[w_dec_buf_tail_q] <= mx_dec_fp16_data;
+end
 
 // ---- W decode position tracker for K-tile-aware packing ----
 // The input_mux packs decoded MX chunks into bus-width FIFO entries.
@@ -537,7 +597,7 @@ assign w_slots_per_pass   = w_slots_full_k
                                ? (reg_file.hwpe_params[W_ITERS][31:16] * 16'(w_chunks_lftovr_k))
                                : 16'd0);
 
-assign w_dec_accept = mx_mode_active && w_mx_fp16_valid && w_mx_fp16_ready;
+assign w_dec_accept = mx_mode_active && w_buf_to_mux_valid && w_buf_to_mux_ready;
 
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni) begin
@@ -571,17 +631,17 @@ redmule_mx_input_mux #(
   .clear_i           ( clear               ),
   .mx_enable_i        ( cntrl_flags.mx_enable ),
   .target_is_x_i      ( target_is_x           ),
-  .target_is_w_i      ( target_is_w        ),
+  .target_is_w_i      ( 1'b1               ),
   .x_row_chunks_i     ( x_row_chunks       ),
   .w_row_chunks_i     ( w_row_chunks       ),
   .x_raw_i            ( x_buffer_raw       ),
   .w_raw_i            ( w_buffer_raw      ),
   .x_decoded_valid_i  ( x_mx_fp16_valid    ),
-  .w_decoded_valid_i  ( w_mx_fp16_valid    ),
+  .w_decoded_valid_i  ( w_buf_to_mux_valid ),
   .x_decoded_ready_o  ( x_mx_fp16_ready    ),
-  .w_decoded_ready_o  ( w_mx_fp16_ready    ),
+  .w_decoded_ready_o  ( w_buf_to_mux_ready ),
   .x_decoded_data_i   ( x_mx_fp16_data     ),
-  .w_decoded_data_i   ( w_mx_fp16_data     ),
+  .w_decoded_data_i   ( w_buf_to_mux_data  ),
   .x_muxed_o          ( x_buffer_packed    ),
   .w_muxed_o          ( w_buffer_packed    )
 );
@@ -620,7 +680,7 @@ redmule_mx_beat_unpack #(
 
 // Decoder ready routing
 assign mx_dec_fp16_ready = target_is_x ? x_mx_fp16_ready :
-                           target_is_w ? w_mx_fp16_ready : 1'b0;
+                           target_is_w ? w_dec_buf_ready : 1'b0;
 
 hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),

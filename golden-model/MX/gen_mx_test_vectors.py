@@ -106,7 +106,8 @@ def pad_exponents_to_64_bytes(exp_blocks):
         padded.extend([0] * 62)
     return padded
 
-def write_c_header(filename, array_name, values, elem_type='uint16_t', values_per_line=8):
+def write_c_header(filename, array_name, values, elem_type='uint16_t', values_per_line=8,
+                   align=None):
     """Write values as a C header file."""
     with open(filename, 'w') as f:
         # Header guards
@@ -116,8 +117,9 @@ def write_c_header(filename, array_name, values, elem_type='uint16_t', values_pe
         f.write(f"#define {guard}\n\n")
         f.write(f"#include <stdint.h>\n\n")
 
-        # Array declaration
-        f.write(f"{elem_type} {array_name}[{len(values)}] = {{\n")
+        # Array declaration (with optional alignment for DMA/streamer compatibility)
+        align_attr = f" __attribute__((aligned({align})))" if align else ""
+        f.write(f"{elem_type} {array_name}[{len(values)}]{align_attr} = {{\n")
 
         # Write values
         for i, v in enumerate(values):
@@ -276,7 +278,7 @@ def main():
             write_hex_lines(args.output_exp, exp_words, width=8)  # 32-bit words
             print(f'Wrote {num_blocks} exponents as {len(exp_words)} compact 32-bit words (4 exp/word) to {args.output_exp}')
         if args.output_exp_header:
-            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t')
+            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t', align=128)
             print(f'Wrote C header with {len(exp_words)} uint32_t compact words to {args.output_exp_header}')
 
     elif args.exp_format == 'compact-32bit':
@@ -286,7 +288,7 @@ def main():
             write_hex_lines(args.output_exp, exp_words, width=8)  # 32-bit words
             print(f'Wrote {num_blocks} exponent vectors as {len(exp_words)} compact 32-bit words to {args.output_exp}')
         if args.output_exp_header:
-            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t')
+            write_c_header(args.output_exp_header, args.exp_array_name, exp_words, elem_type='uint32_t', align=128)
             print(f'Wrote C header with {len(exp_words)} uint32_t exponent vectors to {args.output_exp_header}')
 
     else:  # 'padded' - old format
