@@ -550,12 +550,11 @@ module redmule_scheduler
   assign y_push_clr       = y_push_en && ~stall_engine && y_push_counter_q == y_height-1;
 
   assign y_width  = y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : W;
-  // Use scheduler's K-tile counter (w_cols_iter_q) instead of Z buffer's
-  // (y_cols_iter_q). y_push fires BEFORE the Z buffer drains the previous
-  // K-tile, so y_cols_iter_q is still stale. w_cols_iter_q has already been
-  // updated by w_cols_iter_en at K-tile boundaries, giving the correct
-  // leftover height for the upcoming K-tile.
-  assign y_height = w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
+  // MX mode: use engine-side K-tile counter (w_cols_iter_q) because the Z buffer's
+  // y_cols_iter_q advances prematurely via the first_load empty path.
+  // FP16 mode: use y_cols_iter_q (original design) — w_cols_iter_q races ahead of
+  // y_push timing in FP16 and causes 1520 errors on 96×96×96.
+  assign y_height = (mx_enable_i ? w_cols_iter_q : y_cols_iter_q) == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_width_register
     if(~rst_ni) begin
