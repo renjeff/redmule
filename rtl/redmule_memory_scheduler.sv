@@ -23,7 +23,12 @@ module redmule_memory_scheduler
   input  flgs_streamer_t        flgs_streamer_i  ,
   input  cntrl_scheduler_t      cntrl_scheduler_i,
   input  cntrl_flags_t          cntrl_flags_i    ,
-  output cntrl_streamer_t       cntrl_streamer_o
+  output cntrl_streamer_t       cntrl_streamer_o ,
+  // Total valid exponent counts for exp buffer write-capping
+  output logic [15:0]           x_exp_total_count_o,
+  output logic [15:0]           w_exp_total_count_o,
+  // X exponent segment size (exponents per M-tile) for segment gating
+  output logic [15:0]           x_exp_segment_size_o
 );
   localparam int unsigned JMP = NumByte*(DATA_W/MemDw - 1);
   localparam int unsigned BYTES_PER_BEAT = DW/8;
@@ -372,6 +377,16 @@ module redmule_memory_scheduler
 
   assign cntrl_streamer_o.mx_enable = cntrl_flags_i.mx_enable;
   assign cntrl_streamer_o.z_priority = z_priority_i;
+
+  // Expose total valid exponent counts for exp buffer write-capping.
+  // In MX mode, the last exp beat may have fewer valid exponents than
+  // EXPS_PER_BEAT; these counts let the buffer avoid storing junk padding.
+  assign x_exp_total_count_o = cntrl_flags_i.mx_enable ? x_blocks[15:0] : '0;
+  assign w_exp_total_count_o = cntrl_flags_i.mx_enable ? w_blocks[15:0] : '0;
+
+  // X exponent segment size: exponents per M-tile = ARRAY_WIDTH * n_size_unpacked / 32.
+  // Since ARRAY_WIDTH = W = 32, this simplifies to n_size_unpacked.
+  assign x_exp_segment_size_o = cntrl_flags_i.mx_enable ? n_size_unpacked[15:0] : '0;
 
 `ifndef SYNTHESIS
   bit dbg_msched;

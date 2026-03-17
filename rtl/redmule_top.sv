@@ -195,6 +195,10 @@ logic        w_exp_buf_consume;
 logic x_exp_mark, x_exp_rewind;
 logic w_exp_mark, w_exp_rewind;
 
+// MX exponent total valid counts (from memory scheduler)
+logic [15:0] x_exp_total_count, w_exp_total_count;
+logic [15:0] x_exp_segment_size;
+
 // MX output stage signals
 logic fifo_grant;
 logic fifo_valid;
@@ -301,15 +305,17 @@ redmule_exp_buffer #(
   .BUFFER_DEPTH  ( 1024        ),  // Large buffer to hold all exponents
   .BEAT_WIDTH    ( DATAW_ALIGN )
 ) i_x_exp_buffer (
-  .clk_i      ( clk_i                ),
-  .rst_ni     ( rst_ni               ),
-  .clear_i    ( clear                ),
-  .stream_i   ( x_exp_stream_buffered ),
-  .data_o     ( x_exp_buf_data       ),
-  .valid_o    ( x_exp_buf_valid      ),
-  .consume_i  ( x_exp_buf_consume    ),
-  .mark_i     ( x_exp_mark           ),
-  .rewind_i   ( x_exp_rewind         )
+  .clk_i         ( clk_i                ),
+  .rst_ni        ( rst_ni               ),
+  .clear_i       ( clear                ),
+  .stream_i      ( x_exp_stream_buffered ),
+  .total_count_i ( x_exp_total_count    ),
+  .segment_size_i( x_exp_segment_size   ),
+  .data_o        ( x_exp_buf_data       ),
+  .valid_o       ( x_exp_buf_valid      ),
+  .consume_i     ( x_exp_buf_consume    ),
+  .mark_i        ( x_exp_mark           ),
+  .rewind_i      ( x_exp_rewind         )
 );
 
 // W exponent buffer: compact-32bit format (1 exponent word per W block).
@@ -319,15 +325,17 @@ redmule_exp_buffer #(
   .BUFFER_DEPTH  ( 1024        ),  // Buffer for up to 1024 weight blocks
   .BEAT_WIDTH    ( DATAW_ALIGN )
 ) i_w_exp_buffer (
-  .clk_i      ( clk_i                ),
-  .rst_ni     ( rst_ni               ),
-  .clear_i    ( clear                ),
-  .stream_i   ( w_exp_stream_buffered ),
-  .data_o     ( w_exp_buf_word       ),
-  .valid_o    ( w_exp_buf_valid      ),
-  .consume_i  ( w_exp_buf_consume    ),
-  .mark_i     ( w_exp_mark           ),
-  .rewind_i   ( w_exp_rewind         )
+  .clk_i         ( clk_i                ),
+  .rst_ni        ( rst_ni               ),
+  .clear_i       ( clear                ),
+  .stream_i      ( w_exp_stream_buffered ),
+  .total_count_i ( w_exp_total_count    ),
+  .segment_size_i( '0                   ),  // No segment gating for W
+  .data_o        ( w_exp_buf_word       ),
+  .valid_o       ( w_exp_buf_valid      ),
+  .consume_i     ( w_exp_buf_consume    ),
+  .mark_i        ( w_exp_mark           ),
+  .rewind_i      ( w_exp_rewind         )
 );
 
 // In current MX config (NUM_GROUPS==1), decoder uses one shared exponent byte.
@@ -917,7 +925,10 @@ redmule_memory_scheduler #(
   .flgs_streamer_i   ( flgs_streamer   ),
   .cntrl_scheduler_i ( cntrl_scheduler ),
   .cntrl_flags_i     ( cntrl_flags     ),
-  .cntrl_streamer_o  ( cntrl_streamer  )
+  .cntrl_streamer_o  ( cntrl_streamer  ),
+  .x_exp_total_count_o ( x_exp_total_count ),
+  .w_exp_total_count_o ( w_exp_total_count ),
+  .x_exp_segment_size_o ( x_exp_segment_size )
 );
 
 

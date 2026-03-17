@@ -415,6 +415,38 @@ module redmule_scheduler
   assign y_rows_iter_en = y_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && y_cols_iter_en;
   assign y_rows_iter_d  =  y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : y_rows_iter_q + 1;
 
+  // K-tile transition debug
+  always @(posedge clk_i) begin
+    if (y_cols_iter_en) begin
+      $display("[DBG][KTILE] t=%0t y_cols_iter %0d -> %0d  y_height=%0d z_height=%0d  y_rows_q=%0d  first_load=%b  LEFTOVERS[7:0]=%0d  W_ITERS[15:0]=%0d  w_cols_iter_q=%0d",
+               $time, y_cols_iter_q, y_cols_iter_d, y_height, z_height,
+               y_rows_iter_q,
+               y_cols_iter_q == '0 && y_rows_iter_q == '0,
+               reg_file_i.hwpe_params[LEFTOVERS][7:0],
+               reg_file_i.hwpe_params[W_ITERS][15:0],
+               w_cols_iter_q);
+    end
+    // Trace key events during K-tile 1 processing
+    if (w_cols_iter_q == 1 && computing) begin
+      // z_avail start/end, fill start, drain, y_push boundaries
+      if (z_avail_en && row_clk_en_q[0] && (z_avail_counter_q == 0 || z_avail_counter_q == z_height-1))
+        $display("[DBG][FILL] t=%0t fill_cnt=%0d/%0d z_height=%0d y_height=%0d",
+                 $time, z_avail_counter_q, z_height, z_height, y_height);
+      if (y_push_en && (y_push_counter_q == 0 || y_push_counter_q == y_height-1))
+        $display("[DBG][YPUSH] t=%0t y_push_cnt=%0d/%0d y_height=%0d accum=%b pushing_y=%b w_rows=%0d",
+                 $time, y_push_counter_q, y_height, y_height, ~pushing_y, pushing_y, w_rows_iter_q);
+    end
+    // Z buffer empty events
+    if (flgs_z_buffer_i.empty && computing)
+      $display("[DBG][ZEMPTY] t=%0t w_cols_q=%0d y_cols_q=%0d y_height=%0d z_height=%0d first_load=%b",
+               $time, w_cols_iter_q, y_cols_iter_q, y_height, z_height,
+               y_cols_iter_q == '0 && y_rows_iter_q == '0);
+    // z_wait_en rising edge
+    if (w_cols_iter_en && computing)
+      $display("[DBG][KWAIT] t=%0t w_cols_iter_en w_cols_q=%0d->%0d w_rows_q=%0d z_height_now=%0d y_height_now=%0d",
+               $time, w_cols_iter_q, w_cols_iter_d, w_rows_iter_q, z_height, y_height);
+  end
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_wait_enable_register
     if(~rst_ni) begin
       z_wait_en <= '0;
@@ -518,7 +550,12 @@ module redmule_scheduler
   assign y_push_clr       = y_push_en && ~stall_engine && y_push_counter_q == y_height-1;
 
   assign y_width  = y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : W;
-  assign y_height = y_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
+  // Use scheduler's K-tile counter (w_cols_iter_q) instead of Z buffer's
+  // (y_cols_iter_q). y_push fires BEFORE the Z buffer drains the previous
+  // K-tile, so y_cols_iter_q is still stale. w_cols_iter_q has already been
+  // updated by w_cols_iter_en at K-tile boundaries, giving the correct
+  // leftover height for the upcoming K-tile.
+  assign y_height = w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && reg_file_i.hwpe_params[LEFTOVERS][7:0] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][7:0] : D;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_width_register
     if(~rst_ni) begin
@@ -792,24 +829,35 @@ module redmule_scheduler
    * Exponent buffer mark/rewind logic *
    *************************************/
   // K-tile boundary (not last): rewind X exponents to replay same M-tile's exponents
-  logic k_tile_boundary_not_last;
-  assign k_tile_boundary_not_last = w_cols_iter_en &&
-      (w_cols_iter_q != reg_file_i.hwpe_params[W_ITERS][15:0]-1);
+  // Use X-side timing (x_w_iters_en) rather than engine-side (w_cols_iter_en):
+  // with the exp buffer total_count cap, the buffer runs dry before the engine
+  // finishes the K-tile, so an engine-side trigger would deadlock.
+  logic x_side_k_tile_not_last;
+  assign x_side_k_tile_not_last = x_w_iters_en &&
+      (x_w_iters_q != reg_file_i.hwpe_params[W_ITERS][15:0]-1);
 
   // M-tile boundary (not last): mark X exponents (new segment), rewind W exponents
   logic m_tile_boundary_not_last;
   assign m_tile_boundary_not_last = w_mat_iters_en && !w_done_en;
 
-  // X exp mark: save read_ptr at start of each M-tile
-  //   - start_computation: first M-tile (position 0)
-  //   - m_tile_boundary: subsequent M-tiles (position after previous M-tile's exponents)
-  assign x_exp_mark_o   = mx_enable_i && (start_computation || m_tile_boundary_not_last);
+  // X exp mark: save read_ptr at M-tile boundaries using X-SIDE timing.
+  // x_rows_iter_en fires when the last K-tile's last N-tile empties the X buffer —
+  // i.e., all X data for one M-tile has been consumed.  Using X-side timing ensures
+  // the mark fires before the engine finishes, so the decoder can immediately start
+  // filling the X buffer for the next M-tile (no gap from segment gating).
+  // The first M-tile's mark (position 0) comes from reset/clear.
+  logic x_side_m_tile_not_last;
+  assign x_side_m_tile_not_last = x_rows_iter_en &&
+      (x_rows_iter_q != reg_file_i.hwpe_params[X_ITERS][31:16]-1);
+
+  assign x_exp_mark_o   = mx_enable_i && x_side_m_tile_not_last;
 
   // X exp rewind: replay exponents for K-tile > 0 within same M-tile
-  assign x_exp_rewind_o = mx_enable_i && k_tile_boundary_not_last;
+  assign x_exp_rewind_o = mx_enable_i && x_side_k_tile_not_last;
 
-  // W exp mark: save read_ptr at start (position 0, only once)
-  assign w_exp_mark_o   = mx_enable_i && start_computation;
+  // W exp mark: position 0 from reset/clear is correct. No explicit mark needed,
+  // because start_computation fires AFTER the W decoder has already consumed exponents.
+  assign w_exp_mark_o   = '0;
 
   // W exp rewind: replay all W exponents for each new M-tile
   assign w_exp_rewind_o = mx_enable_i && m_tile_boundary_not_last;
