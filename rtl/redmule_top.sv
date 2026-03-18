@@ -612,9 +612,16 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
   end
 end
 
-// Row chunking: X uses static config, W uses data-position-aware packing.
-assign x_row_chunks = (x_valid_lanes == '0) ? 8'd1 :
-                      ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES);
+// X row chunking for MX mode.
+// With N-tile-major memory layout, all data for one N-tile arrives before the next.
+// Each full N-tile has TILE / MX_NUM_LANES chunks per M-row packed per beat.
+// N must be a multiple of TILE for MX N-tiling (no leftover support yet).
+localparam int unsigned X_CHUNKS_FULL_N = TOT_DEPTH / MX_NUM_LANES;  // = 2
+
+// Row chunking: X uses static TILE-based packing, W uses position-aware K-tile packing.
+assign x_row_chunks = mx_mode_active ? 8'(X_CHUNKS_FULL_N) :
+    ((x_valid_lanes == '0) ? 8'd1 :
+     ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
 assign w_row_chunks = mx_mode_active ?
     ((w_dec_pos_q < w_slots_full_k) ? 8'(W_CHUNKS_FULL_K) : w_chunks_lftovr_k) :
     ((w_valid_lanes == '0) ? 8'd1 :

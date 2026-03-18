@@ -135,7 +135,14 @@ module redmule_memory_scheduler
     end
   end
 
-  assign x_cols_iters_d = x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1 ? '0 : x_cols_iters_q + 1;
+  // In MX mode, one X memory launch covers ALL N-tiles (decode pipeline handles
+  // N-tiling internally), so the x_cols inner loop is effectively 1.
+  // In FP16 mode, each N-tile is a separate launch, so use X_ITERS[15:0].
+  logic [15:0] msched_x_cols_limit;
+  assign msched_x_cols_limit = cntrl_flags_i.mx_enable ? 16'd1
+                                                       : reg_file_i.hwpe_params[X_ITERS][15:0];
+
+  assign x_cols_iters_d = x_cols_iters_q == msched_x_cols_limit-1 ? '0 : x_cols_iters_q + 1;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_iters_register
     if (~rst_ni) begin
@@ -143,7 +150,7 @@ module redmule_memory_scheduler
     end else begin
       if (clear_i || cntrl_scheduler_i.rst) begin
         w_iters_q <= '0;
-      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1) begin
+      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == msched_x_cols_limit-1) begin
         w_iters_q <= w_iters_d;
       end
     end
@@ -157,7 +164,7 @@ module redmule_memory_scheduler
     end else begin
       if (clear_i || cntrl_scheduler_i.rst) begin
         x_rows_iters_q <= '0;
-      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1 && w_iters_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1) begin
+      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == msched_x_cols_limit-1 && w_iters_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1) begin
         x_rows_iters_q <= x_rows_iters_d;
       end
     end
@@ -200,7 +207,7 @@ module redmule_memory_scheduler
     end else begin
       if (clear_i || cntrl_scheduler_i.rst) begin
         x_rows_offs_q <= '0;
-      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == reg_file_i.hwpe_params[X_ITERS][15:0]-1 && w_iters_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1) begin
+      end else if (flgs_streamer_i.x_stream_source_flags.done && x_cols_iters_q == msched_x_cols_limit-1 && w_iters_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1) begin
         x_rows_offs_q <= x_rows_offs_d;
       end
     end

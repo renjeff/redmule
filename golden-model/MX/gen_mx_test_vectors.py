@@ -167,6 +167,28 @@ def reorder_ktile_major(vals, rows, cols, tile_cols):
     return result
 
 
+def reorder_mn_tile_major(vals, rows, cols, m_tile_rows, n_tile_cols):
+    """Reorder row-major to M-tile-major(N-tile-major) order.
+
+    Output order: for each M-tile (m_tile_rows rows), then for each N-tile
+    (n_tile_cols columns), emit the row-slice of that column tile.
+
+    This ensures the linear memory reader fetches all N-tile data for one
+    M-tile contiguously, matching the memory scheduler's per-M-tile X launch.
+    """
+    assert len(vals) >= rows * cols, \
+        f"reorder_mn_tile_major: need {rows*cols} vals, got {len(vals)}"
+    result = []
+    for m_start in range(0, rows, m_tile_rows):
+        m_end = min(m_start + m_tile_rows, rows)
+        for n_start in range(0, cols, n_tile_cols):
+            n_end = min(n_start + n_tile_cols, cols)
+            for r in range(m_start, m_end):
+                for c in range(n_start, n_end):
+                    result.append(vals[r * cols + c])
+    return result
+
+
 def encode_fp16_blocks_to_mx(fp16_vals, block_size):
     """Encode FP16 values into MX blocks and return (mx_blocks, exp_blocks)."""
     num_blocks = (len(fp16_vals) + block_size - 1) // block_size
@@ -207,6 +229,9 @@ def main():
     parser.add_argument('--tile-cols', type=int, default=0,
                         help='K-tile width in elements (e.g. 64 for TILE=64). '
                              'When set with --matrix-rows/cols, reorders data to K-tile-major.')
+    parser.add_argument('--m-tile-rows', type=int, default=0,
+                        help='M-tile height in TRUE rows (e.g. 32 for ARRAY_WIDTH=32). '
+                             'When >0 with --tile-cols, uses M-tile-major(N-tile-major) reordering.')
     args = parser.parse_args()
 
     # Validate: need at least one output format
@@ -217,14 +242,23 @@ def main():
 
     fp16_vals = parse_fp16_header(args.input)
 
-    # K-tile-major reordering: when matrix dimensions and tile size are provided,
-    # reorder from row-major to K-tile-major so the MX-encoded data streams
-    # to the accelerator in K-tile-sequential order.
+    # Tile-major reordering: when matrix dimensions and tile size are provided,
+    # reorder from row-major so the MX-encoded data streams to the accelerator
+    # in the order the memory scheduler expects.
     if args.matrix_rows > 0 and args.matrix_cols > 0 and args.tile_cols > 0:
-        fp16_vals = reorder_ktile_major(fp16_vals, args.matrix_rows,
-                                        args.matrix_cols, args.tile_cols)
-        print(f'Reordered {args.matrix_rows}x{args.matrix_cols} matrix to K-tile-major '
-              f'(tile_cols={args.tile_cols})')
+        if args.m_tile_rows > 0:
+            # M-tile-major(N-tile-major): group by M-tile first, then N-tile within.
+            # Ensures the linear per-M-tile X reader gets all N-tile data contiguously.
+            fp16_vals = reorder_mn_tile_major(fp16_vals, args.matrix_rows,
+                                              args.matrix_cols, args.m_tile_rows,
+                                              args.tile_cols)
+            print(f'Reordered {args.matrix_rows}x{args.matrix_cols} matrix to '
+                  f'M-tile-major(N-tile-major) (m_tile={args.m_tile_rows}, n_tile={args.tile_cols})')
+        else:
+            fp16_vals = reorder_ktile_major(fp16_vals, args.matrix_rows,
+                                            args.matrix_cols, args.tile_cols)
+            print(f'Reordered {args.matrix_rows}x{args.matrix_cols} matrix to K-tile-major '
+                  f'(tile_cols={args.tile_cols})')
 
     mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
     num_blocks = len(exp_blocks)

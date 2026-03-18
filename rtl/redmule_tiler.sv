@@ -205,9 +205,8 @@ logic [31:0] buffer_slots;
 //                                                                                                buffer_slots) * (DATAW/(ARRAY_HEIGHT*BITW));
 
 assign buffer_slots = config_d.x_cols_lftovr/ARRAY_HEIGHT;
-assign config_d.x_buffer_slots = mx_enable
-    ? (config_d.n_size * MX_PACK_FACTOR)
-    : (((config_d.x_cols_lftovr % ARRAY_HEIGHT != '0) ? buffer_slots + 1 : buffer_slots) * ARRAY_HEIGHT);
+assign config_d.x_buffer_slots =
+    (((config_d.x_cols_lftovr % ARRAY_HEIGHT != '0) ? buffer_slots + 1 : buffer_slots) * ARRAY_HEIGHT);
 
 
 // Calculating the number of total stores (uses buffer iterations for actual computations)
@@ -262,11 +261,14 @@ assign config_d.w_d0_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*w_cols_iter
 assign config_d.yz_tot_len  = ARRAY_WIDTH*buf_x_rows_by_w_cols_iter[15:0];  // Use buffer iterations for output
 assign config_d.yz_d0_stride = config_d.w_d0_stride;
 assign config_d.yz_d2_stride = ARRAY_WIDTH*config_d.w_d0_stride;
-// Calculate tot_x_read from sequential multipliers (now using memory iterations)
+// Calculate tot_x_read: number of X memory-stream launches.
+// In MX mode, one X stream launch covers ALL N-tiles (the MX decode pipeline
+// handles N-tiling internally via buffer empty/refill cycles), so x_cols_iter
+// must NOT be included.  In FP16 mode, each N-tile is a separate launch.
 logic [31:0] tot_x_read_raw;
-// TOT_X_READ is the number of X-stream launches (scheduler restarts), which
-// follows compute/buffer tiling (unpacked rows), not packed-memory beats.
-assign tot_x_read_raw = config_d.x_rows_iter * config_d.w_cols_iter * config_d.x_cols_iter;
+assign tot_x_read_raw = mx_enable
+    ? (config_d.x_rows_iter * config_d.w_cols_iter)
+    : (config_d.x_rows_iter * config_d.w_cols_iter * config_d.x_cols_iter);
 assign config_d.tot_x_read   = tot_x_read_raw;
 assign config_d.z_out_addr   = reg_file_i.hwpe_params[Z_OUT_ADDR];
 

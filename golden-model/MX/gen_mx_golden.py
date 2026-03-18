@@ -261,6 +261,9 @@ def main():
     # K-tile-major reordering (must match gen_mx_test_vectors.py settings)
     parser.add_argument('--tile-cols', type=int, default=0,
                         help='K-tile width. When >0, reverses K-tile-major W ordering before GEMM.')
+    # N-tile-major reordering for X (must match gen_mx_test_vectors.py settings)
+    parser.add_argument('--x-tile-cols', type=int, default=0,
+                        help='N-tile width for X. When >0, reverses M-tile(N-tile) X ordering before GEMM.')
 
     # Hardware tiling parameters for Z output reordering
     parser.add_argument('--array-width', type=int, default=32,
@@ -318,6 +321,22 @@ def main():
     assert len(x_fp16) >= args.M * args.N, f"Not enough X data: {len(x_fp16)} < {args.M * args.N}"
     assert len(w_fp16) >= args.N * args.K, f"Not enough W data: {len(w_fp16)} < {args.N * args.K}"
     assert len(y_fp16) >= args.M * args.K, f"Not enough Y data: {len(y_fp16)} < {args.M * args.K}"
+
+    # If X data was encoded in M-tile-major(N-tile-major) order, reverse to row-major for GEMM
+    if args.x_tile_cols > 0 and args.x_tile_cols < args.N:
+        m_tile = args.array_width  # TRUE M-tile height
+        print(f"   Reversing M-tile(N-tile) X ordering (m_tile={m_tile}, n_tile={args.x_tile_cols})")
+        x_row_major = [0] * (args.M * args.N)
+        idx = 0
+        for m_start in range(0, args.M, m_tile):
+            m_end = min(m_start + m_tile, args.M)
+            for n_start in range(0, args.N, args.x_tile_cols):
+                n_end = min(n_start + args.x_tile_cols, args.N)
+                for r in range(m_start, m_end):
+                    for c in range(n_start, n_end):
+                        x_row_major[r * args.N + c] = x_fp16[idx]
+                        idx += 1
+        x_fp16 = x_row_major
 
     # If W data was encoded in K-tile-major order, reverse it to row-major for GEMM
     if args.tile_cols > 0 and args.tile_cols < args.K:
