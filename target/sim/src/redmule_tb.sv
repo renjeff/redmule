@@ -335,7 +335,8 @@ module redmule_tb
   assign accel_active = i_dut.i_redmule_top.busy_o ||
                         redmule_tcdm.req ||
                         (i_dut.i_redmule_top.mx_val_valid && i_dut.i_redmule_top.mx_val_ready) ||
-                        (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready);
+                        (i_dut.i_redmule_top.x_dec_fp16_valid && i_dut.i_redmule_top.x_dec_fp16_ready) ||
+                        (i_dut.i_redmule_top.w_dec_fp16_valid && i_dut.i_redmule_top.w_dec_fp16_ready);
 
   logic x_unpack_in_fire;
   logic w_unpack_in_fire;
@@ -456,31 +457,31 @@ module redmule_tb
             perf_sched_w_valid_cycles <= perf_sched_w_valid_cycles + 1;
           end
 
-          if (i_dut.i_redmule_top.mx_dec_fp16_valid && i_dut.i_redmule_top.mx_dec_fp16_ready) begin
+          // X decoder block count
+          if (i_dut.i_redmule_top.x_dec_fp16_valid && i_dut.i_redmule_top.x_dec_fp16_ready) begin
             perf_decoder_blocks <= perf_decoder_blocks + 1;
-            if (i_dut.i_redmule_top.target_is_x) begin
-              perf_decoder_blocks_x <= perf_decoder_blocks_x + 1;
-            end else if (i_dut.i_redmule_top.target_is_w) begin
-              perf_decoder_blocks_w <= perf_decoder_blocks_w + 1;
-            end
+            perf_decoder_blocks_x <= perf_decoder_blocks_x + 1;
             if (f_dec_fp16) begin
-              // mx_dec_fp16_data is a flat vector (NUM_LANES*BITW), so slice per lane
               for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
-                $fwrite(f_dec_fp16,
-                        "%04h ",
-                        i_dut.i_redmule_top.mx_dec_fp16_data[lane*BITW +: BITW]);
+                $fwrite(f_dec_fp16, "%04h ",
+                        i_dut.i_redmule_top.x_dec_fp16_data[lane*BITW +: BITW]);
               end
               $fwrite(f_dec_fp16, "\n");
             end
-            if (f_dec_target) begin
-              if (i_dut.i_redmule_top.target_is_x) begin
-                $fwrite(f_dec_target, "X\n");
-              end else if (i_dut.i_redmule_top.target_is_w) begin
-                $fwrite(f_dec_target, "W\n");
-              end else begin
-                $fwrite(f_dec_target, "-\n");
+            if (f_dec_target) $fwrite(f_dec_target, "X\n");
+          end
+          // W decoder block count
+          if (i_dut.i_redmule_top.w_dec_fp16_valid && i_dut.i_redmule_top.w_dec_fp16_ready) begin
+            perf_decoder_blocks <= perf_decoder_blocks + 1;
+            perf_decoder_blocks_w <= perf_decoder_blocks_w + 1;
+            if (f_dec_fp16) begin
+              for (int lane = 0; lane < ARRAY_WIDTH; lane++) begin
+                $fwrite(f_dec_fp16, "%04h ",
+                        i_dut.i_redmule_top.w_dec_fp16_data[lane*BITW +: BITW]);
               end
+              $fwrite(f_dec_fp16, "\n");
             end
+            if (f_dec_target) $fwrite(f_dec_target, "W\n");
           end
 
           // Timeout logic: stop after IDLE_TIMEOUT cycles of no activity
@@ -533,10 +534,11 @@ module redmule_tb
 
   // Log MX decoder exponents whenever the decoder accepts a new block
   always @(posedge clk_i) begin
-    if (f_dec_exp &&
-        i_dut.i_redmule_top.mx_dec_exp_valid &&
-        i_dut.i_redmule_top.mx_dec_exp_ready) begin
-      $fwrite(f_dec_exp, "%0h\n", i_dut.i_redmule_top.mx_dec_exp_data);
+    if (f_dec_exp && i_dut.i_redmule_top.x_slot_pair_valid && i_dut.i_redmule_top.x_dec_val_ready) begin
+      $fwrite(f_dec_exp, "X %0h\n", i_dut.i_redmule_top.i_mx_slot_buffer.x_slot_exp_o);
+    end
+    if (f_dec_exp && i_dut.i_redmule_top.w_slot_pair_valid && i_dut.i_redmule_top.w_dec_val_ready) begin
+      $fwrite(f_dec_exp, "W %0h\n", i_dut.i_redmule_top.i_mx_slot_buffer.w_slot_exp_o);
     end
   end
 
@@ -895,9 +897,9 @@ module redmule_tb
                 i_dut.i_redmule_top.i_scheduler.w_rows_iter_q,
                 i_dut.i_redmule_top.i_scheduler.w_cols_iter_q,
                 i_dut.i_redmule_top.i_scheduler.w_mat_iters_q,
-                i_dut.i_redmule_top.target_is_w,
-                i_dut.i_redmule_top.mx_dec_fp16_valid,
-                i_dut.i_redmule_top.mx_dec_fp16_ready,
+                i_dut.i_redmule_top.w_dec_fp16_valid,
+                i_dut.i_redmule_top.x_dec_fp16_valid,
+                i_dut.i_redmule_top.x_dec_fp16_ready,
                 i_dut.i_redmule_top.w_buffer_raw.valid,
                 i_dut.i_redmule_top.w_buffer_raw.ready,
                 i_dut.i_redmule_top.w_buffer_packed.valid,
@@ -1043,7 +1045,7 @@ module redmule_tb
           $fdisplay(mx_debug_fd,
                     "%0t,XBUF,%s,%h,%s",
                     $time,
-                    i_dut.i_redmule_top.target_is_x ? "X" : "?",
+                    i_dut.i_redmule_top.x_dec_fp16_valid ? "X" : "?",
                     i_dut.i_redmule_top.x_buffer_muxed.data,
                     "-");
       end
@@ -1056,7 +1058,7 @@ module redmule_tb
           $fdisplay(mx_debug_fd,
                     "%0t,WBUF,%s,%h,%s",
                     $time,
-                    i_dut.i_redmule_top.target_is_w ? "W" : "?",
+                    i_dut.i_redmule_top.w_dec_fp16_valid ? "W" : "?",
                     i_dut.i_redmule_top.w_buffer_muxed.data,
                     "-");
       end
@@ -1085,20 +1087,20 @@ module redmule_tb
                     "-");
       end
 
-      if (i_dut.i_redmule_top.mx_dec_fp16_valid &&
-          i_dut.i_redmule_top.mx_dec_fp16_ready) begin
-        target_str = i_dut.i_redmule_top.target_is_x ? "X" :
-                     i_dut.i_redmule_top.target_is_w ? "W" : "NONE";
+      if (i_dut.i_redmule_top.x_dec_fp16_valid &&
+          i_dut.i_redmule_top.x_dec_fp16_ready) begin
+        target_str = i_dut.i_redmule_top.x_dec_fp16_valid ? "X" :
+                     i_dut.i_redmule_top.w_dec_fp16_valid ? "W" : "NONE";
         $display("[TB][MXDBG][%0t] DEC_%s data=%h",
                  $time,
                  target_str,
-                 i_dut.i_redmule_top.mx_dec_fp16_data);
+                 i_dut.i_redmule_top.x_dec_fp16_data);
         if (mx_debug_fd)
           $fdisplay(mx_debug_fd,
                     "%0t,DEC,%s,%h,%s",
                     $time,
                     target_str,
-                    i_dut.i_redmule_top.mx_dec_fp16_data,
+                    i_dut.i_redmule_top.x_dec_fp16_data,
                     "-");
       end
 
@@ -1160,8 +1162,8 @@ module redmule_tb
                   i_dut.i_redmule_top.i_scheduler.w_rows_iter_q,
                   i_dut.i_redmule_top.i_scheduler.w_cols_iter_q,
                   i_dut.i_redmule_top.i_scheduler.w_mat_iters_q,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   i_dut.i_redmule_top.i_scheduler.w_done,
                   i_dut.i_redmule_top.i_scheduler.x_done,
                   i_dut.i_redmule_top.x_buffer_q[0][0],
@@ -1222,8 +1224,8 @@ module redmule_tb
                   $time,
                   engine_x_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   x_pairdup,
                   i_dut.i_redmule_top.x_buffer_q[0][0],
                   i_dut.i_redmule_top.x_buffer_q[1][0],
@@ -1240,8 +1242,8 @@ module redmule_tb
                   $time,
                   engine_x_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   i_dut.i_redmule_top.i_scheduler.stall_engine,
                   i_dut.i_redmule_top.i_scheduler.check_w_valid,
                   i_dut.i_redmule_top.i_scheduler.check_w_valid_en,
@@ -1319,8 +1321,8 @@ module redmule_tb
                   $time,
                   engine_w_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   w_pairdup,
                   i_dut.i_redmule_top.w_buffer_q[0],
                   i_dut.i_redmule_top.w_buffer_q[1],
@@ -1337,8 +1339,8 @@ module redmule_tb
                   $time,
                   engine_w_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   i_dut.i_redmule_top.i_scheduler.stall_engine,
                   i_dut.i_redmule_top.i_scheduler.check_w_valid,
                   i_dut.i_redmule_top.i_scheduler.check_w_valid_en,
@@ -1448,8 +1450,8 @@ module redmule_tb
                   $time,
                   z_src_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   engine_x_line_idx,
                   engine_w_line_idx,
                   i_dut.i_redmule_top.out_ready,
@@ -1620,8 +1622,8 @@ module redmule_tb
                   $time,
                   engine_z_line_idx,
                   i_dut.i_redmule_top.cntrl_flags.mx_enable,
-                  i_dut.i_redmule_top.target_is_x,
-                  i_dut.i_redmule_top.target_is_w,
+                  i_dut.i_redmule_top.x_dec_fp16_valid,
+                  i_dut.i_redmule_top.w_dec_fp16_valid,
                   z_pairdup,
                   z0, z1, z2, z3, z4, z5, z6, z7);
       end

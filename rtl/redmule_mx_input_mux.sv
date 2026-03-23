@@ -20,7 +20,7 @@ module redmule_mx_input_mux
   input  logic clear_i,
   input  logic mx_enable_i,
 
-  // Input from arbiter (which stream is being decoded)
+  // Target gating (active-high enable, tie to 1'b1 with dedicated decoders)
   input  logic target_is_x_i,
   input  logic target_is_w_i,
   input  logic [7:0] x_row_chunks_i,
@@ -84,11 +84,11 @@ assign w_row_chunks_eff = (w_row_chunks_i == '0) ? ROW_CNT_W'(1) :
 assign x_ready_for_chunk = !x_pack_valid_q || x_muxed_o.ready;
 assign w_ready_for_chunk = !w_pack_valid_q || w_muxed_o.ready;
 
-assign x_decoded_ready_o = (mx_enable_i && target_is_x_i) ? x_ready_for_chunk : 1'b0;
-assign w_decoded_ready_o = (mx_enable_i && target_is_w_i) ? w_ready_for_chunk : 1'b0;
+assign x_decoded_ready_o = mx_enable_i ? x_ready_for_chunk : 1'b0;
+assign w_decoded_ready_o = mx_enable_i ? w_ready_for_chunk : 1'b0;
 
-assign x_accept_chunk = mx_enable_i && target_is_x_i && x_decoded_valid_i && x_decoded_ready_o;
-assign w_accept_chunk = mx_enable_i && target_is_w_i && w_decoded_valid_i && w_decoded_ready_o;
+assign x_accept_chunk = mx_enable_i && x_decoded_valid_i && x_decoded_ready_o;
+assign w_accept_chunk = mx_enable_i && w_decoded_valid_i && w_decoded_ready_o;
 
 always_comb begin
   x_pack_data_d  = x_pack_data_q;

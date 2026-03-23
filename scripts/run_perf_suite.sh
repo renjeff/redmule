@@ -87,13 +87,14 @@ echo "Test|Result|Errors|Stall_Ev|Stall_Cyc|L->S_Cyc|Total_Cyc|Engine_Cyc|cnt_rd
 #echo "Building HW..."
 #make hw-build target=vsim > /dev/null 2>&1
 
-# MX tests: N=64 (regression) and N=128 (new N-tiling)
-run_test 32 64 64 mx
-run_test 64 64 64 mx
-run_test 96 64 64 mx
-run_test 32 128 64 mx
-run_test 64 128 64 mx
-run_test 96 128 64 mx
+# MX tests: M=32/64/96, N=64/128, K=64/96/128
+for K in 64 96 128; do
+  for M in 32 64 96; do
+    for N in 64 128; do
+      run_test $M $N $K mx
+    done
+  done
+done
 
 echo ""
 echo "=== Summary ==="
