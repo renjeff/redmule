@@ -24,6 +24,7 @@ module redmule_mx_output_stage
   input  logic rst_ni,
   input  logic clear_i,
   input  logic mx_enable_i,
+  input  mx_format_e mx_format_i,
   input  logic reg_enable_i,     // Engine is actively computing with valid inputs
 
   // Engine output
@@ -201,6 +202,7 @@ redmule_mx_encoder #(
 ) i_mx_encoder (
   .clk_i          ( clk_i          ),
   .rst_ni         ( rst_ni         ),
+  .mx_format_i    ( mx_format_i    ),
   .fp16_valid_i   ( block_valid_q  ),
   .fp16_ready_o   ( encoder_ready  ),
   .fp16_data_i    ( encoder_chunk  ),

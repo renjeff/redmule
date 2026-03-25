@@ -1,0 +1,302 @@
+cd /scratch2/msc25h32/redmule/target/sim/vsim;                \
+questa-2023.4 vsim redmule_tb_wrap_opt \
+ -suppress vsim-3009 -c -suppress 3009                  \
+                 \
++STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt     \
++STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt       \
++STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt     \
+-gPROB_STALL=0.0       \
+-gUseXif=0            \
+-do "run -a"
+Reading pref.tcl
+
+# 2023.4
+
+# vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
+# Start time: 21:30:24 on Mar 23,2026
+# //  Questa Sim-64
+# //  Version 2023.4 linux_x86_64 Oct  9 2023
+# //
+# //  Copyright 1991-2023 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# Loading sv_std.std
+# Loading work.fpnew_pkg(fast)
+# Loading work.hwpe_stream_package(fast)
+# Loading work.hci_package(fast)
+# Loading work.redmule_pkg(fast)
+# Loading work.redmule_tb_wrap(fast)
+# Loading work.redmule_tb_sv_unit(fast)
+# Loading work.redmule_tb(fast)
+# Loading work.hwpe_stream_intf_stream(fast__1)
+# Loading work.hci_core_intf(fast__1)
+# Loading work.tb_dummy_memory(fast)
+# Loading work.tb_dummy_memory(fast__1)
+# ** Warning: (vsim-3852) Invalid override of parameter '/redmule_tb_wrap/i_redmule_tb/i_dummy_imemory/PROB_STALL' whose value may no longer be modified.
+#    Time: 0 ns  Iteration: 0  Instance: /redmule_tb_wrap/i_redmule_tb/i_dummy_imemory File: /scratch2/msc25h32/redmule/target/sim/src/tb_dummy_memory.sv
+# ** Warning: (vsim-3852) Invalid override of parameter '/redmule_tb_wrap/i_redmule_tb/i_dummy_stack_memory/PROB_STALL' whose value may no longer be modified.
+#    Time: 0 ns  Iteration: 0  Instance: /redmule_tb_wrap/i_redmule_tb/i_dummy_stack_memory File: /scratch2/msc25h32/redmule/target/sim/src/tb_dummy_memory.sv
+# Loading work.cf_math_pkg(fast)
+# Loading work.obi_pkg(fast)
+# Loading work.hwpe_ctrl_package(fast)
+# Loading work.cv32e40x_pkg(fast)
+# Loading work.redmule_complex(fast)
+# Loading work.hwpe_ctrl_intf_periph(fast__1)
+# Loading work.tc_clk_gating(fast)
+# Loading work.cv32e40x_if_xif(fast__1)
+# Loading work.obi_cut(fast)
+# Loading work.spill_register(fast)
+# Loading work.spill_register_flushable(fast)
+# Loading work.spill_register(fast__1)
+# Loading work.spill_register_flushable(fast__1)
+# Loading work.redmule_top(fast)
+# Loading work.hwpe_ctrl_intf_periph(fast__2)
+# Loading work.hwpe_stream_intf_stream(fast__2)
+# Loading work.hwpe_stream_intf_stream(fast__3)
+# Loading work.hwpe_stream_intf_stream(fast__4)
+# Loading work.redmule_streamer(fast)
+# Loading work.hci_core_intf(fast__2)
+# Loading work.hci_core_assign(fast)
+# Loading work.redmule_mux(fast)
+# Loading work.hci_core_r_id_filter(fast)
+# Loading work.hci_core_r_valid_filter(fast)
+# Loading work.hci_core_sink(fast)
+# Loading work.hwpe_stream_intf_stream(fast__5)
+# Loading work.hwpe_stream_intf_stream(fast__6)
+# Loading work.hci_core_intf(fast__4)
+# Loading work.hwpe_stream_addressgen_v3_sv_unit(fast)
+# Loading work.hwpe_stream_addressgen_v3(fast)
+# Loading work.hwpe_stream_fifo_sv_unit(fast)
+# Loading work.hwpe_stream_fifo(fast)
+# Loading work.hci_core_assign(fast__1)
+# Loading work.hci_core_intf(fast__5)
+# Loading work.hci_core_intf(fast__6)
+# Loading work.redmule_castout_sv_unit(fast)
+# Loading work.redmule_castout(fast)
+# Loading work.fpnew_cast_multi(fast)
+# Loading work.fpnew_classifier(fast)
+# Loading work.fpnew_classifier(fast__1)
+# Loading work.fpnew_classifier(fast__2)
+# Loading work.lzc(fast)
+# Loading work.fpnew_rounding(fast)
+# Loading work.hci_core_fifo(fast)
+# Loading work.hwpe_stream_intf_stream(fast__7)
+# Loading work.hwpe_stream_intf_stream(fast__8)
+# Loading work.hwpe_stream_intf_stream(fast__9)
+# Loading work.hwpe_stream_intf_stream(fast__10)
+# Loading work.hwpe_stream_fifo(fast__1)
+# Loading work.hwpe_stream_fifo(fast__2)
+# Loading work.hci_core_assign(fast__2)
+# Loading work.hci_core_assign(fast__3)
+# Loading work.hci_core_fifo(fast__1)
+# Loading work.hwpe_stream_fifo(fast__3)
+# Loading work.hwpe_stream_fifo(fast__4)
+# Loading work.redmule_castin_sv_unit(fast)
+# Loading work.redmule_castin(fast)
+# Loading work.hci_core_source(fast)
+# Loading work.hwpe_stream_intf_stream(fast__12)
+# Loading work.hwpe_stream_addressgen_v3(fast__1)
+# Loading work.hwpe_stream_fifo(fast__5)
+# Loading work.hwpe_stream_intf_stream(fast__13)
+# Loading work.hwpe_stream_intf_stream(fast__14)
+# Loading work.hwpe_stream_fifo(fast__6)
+# Loading work.hwpe_stream_assign_sv_unit(fast)
+# Loading work.hwpe_stream_assign(fast)
+# Loading work.hwpe_stream_assign(fast__1)
+# Loading work.hwpe_stream_fifo(fast__7)
+# Loading work.redmule_exp_buffer(fast)
+# Loading work.redmule_exp_buffer(fast__1)
+# Loading work.redmule_mx_slot_buffer(fast)
+# Loading work.redmule_mx_decoder(fast)
+# Loading work.redmule_mx_input_mux(fast)
+# Loading work.redmule_mx_beat_unpack(fast)
+# Loading work.hwpe_stream_fifo(fast__8)
+# Loading work.hwpe_stream_fifo(fast__9)
+# Loading work.redmule_x_buffer(fast)
+# Loading work.redmule_x_pad_scm(fast)
+# Loading work.redmule_x_buffer_scm(fast)
+# Loading work.redmule_w_buffer(fast)
+# Loading work.redmule_w_buffer_scm(fast)
+# Loading work.redmule_z_buffer(fast)
+# Loading work.redmule_z_buffer_scm(fast)
+# Loading work.redmule_engine(fast)
+# Loading work.redmule_row(fast)
+# Loading work.redmule_ce(fast)
+# Loading work.cluster_clock_gating(fast)
+# Loading work.redmule_noncomp(fast)
+# Loading work.fpnew_classifier(fast__3)
+# Loading work.redmule_fma(fast)
+# Loading work.fpnew_classifier(fast__4)
+# Loading work.lzc(fast__1)
+# Loading work.fpnew_rounding(fast__1)
+# Loading work.redmule_noncomp(fast__1)
+# Loading work.redmule_mx_output_stage(fast)
+# Loading work.redmule_mx_fifo(fast)
+# Loading work.redmule_mx_encoder(fast)
+# Loading work.redmule_memory_scheduler(fast)
+# Loading work.redmule_ctrl_sv_unit(fast)
+# Loading work.redmule_ctrl(fast)
+# Loading work.hwpe_ctrl_slave(fast)
+# Loading work.hwpe_ctrl_regfile(fast)
+# Loading work.hwpe_ctrl_regfile_latch_test_wrap(fast)
+# Loading work.hwpe_ctrl_regfile_ff(fast)
+# Loading work.redmule_tiler(fast)
+# Loading work.hwpe_ctrl_seq_mult(fast)
+# Loading work.hwpe_ctrl_seq_mult(fast__1)
+# Loading work.redmule_scheduler(fast)
+# Loading work.hwpe_stream_intf_tcdm(fast__1)
+# Loading work.cv32e40p_apu_core_pkg(fast)
+# Loading work.cv32e40p_wrapper(fast)
+# Loading work.cv32e40p_core_log(fast)
+# Loading work.cv32e40p_pkg(fast)
+# Loading work.cv32e40p_tracer_pkg(fast)
+# Loading mtiUvm.uvm_pkg(fast)
+# Loading mtiUvm.questa_uvm_pkg(fast)
+# Loading work.cv32e40p_tracer(fast)
+# Loading work.cv32e40p_core(fast)
+# Loading work.cv32e40p_sleep_unit(fast)
+# Loading work.cv32e40p_clock_gate(fast)
+# Loading work.cv32e40p_if_stage(fast)
+# Loading work.cv32e40p_prefetch_buffer(fast)
+# Loading work.cv32e40p_prefetch_controller(fast)
+# Loading work.cv32e40p_fifo(fast)
+# Loading work.cv32e40p_obi_interface(fast)
+# Loading work.cv32e40p_aligner(fast)
+# Loading work.cv32e40p_compressed_decoder(fast)
+# Loading work.cv32e40p_fpu_pkg(fast)
+# Loading work.cv32e40p_id_stage(fast)
+# Loading work.cv32e40p_register_file(fast)
+# Loading work.cv32e40p_decoder(fast)
+# Loading work.cv32e40p_controller(fast)
+# Loading work.cv32e40p_int_controller(fast)
+# Loading work.cv32e40p_ex_stage(fast)
+# Loading work.cv32e40p_alu(fast)
+# Loading work.cv32e40p_popcnt(fast)
+# Loading work.cv32e40p_ff_one(fast)
+# Loading work.cv32e40p_alu_div(fast)
+# Loading work.cv32e40p_mult(fast)
+# Loading work.cv32e40p_load_store_unit(fast)
+# Loading work.cv32e40p_obi_interface(fast__1)
+# Loading work.cv32e40p_cs_registers(fast)
+# Loading work.addr_decode(fast)
+# Loading work.addr_decode_dync(fast)
+# Loading work.obi_demux(fast)
+# Loading work.delta_counter(fast)
+# Loading work.hci_core_intf(fast__3)
+# Loading work.hci_core_intf(fast__7)
+# Loading work.hci_core_intf(fast__8)
+# Loading work.hci_core_intf(fast__9)
+# Loading work.hwpe_stream_intf_stream(fast__11)
+# Loading /usr/pack/questa-2023.4-zr/questasim/uvm-1.1d/linux_x86_64/uvm_dpi.so
+# run -a
+# ----------------------------------------------------------------
+# UVM-1.1d
+# (C) 2007-2013 Mentor Graphics Corporation
+# (C) 2007-2013 Cadence Design Systems, Inc.
+# (C) 2006-2013 Synopsys, Inc.
+# (C) 2011-2013 Cypress Semiconductor Corp.
+# ----------------------------------------------------------------
+# 
+#   ***********       IMPORTANT RELEASE NOTES         ************
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_NO_DEPRECATED undefined.
+#   See http://www.eda.org/svdb/view.php?id=3313 for more details.
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_OBJECT_MUST_HAVE_CONSTRUCTOR undefined.
+#   See http://www.eda.org/svdb/view.php?id=3770 for more details.
+# 
+#       (Specify +UVM_NO_RELNOTES to turn off this notice)
+# 
+# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(277) @ 0: reporter [Questa UVM] QUESTA_UVM-1.2.3
+# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(278) @ 0: reporter [Questa UVM]  questa_uvm::init(+struct)
+# [TB][STALL] Monitoring scheduler stall_engine (non-fatal)
+# [cv32e40p_core]: PULP_XPULP =          0, PULP_CLUSTER =           0, FPU          0, PULP_ZFINX          0, NUM_MHPMCOUNTERS           1
+# Please find STIM_INSTR loaded from /scratch2/msc25h32/redmule/sw/build/stim_instr.txt
+# Please find STIM_DATA loaded from /scratch2/msc25h32/redmule/sw/build/stim_data.txt
+# Please find STACK_INIT loaded from /scratch2/msc25h32/redmule/sw/build/stack_init.txt
+# [TB] MX dir derived from STIM_DATA: /scratch2/msc25h32/redmule/sw/build
+# [TB] FW is responsible for loading MX exponent tables
+# [CORE_TRACER  0] Output filename is: trace_core_00000000.log
+# [DEBUG] Main started
+# [DEBUG] X exp addr: 0x1c015400, W exp addr: 0x1c015200
+# [DEBUG] Writing ARITH reg: 0x00030480 (MX enable=1)
+# [DEBUG] X addr: 0x1c016480, W addr: 0x1c015480, Z addr: 0x1c013200
+# [DEBUG] X exp addr: 0x1c015400, W exp addr: 0x1c015200
+# Triggering accelerator and going to sleep...
+# [DBG][KTILE] t=17390000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=0  first_load=1  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17390000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=1
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=17391000  read_ptr=64  write_ptr=128  occ=64  total_written=128  total_count=128  seg_consumed=64
+# [TB][STALL] Engine stalled at 17453000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=17462000  read_ptr 128 -> mark 0  occ 0 -> 128  seg_consumed 128 -> 0
+# [DBG][KWAIT] t=17462000 w_cols_iter_en w_cols_q=0->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [TB][STALL] Engine stalled at 17464000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
+# [DBG][KTILE] t=17567000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17567000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# [DBG][KWAIT] t=17597000 w_cols_iter_en w_cols_q=0->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][KTILE] t=17695000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=2  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17695000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# Resumed!
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=1800    
+# [TB] - cnt_wr=288     
+# [PERF] total cycles    : 650
+# [PERF] busy cycles     : 639
+# [PERF] busy ratio      : 98.31 %
+# [PERF] MX blocks dec   : 354
+# [PERF] MX blocks dec X : 128
+# [PERF] MX blocks dec W : 256
+# [PERF] MX blocks enc   : 128
+# [PERF] X unpack in     : 64
+# [PERF] W unpack in     : 128
+# [PERF] X unpack out    : 64
+# [PERF] W unpack out    : 128
+# [PERF] X fifo pop      : 64
+# [PERF] W fifo pop      : 128
+# [PERF] W load cycles   : 128
+# [PERF] W shift cycles  : 456
+# [PERF] W valid cycles  : 295
+# [PERF] engine cycles   : 650
+# [PERF] engine util     : 19.69 %
+# [PERF] load->store cycles : 635
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 20.16 %
+# [PERF] X stream done   : 2
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 473
+# [TB][STALL] events       : 2
+# [TB][STALL] cycles       : 16
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1768)
+#    Time: 88845 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x78787877
+#   [1]: 0x78777878
+#   [2]: 0x76777778
+#   [3]: 0x77787778
+#   [4]: 0x77777778
+#   [5]: 0x77777778
+#   [6]: 0x78787678
+#   [7]: 0x77777777
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=234
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=350
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=172
+# [load_fifo 3] depth=32 req_peak=1 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=4 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 21:31:27 on Mar 23,2026, Elapsed time: 0:01:03
+# Errors: 0, Warnings: 2

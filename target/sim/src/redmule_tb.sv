@@ -1812,23 +1812,55 @@ module redmule_tb
     $display("[TB] - MX encoder outputs written to mx_encoder_*.txt");
   end
 
-  // always_ff @(posedge clk_i or negedge rst_ni) begin
-  //   if (!rst_ni) begin
-  //     mx_x_exp_idx <= 0;
-  //     mx_w_exp_idx <= 0;
-  //   end else begin
-  //     // Increment X index only on successful handshake
-  //     if (mx_enable && x_mx_exp_stream.valid && x_mx_exp_stream.ready) begin
-  //       mx_x_exp_idx <= mx_x_exp_idx + 1;
-  //       //$display("[TB][X_EXP] Handshake: idx=%0d data=0x%08x", mx_x_exp_idx, mx_x_exp_mem[mx_x_exp_idx]);
-  //     end
-
-  //     // Increment W index only on successful handshake
-  //     if (mx_enable && w_mx_exp_stream.valid && w_mx_exp_stream.ready) begin
-  //       mx_w_exp_idx <= mx_w_exp_idx + 1;
-  //       //$display("[TB][W_EXP] Handshake: idx=%0d data=0x%08x", mx_w_exp_idx, mx_w_exp_mem[mx_w_exp_idx]);
-  //     end
-  //   end
-  // end
+  // ---------------------------------------------------------------
+  //  M-tile / K-tile transition debug monitor
+  // ---------------------------------------------------------------
+  always @(posedge clk_i) begin
+    if (mx_enable) begin
+      // Track M-tile transitions (x_rows_iter_en in scheduler)
+      if (i_dut.i_redmule_top.i_scheduler.x_rows_iter_en) begin
+        $display("[MTILE] %0t x_rows_iter_en: x_rows_iter_q=%0d w_dec_pos_q=%0d w_pack_count=%0d w_dec_buf_count=%0d w_fifo_empty=%0b w_fifo_full=%0b",
+                 $time,
+                 i_dut.i_redmule_top.i_scheduler.x_rows_iter_q,
+                 i_dut.i_redmule_top.w_dec_pos_q,
+                 i_dut.i_redmule_top.i_mx_input_mux.w_pack_count_q,
+                 i_dut.i_redmule_top.w_dec_buf_count_q,
+                 i_dut.i_redmule_top.w_fifo_flgs.empty,
+                 i_dut.i_redmule_top.w_fifo_flgs.full);
+      end
+      // Track K-tile transitions (x_w_iters_en in scheduler)
+      if (i_dut.i_redmule_top.i_scheduler.x_w_iters_en) begin
+        $display("[KTILE] %0t x_w_iters_en: x_w_iters_q=%0d w_dec_pos_q=%0d w_slots_per_pass=%0d w_slots_full_k=%0d",
+                 $time,
+                 i_dut.i_redmule_top.i_scheduler.x_w_iters_q,
+                 i_dut.i_redmule_top.w_dec_pos_q,
+                 i_dut.i_redmule_top.w_slots_per_pass,
+                 i_dut.i_redmule_top.w_slots_full_k);
+      end
+      // Track Z buffer drain start/end
+      if (i_dut.i_redmule_top.i_scheduler.z_buf_draining &&
+          !i_dut.i_redmule_top.i_scheduler.z_buf_was_draining) begin
+        $display("[ZDRAIN] %0t START w_dec_pos_q=%0d x_fifo_empty=%0b w_fifo_empty=%0b",
+                 $time,
+                 i_dut.i_redmule_top.w_dec_pos_q,
+                 i_dut.i_redmule_top.x_fifo_flgs.empty,
+                 i_dut.i_redmule_top.w_fifo_flgs.empty);
+      end
+      if (!i_dut.i_redmule_top.i_scheduler.z_buf_draining &&
+          i_dut.i_redmule_top.i_scheduler.z_buf_was_draining) begin
+        $display("[ZDRAIN] %0t END   w_dec_pos_q=%0d x_fifo_empty=%0b w_fifo_empty=%0b",
+                 $time,
+                 i_dut.i_redmule_top.w_dec_pos_q,
+                 i_dut.i_redmule_top.x_fifo_flgs.empty,
+                 i_dut.i_redmule_top.w_fifo_flgs.empty);
+      end
+      // Track w_dec_pos_q wrap
+      if (i_dut.i_redmule_top.w_dec_accept &&
+          i_dut.i_redmule_top.w_dec_pos_q == i_dut.i_redmule_top.w_slots_per_pass - 16'd1) begin
+        $display("[WPOS_WRAP] %0t w_dec_pos_q wrapping from %0d to 0",
+                 $time, i_dut.i_redmule_top.w_dec_pos_q);
+      end
+    end
+  end
 
 endmodule // redmule_tb

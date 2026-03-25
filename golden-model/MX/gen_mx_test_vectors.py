@@ -14,7 +14,7 @@ import re
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
-from mx_fp_golden import encode_block_fp16_to_mx
+from mx_fp_golden import encode_block_fp16_to_mx, MX_FORMAT_SPECS
 
 def parse_fp16_header(filename):
     """Parse a C header file with uint16_t array and return a list of FP16 ints."""
@@ -189,7 +189,7 @@ def reorder_mn_tile_major(vals, rows, cols, m_tile_rows, n_tile_cols):
     return result
 
 
-def encode_fp16_blocks_to_mx(fp16_vals, block_size):
+def encode_fp16_blocks_to_mx(fp16_vals, block_size, mx_fmt='e4m3'):
     """Encode FP16 values into MX blocks and return (mx_blocks, exp_blocks)."""
     num_blocks = (len(fp16_vals) + block_size - 1) // block_size
     mx_per_block = []
@@ -198,7 +198,7 @@ def encode_fp16_blocks_to_mx(fp16_vals, block_size):
         block = fp16_vals[b*block_size:(b+1)*block_size]
         if len(block) < block_size:
             block += [0] * (block_size - len(block))
-        exp, mx = encode_block_fp16_to_mx(block)
+        exp, mx = encode_block_fp16_to_mx(block, fmt=mx_fmt)
         mx_per_block.append(mx)
         exp_blocks.append(exp)
     return mx_per_block, exp_blocks
@@ -232,6 +232,8 @@ def main():
     parser.add_argument('--m-tile-rows', type=int, default=0,
                         help='M-tile height in TRUE rows (e.g. 32 for ARRAY_WIDTH=32). '
                              'When >0 with --tile-cols, uses M-tile-major(N-tile-major) reordering.')
+    parser.add_argument('--mx-format', choices=list(MX_FORMAT_SPECS.keys()), default='e4m3',
+                        help='MX element format (default: e4m3)')
     args = parser.parse_args()
 
     # Validate: need at least one output format
@@ -260,7 +262,7 @@ def main():
             print(f'Reordered {args.matrix_rows}x{args.matrix_cols} matrix to K-tile-major '
                   f'(tile_cols={args.tile_cols})')
 
-    mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
+    mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size, mx_fmt=args.mx_format)
     num_blocks = len(exp_blocks)
 
     if args.total_blocks is not None and args.total_blocks > 0:
@@ -270,7 +272,7 @@ def main():
             fp16_vals.extend([0] * (total_vals_needed - len(fp16_vals)))
         elif len(fp16_vals) > total_vals_needed:
             fp16_vals = fp16_vals[:total_vals_needed]
-        mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size)
+        mx_per_block, exp_blocks = encode_fp16_blocks_to_mx(fp16_vals, args.block_size, mx_fmt=args.mx_format)
         num_blocks = len(exp_blocks)
 
     # Output MX data
@@ -340,7 +342,7 @@ def main():
         if not args.pack_fp8:
             parser.error('Golden MX output requires --pack-fp8 to be enabled')
         golden_vals = parse_fp16_header(args.golden_input)
-        golden_mx_blocks, _ = encode_fp16_blocks_to_mx(golden_vals, args.block_size)
+        golden_mx_blocks, _ = encode_fp16_blocks_to_mx(golden_vals, args.block_size, mx_fmt=args.mx_format)
         golden_fp8 = [val for block in golden_mx_blocks for val in block]
         golden_packed = pack_fp8_to_32bit_words(golden_fp8)
         write_c_header(args.golden_output_header, args.golden_array_name,

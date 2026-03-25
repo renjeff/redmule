@@ -453,6 +453,7 @@ redmule_mx_decoder #(
 ) i_mx_decoder_x (
   .clk_i               ( clk_i                                      ),
   .rst_ni              ( rst_ni                                     ),
+  .mx_format_i         ( cntrl_flags.mx_format                      ),
   .mx_val_valid_i      ( x_slot_pair_valid                          ),
   .mx_val_ready_o      ( x_dec_val_ready                            ),
   .mx_val_data_i       ( x_slot_data                                ),
@@ -478,6 +479,7 @@ redmule_mx_decoder #(
 ) i_mx_decoder_w (
   .clk_i               ( clk_i              ),
   .rst_ni              ( rst_ni             ),
+  .mx_format_i         ( cntrl_flags.mx_format ),
   .mx_val_valid_i      ( w_slot_pair_valid  ),
   .mx_val_ready_o      ( w_dec_val_ready    ),
   .mx_val_data_i       ( w_slot_data        ),
@@ -940,6 +942,7 @@ redmule_mx_output_stage #(
   .rst_ni             ( rst_ni                  ),
   .clear_i            ( clear                   ),
   .mx_enable_i        ( cntrl_flags.mx_enable   ),
+  .mx_format_i        ( cntrl_flags.mx_format   ),
   .reg_enable_i       ( reg_enable              ),  // Gate encoder on valid computation
   .z_engine_data_i    ( z_buffer_d              ),
   .z_engine_stream_i  ( z_buffer_q              ),

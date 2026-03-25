@@ -6,8 +6,9 @@ OUTDIR="/scratch2/msc25h32/redmule/perf_results"
 mkdir -p "$OUTDIR"
 
 run_test() {
-    local M=$1 N=$2 K=$3 MODE=$4  # MODE: fp16 or mx
+    local M=$1 N=$2 K=$3 MODE=$4 MX_FMT=${5:-e4m3}  # MODE: fp16 or mx
     local LABEL="${M}x${N}x${K}_${MODE}"
+    [ "$MODE" = "mx" ] && [ "$MX_FMT" != "e4m3" ] && LABEL="${LABEL}_${MX_FMT}"
     local LOGFILE="$OUTDIR/${LABEL}.log"
 
     echo "=== Running $LABEL ==="
@@ -35,7 +36,7 @@ EOF
 
     # Build SW
     if [ "$MODE" = "mx" ]; then
-        make sw-build MX_ENABLE=1 target=vsim > /dev/null 2>&1
+        make sw-build MX_ENABLE=1 MX_FORMAT=$MX_FMT target=vsim > /dev/null 2>&1
     else
         make sw-build target=vsim > /dev/null 2>&1
     fi
@@ -87,11 +88,13 @@ echo "Test|Result|Errors|Stall_Ev|Stall_Cyc|L->S_Cyc|Total_Cyc|Engine_Cyc|cnt_rd
 #echo "Building HW..."
 #make hw-build target=vsim > /dev/null 2>&1
 
-# MX tests: M=32/64/96, N=64/128, K=64/96/128
-for K in 64 96 128; do
-  for M in 32 64 96; do
-    for N in 64 128; do
-      run_test $M $N $K mx
+# MX tests: M=32/64/96, N=64/128, K=64/96/128, format=e4m3/e5m2
+for FMT in e4m3 e5m2; do
+  for K in 64 96 128; do
+    for M in 32 64 96; do
+      for N in 64 128; do
+        run_test $M $N $K mx $FMT
+      done
     done
   done
 done

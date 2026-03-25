@@ -33,7 +33,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'common'))
 
-from mx_fp_golden import mxfp8_decode_bits, encode_block_fp16_to_mx
+from mx_fp_golden import (mxfp8_decode_bits, encode_block_fp16_to_mx,
+                          mx_decode_bits, MX_FORMAT_SPECS)
 
 
 def parse_c_header_array(filename, expected_type='uint16_t'):
@@ -78,18 +79,20 @@ def unpack_exponents_32bit(packed_words):
     return exponents
 
 
-def decode_mx_to_fp16(fp8_values, exponents, block_size=32):
+def decode_mx_to_fp16(fp8_values, exponents, block_size=32, mx_fmt='e4m3'):
     """
     Decode MX-encoded data to FP16 bit patterns.
 
     Args:
-        fp8_values: List of FP8 (8-bit) values
+        fp8_values: List of MX element (8-bit container) values
         exponents: List of shared exponents (one per block)
-        block_size: Number of FP8 values per MX block
+        block_size: Number of elements per MX block
+        mx_fmt: MX format key (e.g. 'e4m3', 'e5m2')
 
     Returns:
         List of FP16 bit patterns (16-bit integers)
     """
+    exp_bits, mant_bits, bias = MX_FORMAT_SPECS[mx_fmt]
     fp16_values = []
     num_blocks = (len(fp8_values) + block_size - 1) // block_size
 
@@ -99,8 +102,8 @@ def decode_mx_to_fp16(fp8_values, exponents, block_size=32):
         for lane in range(block_size):
             idx = block_idx * block_size + lane
             if idx < len(fp8_values):
-                fp8 = fp8_values[idx]
-                fp16 = mxfp8_decode_bits(fp8, exp)
+                elem = fp8_values[idx]
+                fp16 = mx_decode_bits(elem, exp, exp_bits, mant_bits, bias)
                 fp16_values.append(fp16)
 
     return fp16_values
@@ -155,18 +158,19 @@ def perform_gemm_fp16(x_bits, w_bits, y_bits, M, N, K):
     return z_bits
 
 
-def encode_fp16_to_mx(fp16_values, block_size=32):
+def encode_fp16_to_mx(fp16_values, block_size=32, mx_fmt='e4m3'):
     """
     Encode FP16 values to MX format.
 
     Args:
         fp16_values: List of FP16 bit patterns
         block_size: Number of values per MX block
+        mx_fmt: MX format key (e.g. 'e4m3', 'e5m2')
 
     Returns:
-        (fp8_values, exponents) - lists of FP8 mantissas and shared exponents
+        (mx_values, exponents) - lists of MX element values and shared exponents
     """
-    fp8_values = []
+    mx_values = []
     exponents = []
 
     for i in range(0, len(fp16_values), block_size):
@@ -175,11 +179,11 @@ def encode_fp16_to_mx(fp16_values, block_size=32):
         while len(block) < block_size:
             block.append(0)
 
-        exp, fp8_block = encode_block_fp16_to_mx(block)
-        fp8_values.extend(fp8_block)
+        exp, mx_block = encode_block_fp16_to_mx(block, fmt=mx_fmt)
+        mx_values.extend(mx_block)
         exponents.append(exp)
 
-    return fp8_values, exponents
+    return mx_values, exponents
 
 
 def pack_fp8_to_32bit_words(fp8_values):
@@ -252,6 +256,8 @@ def main():
     parser.add_argument('-K', type=int, required=True, help='Matrix K (N_out) dimension')
 
     # MX parameters
+    parser.add_argument('--mx-format', choices=list(MX_FORMAT_SPECS.keys()), default='e4m3',
+                        help='MX element format (default: e4m3)')
     parser.add_argument('--block-size', type=int, default=32, help='MX block size (default: 32)')
     parser.add_argument('--x-exp-format', choices=['8bit', '32bit'], default='8bit',
                         help='X exponent format (default: 8bit)')
@@ -275,7 +281,7 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Generating MX golden for {args.M}x{args.N} @ {args.N}x{args.K} GEMM")
+    print(f"Generating MX golden for {args.M}x{args.N} @ {args.N}x{args.K} GEMM (format: {args.mx_format})")
 
     # 1. Load MX inputs
     print(f"\n1. Loading MX inputs...")
@@ -311,8 +317,8 @@ def main():
     # 2. Decode MX to FP16
     print(f"\n2. Decoding MX to FP16...")
 
-    x_fp16 = decode_mx_to_fp16(x_fp8, x_exp, args.block_size)
-    w_fp16 = decode_mx_to_fp16(w_fp8, w_exp, args.block_size)
+    x_fp16 = decode_mx_to_fp16(x_fp8, x_exp, args.block_size, mx_fmt=args.mx_format)
+    w_fp16 = decode_mx_to_fp16(w_fp8, w_exp, args.block_size, mx_fmt=args.mx_format)
 
     print(f"   X FP16: {len(x_fp16)} values (need {args.M * args.N})")
     print(f"   W FP16: {len(w_fp16)} values (need {args.N * args.K})")
@@ -398,8 +404,8 @@ def main():
 
     # 4. Encode result to MX
     print(f"\n4. Encoding result to MX...")
-    z_fp8, z_exp = encode_fp16_to_mx(z_fp16, args.block_size)
-    print(f"   Z MX: {len(z_fp8)} FP8 values, {len(z_exp)} exponents")
+    z_mx, z_exp = encode_fp16_to_mx(z_fp16, args.block_size, mx_fmt=args.mx_format)
+    print(f"   Z MX: {len(z_mx)} element values, {len(z_exp)} exponents")
 
     # Show sample encoded values
     print(f"   Sample Z exponents: {[f'0x{e:02x}' for e in z_exp[:4]]}")
@@ -407,8 +413,8 @@ def main():
     # 5. Pack and write output
     print(f"\n5. Writing output headers...")
 
-    # Pack FP8 to 32-bit words
-    z_packed = pack_fp8_to_32bit_words(z_fp8)
+    # Pack MX elements to 32-bit words
+    z_packed = pack_fp8_to_32bit_words(z_mx)
     write_c_header(args.output_mx_header, args.mx_array_name, z_packed,
                    elem_type='uint32_t', guard_name='__GOLDEN_MX_H__')
     print(f"   Wrote {len(z_packed)} uint32_t values to {args.output_mx_header}")

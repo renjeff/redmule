@@ -58,10 +58,19 @@ ifeq ($(debug),1)
 	FLAGS += -DDEBUG
 endif
 
-# MX format enable flag
+# MX format enable flag and element format
 MX_ENABLE ?= 0
+MX_FORMAT ?= e4m3
+# Map format names to register codes: e4m3=0, e5m2=1, e3m2=2, e2m3=3, e2m1=4
+MX_FORMAT_CODE_e4m3 := 0
+MX_FORMAT_CODE_e5m2 := 1
+MX_FORMAT_CODE_e3m2 := 2
+MX_FORMAT_CODE_e2m3 := 3
+MX_FORMAT_CODE_e2m1 := 4
+MX_FORMAT_CODE := $(MX_FORMAT_CODE_$(MX_FORMAT))
 ifeq ($(MX_ENABLE),1)
 	FLAGS += -DMX_ENABLE
+	FLAGS += -DMX_FORMAT=$(MX_FORMAT_CODE)
 endif
 
 # Include directories
@@ -119,7 +128,7 @@ W_EXP_TXT  := $(MX_DIR)/mx_w_exp.txt
 
 # Track matrix dimensions to trigger header regeneration when they change
 MX_DIM_FILE := $(BUILD_DIR)/.mx_dimensions
-MX_CURRENT_DIMS := $(M)_$(N)_$(K)
+MX_CURRENT_DIMS := $(M)_$(N)_$(K)_$(MX_FORMAT)
 
 # Create/update dimension tracking file if dimensions changed
 # This rule always runs and updates timestamp if dimensions changed
@@ -177,7 +186,8 @@ $(X_MX_H) $(X_EXP_MX_H) $(X_EXP_TXT): $(X_INPUT_H) $(MX_GEN_SCRIPT)
 		--pack-fp8 \
 		--exp-format compact-8bit \
 		--matrix-rows $(M) --matrix-cols $(N) --tile-cols $(MX_TILE_COLS) \
-		--m-tile-rows $(MX_ARRAY_WIDTH)
+		--m-tile-rows $(MX_ARRAY_WIDTH) \
+		--mx-format $(MX_FORMAT)
 
 $(W_MX_H) $(W_EXP_MX_H) $(W_EXP_TXT): $(W_INPUT_H) $(MX_GEN_SCRIPT)
 	@echo "[MX] Generating MX-encoded W matrix headers and testbench files..."
@@ -192,7 +202,8 @@ $(W_MX_H) $(W_EXP_MX_H) $(W_EXP_TXT): $(W_INPUT_H) $(MX_GEN_SCRIPT)
 		--block-size $(MX_BLOCK_SIZE) \
 		--pack-fp8 \
 		--exp-format compact-32bit \
-		--matrix-rows $(N) --matrix-cols $(K) --tile-cols $(MX_TILE_COLS)
+		--matrix-rows $(N) --matrix-cols $(K) --tile-cols $(MX_TILE_COLS) \
+		--mx-format $(MX_FORMAT)
 
 # MX golden generation - computes golden from MX inputs (includes quantization effects)
 # Depends on MX_DIM_FILE to regenerate when M, N, K change
@@ -212,7 +223,8 @@ $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H): $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_
 		--w-exp-format 32bit \
 		--tile-cols $(MX_TILE_COLS) \
 		--x-tile-cols $(MX_TILE_COLS) \
-		--array-width $(MX_ARRAY_WIDTH)
+		--array-width $(MX_ARRAY_WIDTH) \
+		--mx-format $(MX_FORMAT)
 
 mx-headers: $(MX_DIM_FILE) fp16-headers $(X_MX_H) $(W_MX_H) $(X_EXP_MX_H) $(W_EXP_MX_H) $(X_EXP_TXT) $(W_EXP_TXT) $(GOLDEN_MX_H) $(GOLDEN_MX_EXP_H)
 	@echo "[MX] MX-encoded headers are up to date"

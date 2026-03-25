@@ -278,6 +278,15 @@ always @(posedge clk_i) begin
                next_state == EMPTY ? "EMPTY" : next_state == LOADED ? "LOADED" : "PUSHED",
                w_index, fill_shift, d_index, load_en, ctrl_i.y_valid, y_beats_consumed);
     end
+    // Dump first Y beat loaded for each tile (w_index=0)
+    if (load_en && ctrl_i.y_valid && w_index == 0) begin
+      $display("[DBG][ZBUF] YLOAD w_idx=0 beat=%0d  y[0:7]=%04h %04h %04h %04h %04h %04h %04h %04h",
+               y_beats_consumed,
+               y_buffer_i[0*BITW +: BITW], y_buffer_i[1*BITW +: BITW],
+               y_buffer_i[2*BITW +: BITW], y_buffer_i[3*BITW +: BITW],
+               y_buffer_i[4*BITW +: BITW], y_buffer_i[5*BITW +: BITW],
+               y_buffer_i[6*BITW +: BITW], y_buffer_i[7*BITW +: BITW]);
+    end
     // Dump engine output at fill_shift around K=57 (positions 55-59)
     if (ctrl_i.fill && fill_shift >= 55 && fill_shift <= 59) begin
       $display("[DBG][ZBUF] FILL fill_sh=%0d  r0=0x%04h r1=0x%04h r2=0x%04h r3=0x%04h r4=0x%04h r5=0x%04h r6=0x%04h r7=0x%04h",

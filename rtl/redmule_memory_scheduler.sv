@@ -404,7 +404,7 @@ module redmule_memory_scheduler
       if (cntrl_streamer_o.x_stream_source_ctrl.req_start ||
           flgs_streamer_i.x_stream_source_flags.done ||
           cntrl_scheduler_i.first_load) begin
-        $display("[DBG][MSCHED][%0t] X req_start=%0b ready_start=%0b done=%0b first_load=%0b idle=%0b tot_x_read_q=%0d TOT_X_READ=%0d",
+        $display("[DBG][MSCHED][%0t] X req_start=%0b ready_start=%0b done=%0b first_load=%0b idle=%0b tot_x_read_q=%0d TOT_X_READ=%0d  addr=0x%08h x_rows_offs=0x%08h w_iters_q=%0d x_rows_iters_q=%0d",
                  $time,
                  cntrl_streamer_o.x_stream_source_ctrl.req_start,
                  flgs_streamer_i.x_stream_source_flags.ready_start,
@@ -412,7 +412,11 @@ module redmule_memory_scheduler
                  cntrl_scheduler_i.first_load,
                  cntrl_flags_i.idle,
                  tot_x_read_q,
-                 reg_file_i.hwpe_params[TOT_X_READ]);
+                 reg_file_i.hwpe_params[TOT_X_READ],
+                 cntrl_streamer_o.x_stream_source_ctrl.addressgen_ctrl.base_addr,
+                 x_rows_offs_q,
+                 w_iters_q,
+                 x_rows_iters_q);
       end
       if (cntrl_scheduler_i.first_load) begin
         $display("[DBG][MSCHED][%0t] dims m_unpack=%0d n_unpack=%0d k_unpack=%0d total_x=%0d x_exp_beats=%0d num_x_reads=%0d",

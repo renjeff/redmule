@@ -1,4 +1,5 @@
 module redmule_mx_encoder
+  import redmule_pkg::*;
 #(
     parameter int unsigned DATA_W = 256,
     parameter int unsigned BITW = 16,
@@ -6,6 +7,7 @@ module redmule_mx_encoder
 )(
     input logic                    clk_i,
     input logic                   rst_ni,
+    input mx_format_e              mx_format_i,
 
     // FP16 input stream
     input logic                  fp16_valid_i,

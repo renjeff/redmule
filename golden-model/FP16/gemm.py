@@ -44,6 +44,8 @@ k_size = args.k_size
 f = open(args.file_name, "w")
 
 # We want to perform a GEMM, of the kind Z = Y + X*W
+# Fixed seed for reproducible testing across designs
+torch.manual_seed(42)
 # Test Matrices
 X = torch.rand(m_size, n_size)
 W = torch.rand(n_size, k_size)

@@ -1,49 +1,64 @@
 # Minimal golden model for MX <-> FP16 encode/decode.
+# Supports multiple MX formats: E4M3, E5M2, E3M2, E2M3, E2M1.
 
 import numpy as np
 
-# Biases
-BIAS_FP8_E4M3 = 7
-BIAS_FP16     = 15
+# FP16 bias
+BIAS_FP16 = 15
 
 # Max finite FP16: 0 11110 1111111111
 FP16_MAX_POS = 0x7BFF
 
+# Format specifications: (exp_bits, mant_bits, bias)
+MX_FORMAT_SPECS = {
+    'e4m3': (4, 3, 7),
+    'e5m2': (5, 2, 15),
+    'e3m2': (3, 2, 3),
+    'e2m3': (2, 3, 1),
+    'e2m1': (2, 1, 1),
+}
+
+# Legacy aliases
+BIAS_FP8_E4M3 = 7
+
 
 # -------------------------------------------------------------------
-# Low-level helpers: FP8(E4M3) <-> FP16 bit patterns
+# Generic MX element <-> FP16 bit patterns (format-parameterized)
 # -------------------------------------------------------------------
 
-def fp8_e4m3_to_fp16_bits(x: int) -> int:
+def mx_elem_to_fp16_bits(x: int, exp_bits: int, mant_bits: int, bias: int) -> int:
     """
-    Convert one FP8(E4M3) value (8-bit int) to FP16 (16-bit int):
-      - e8 == 0000         -> signed zero
-      - e8 == 1111, m=0    -> +/-Inf
-      - e8 == 1111, m!=0   -> +/-NaN (quiet, mantissa bit 9 set)
-      - normal             -> exponent rebias, mantissa << 7
+    Convert one MX element (up to 8-bit container) to FP16 (16-bit int).
+    Format: [sign(1) | exponent(exp_bits) | mantissa(mant_bits)]
+
+      - e == 0          -> signed zero
+      - e == all-ones    -> +/-Inf (m=0) or +/-NaN (m!=0)
+      - normal           -> exponent rebias, mantissa left-aligned to 10 bits
     """
-    x &= 0xFF # ensure 8-bit input
-    s  = (x >> 7) & 0x1 # sign bit
-    e8 = (x >> 3) & 0xF # exponent bits
-    m8 = x & 0x7 # mantissa bits
+    bitwidth = 1 + exp_bits + mant_bits
+    x &= (1 << bitwidth) - 1
+
+    s = (x >> (exp_bits + mant_bits)) & 0x1
+    exp_mask = (1 << exp_bits) - 1
+    mant_mask = (1 << mant_bits) - 1
+    e = (x >> mant_bits) & exp_mask
+    m = x & mant_mask
 
     # zero + subnormals -> signed zero
-    if e8 == 0:
+    if e == 0:
         return (s << 15)
 
-    # Inf / NaN
-    if e8 == 0xF:
-        if m8 == 0:
-            # Inf
-            return (s << 15) | (0x1F << 10)          # 0x7c00 / 0xfc00
+    # Inf / NaN (all-ones exponent)
+    if e == exp_mask:
+        if m == 0:
+            return (s << 15) | (0x1F << 10)             # Inf
         else:
-            # NaN (quiet, mantissa bit 9 = 1)
-            return (s << 15) | (0x1F << 10) | (1 << 9)  # 0x7e00 / 0xfe00
+            return (s << 15) | (0x1F << 10) | (1 << 9)  # NaN
 
-    # normal
-    e16_int = int(e8) - BIAS_FP8_E4M3 + BIAS_FP16
-    e16     = e16_int & 0x1F
-    m16     = (m8 << 7) & 0x3FF  # pad mantissa
+    # normal: rebias exponent, left-align mantissa
+    e16_int = int(e) - bias + BIAS_FP16
+    e16 = e16_int & 0x1F
+    m16 = (m << (10 - mant_bits)) & 0x3FF
 
     return (s << 15) | (e16 << 10) | m16
 
@@ -51,12 +66,7 @@ def fp8_e4m3_to_fp16_bits(x: int) -> int:
 def mx_scale_fp16_bits(val_fp16: int, shared_exp: int) -> int:
     """
     Apply MX shared exponent E8M0 to a FP16 bit-pattern.
-
-      val_scaled = val * 2^(shared_exp - 127)
-
-      - zero / Inf / NaN        -> returned as-is
-      - underflow (new_e16 <=0) -> signed zero
-      - overflow (new_e16 >=31) -> clamp to max finite (0x7bff) with sign
+    Format-independent (operates only on FP16 + shared_exp).
     """
     val_fp16   = int(val_fp16) & 0xFFFF
     shared_exp = int(shared_exp) & 0xFF
@@ -65,127 +75,94 @@ def mx_scale_fp16_bits(val_fp16: int, shared_exp: int) -> int:
     e16 = (val_fp16 >> 10) & 0x1F
     m16 = val_fp16 & 0x3FF
 
-    # zero, Inf, NaN: return as is
     if e16 == 0 or e16 == 0x1F:
         return val_fp16
 
     delta   = shared_exp - 127
     new_e16 = int(e16) + delta
 
-    # underflow -> signed zero
     if new_e16 <= 0:
         return (s << 15)
-
-    # overflow -> clamp to max finite magnitude
     if new_e16 >= 31:
         return (s << 15) | (FP16_MAX_POS & 0x7FFF)
 
-    # normal scaled
     e16_new = new_e16 & 0x1F
     return (s << 15) | (e16_new << 10) | m16
 
 
-# -------------------------------------------------------------------
-# MXFP8 <-> FP16 element-wise encode / decode
-# -------------------------------------------------------------------
-
-def mxfp8_decode_bits(fp8_val: int, shared_exp: int) -> int:
-    """
-    Element-wise MXFP8 -> FP16 (bit patterns).
-
-    First FP8(E4M3) -> FP16, then apply MX scaling with shared_exp.
-    """
-    base   = fp8_e4m3_to_fp16_bits(fp8_val)
+def mx_decode_bits(val: int, shared_exp: int, exp_bits: int, mant_bits: int, bias: int) -> int:
+    """Generic MX element -> FP16 decode (bit patterns)."""
+    base   = mx_elem_to_fp16_bits(val, exp_bits, mant_bits, bias)
     scaled = mx_scale_fp16_bits(base, shared_exp)
     return scaled
 
 
-def fp16_bits_to_fp8_e4m3_unscaled(x: int) -> int:
+def fp16_to_mx_elem_unscaled(x: int, exp_bits: int, mant_bits: int, bias: int) -> int:
     """
-    Reference quantiser FP16 -> FP8(E4M3) WITHOUT MX scaling.
-
-    Policy:
-      - zero          -> ±0
-      - Inf / NaN     -> FP8 Inf / NaN
-      - normals       -> rebias exponent, saturate to max finite E4M3,
-                         flush tiny to zero, simple mantissa truncation
+    FP16 -> MX element WITHOUT MX scaling (generic, format-parameterized).
+    Uses RNE rounding on mantissa truncation.
     """
     x &= 0xFFFF
     s   = (x >> 15) & 0x1
     e16 = (x >> 10) & 0x1F
     m16 = x & 0x3FF
 
+    bitwidth = 1 + exp_bits + mant_bits
+    exp_mask = (1 << exp_bits) - 1
+    mant_mask = (1 << mant_bits) - 1
+    max_finite_exp = exp_mask - 1  # all-ones minus 1
+
     # zero
     if e16 == 0:
-        return s << 7
+        return s << (exp_bits + mant_bits)
 
     # Inf / NaN
     if e16 == 0x1F:
         if m16 == 0:
-            # Inf
-            return (s << 7) | (0xF << 3)
+            return (s << (exp_bits + mant_bits)) | (exp_mask << mant_bits)
         else:
-            # NaN
-            return (s << 7) | (0xF << 3) | 0x1
+            return (s << (exp_bits + mant_bits)) | (exp_mask << mant_bits) | 0x1
 
-    # normal
+    # normal: rebias
     e_unbiased = int(e16) - BIAS_FP16
-    e8_unbiased = e_unbiased + BIAS_FP8_E4M3
+    e_biased = e_unbiased + bias
 
-    # too small -> zero
-    if e8_unbiased <= 0:
-        return s << 7
+    if e_biased <= 0:
+        return s << (exp_bits + mant_bits)  # underflow to zero
 
-    # too large -> max finite (e=1110, m=111)
-    if e8_unbiased >= 0xF:
-        return (s << 7) | (0xE << 3) | 0x7
+    if e_biased > max_finite_exp:
+        return (s << (exp_bits + mant_bits)) | (max_finite_exp << mant_bits) | mant_mask
 
-    e8 = e8_unbiased & 0xF
-    e8 = e8_unbiased & 0xF
+    e_out = e_biased & exp_mask
 
-    # --- RNE rounding of mantissa: 10 bits -> 3 bits ---
-    m8_trunc = (m16 >> 7) & 0x7              # m16[9:7]
-    round_bit = (m16 >> 6) & 0x1             # m16[6]
-    sticky = 1 if (m16 & 0x3F) != 0 else 0   # OR m16[5:0]
+    # RNE rounding: truncate 10-bit mantissa to mant_bits
+    shift = 10 - mant_bits
+    m_trunc = (m16 >> shift) & mant_mask
+    round_bit = (m16 >> (shift - 1)) & 0x1 if shift > 0 else 0
+    sticky = 1 if (m16 & ((1 << (shift - 1)) - 1)) != 0 else 0 if shift > 1 else 0
 
-    # round-to-nearest, ties-to-even:
-    # RS=00/01 -> down
-    # RS=10 -> tie -> up iff LSB==1
-    # RS=11 -> up
     if round_bit == 0:
         round_up = 0
+    elif sticky == 1:
+        round_up = 1
     else:
-        # round_bit == 1
-        if sticky == 1:
-            round_up = 1
-        else:
-            # exact half-way tie
-            round_up = (m8_trunc & 0x1)
+        round_up = (m_trunc & 0x1)  # tie-to-even
 
-    m8_round = m8_trunc + round_up
+    m_round = m_trunc + round_up
 
-    # handle mantissa carry into exponent
-    if m8_round == 0x8:  # overflowed past 3 bits (1000)
-        m8_round = 0x0
-        e8 += 1
-        # clamp if exponent would become 0xF (Inf/NaN encoding in FP8)
-        if e8 >= 0xF:
-            return (s << 7) | (0xE << 3) | 0x7
+    if m_round > mant_mask:  # mantissa overflow
+        m_round = 0
+        e_out += 1
+        if e_out > max_finite_exp:
+            return (s << (exp_bits + mant_bits)) | (max_finite_exp << mant_bits) | mant_mask
 
-    return (s << 7) | ((e8 & 0xF) << 3) | (m8_round & 0x7)
+    return (s << (exp_bits + mant_bits)) | ((e_out & exp_mask) << mant_bits) | (m_round & mant_mask)
 
-def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
+
+def mx_encode_bits(val_fp16: int, shared_exp: int, exp_bits: int, mant_bits: int, bias: int) -> int:
     """
-    Element-wise FP16 -> MXFP8 (bit patterns).
-
-    Decode side does:
-      fp8 -> fp16_unscaled -> scale by 2^(shared_exp - 127).
-
-    So to encode, we *undo* the MX scaling on the FP16 value first,
-    then quantise that to FP8(E4M3).
-
-    This gives a clean, invertible pair (up to quantisation) with
-    mxfp8_decode_bits().
+    FP16 -> MX element (bit patterns) with shared exponent scaling.
+    Undoes MX scaling, then quantizes to target format.
     """
     val_fp16   = int(val_fp16) & 0xFFFF
     shared_exp = int(shared_exp) & 0xFF
@@ -194,65 +171,39 @@ def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
     e16 = (val_fp16 >> 10) & 0x1F
     m16 = val_fp16 & 0x3FF
 
-    # zero / Inf / NaN: don't try to rescale, just map directly
     if e16 == 0 or e16 == 0x1F:
-        return fp16_bits_to_fp8_e4m3_unscaled(val_fp16)
+        return fp16_to_mx_elem_unscaled(val_fp16, exp_bits, mant_bits, bias)
 
-    # undo MX scaling in exponent domain:
-    # decode did: e16_scaled = e16_unscaled + delta
-    # so here:   e16_unscaled = e16_scaled - delta
-    delta      = shared_exp - 127  #signed
-    e16_unscaled   = int(e16) - delta # back to pre-scaled exponent
+    delta = shared_exp - 127
+    e16_unscaled = int(e16) - delta
 
     if e16_unscaled <= 0:
-        tmp = (s << 15)  # underflow to zero
+        tmp = (s << 15)
     elif e16_unscaled >= 0x1F:
-        # overflow before quantisation: clamp to max finite FP16
         tmp = (s << 15) | (0x1E << 10) | 0x3FF
     else:
         tmp = (s << 15) | ((e16_unscaled & 0x1F) << 10) | m16
 
-    return fp16_bits_to_fp8_e4m3_unscaled(tmp)
+    return fp16_to_mx_elem_unscaled(tmp, exp_bits, mant_bits, bias)
 
 
-# -------------------------------------------------------------------
-# Small float16 wrappers
-# -------------------------------------------------------------------
-
-def mxfp8_decode(fp8_val: int, shared_exp: int) -> np.float16:
-    """MXFP8 -> FP16 as a numpy.float16 scalar."""
-    bits = np.uint16(mxfp8_decode_bits(fp8_val, shared_exp))
-    return bits.view(np.float16)
-
-
-def mxfp8_encode(val_fp16: np.float16, shared_exp: int) -> int:
-    """FP16 (numpy.float16 scalar) -> MXFP8 8-bit value."""
-    bits = np.uint16(np.array(val_fp16, dtype=np.float16).view(np.uint16))
-    return mxfp8_encode_bits(int(bits), shared_exp)
-
-def compute_shared_exp_from_block(fp16_block_bits):
+def compute_shared_exp_from_block(fp16_block_bits, max_unbiased_exp=7):
     """
     Compute MX shared exponent from a block of FP16 values.
-
-    currently: zero-extended max_16 to 8 bits
-
-    fp16_block_bits: list[int] of FP16 bit patterns
+    max_unbiased_exp: max unbiased exponent for target format (E4M3=7, E5M2=15, etc.)
     """
-    fp16_blocks_bits = [int(x) & 0xFFFF for x in fp16_block_bits]
-
     max_e16 = 0
     for x in fp16_block_bits:
-        e16 = (x >> 10) & 0x1F
-        if e16 != 0 and e16 != 0x1F and e16 > max_e16: # ignore zero/Inf/NaN
+        e16 = (int(x) >> 10) & 0x1F
+        if e16 != 0 and e16 != 0x1F and e16 > max_e16:
             max_e16 = e16
-    
-    # no normal values in block -> neutral scale
+
     if max_e16 == 0:
         return 127
-    
-    eM_unbiased = max_e16 - BIAS_FP16 # exponent of max |V|
-    e_scale_unbiased = eM_unbiased - 7 # max pow2 exp in E4M3 = 7
-    e8m0 = e_scale_unbiased + 127 # E8M0 bias
+
+    eM_unbiased = max_e16 - BIAS_FP16
+    e_scale_unbiased = eM_unbiased - max_unbiased_exp
+    e8m0 = e_scale_unbiased + 127
 
     if e8m0 < 0:
         e8m0 = 0
@@ -260,24 +211,49 @@ def compute_shared_exp_from_block(fp16_block_bits):
         e8m0 = 255
     return e8m0 & 0xFF
 
-def encode_block_fp16_to_mx(fp16_block_bits):
+
+def encode_block_fp16_to_mx(fp16_block_bits, fmt='e4m3'):
     """
-    Given a block of FP16 values, compute:
-    - shared_exp (8-bit)
-    - mx_vals (list of MXFP8 values)
-
-    using:
-
-    - shared_exp = compute_sahred_exp_from_block(...)
-    - fp8_i = mxfp8_encode_bits(fp16_i, shared_exp)
-
-    returns (shared_exp, mx_vals)
+    Given a block of FP16 values, compute shared_exp and encode to MX format.
+    fmt: format key from MX_FORMAT_SPECS (default 'e4m3')
+    Returns (shared_exp, mx_vals)
     """
+    exp_bits, mant_bits, bias = MX_FORMAT_SPECS[fmt]
+    max_ub = bias  # max_unbiased = max_finite_biased - bias = (2^exp_bits-2) - bias
+    # Actually: max_finite_biased = (2^exp_bits - 2), max_unbiased = max_finite_biased - bias
+    max_finite_biased = (1 << exp_bits) - 2
+    max_ub = max_finite_biased - bias
 
     fp16_block_bits = [int(x) & 0xFFFF for x in fp16_block_bits]
+    shared_exp = compute_shared_exp_from_block(fp16_block_bits, max_unbiased_exp=max_ub)
 
-    shared_exp = compute_shared_exp_from_block(fp16_block_bits)
-
-    mx_vals = [mxfp8_encode_bits(v, shared_exp) & 0xFF for v in fp16_block_bits]
+    elem_mask = (1 << (1 + exp_bits + mant_bits)) - 1
+    mx_vals = [mx_encode_bits(v, shared_exp, exp_bits, mant_bits, bias) & elem_mask
+               for v in fp16_block_bits]
 
     return shared_exp & 0xFF, mx_vals
+
+
+# -------------------------------------------------------------------
+# Backward-compatible wrappers (E4M3 default)
+# -------------------------------------------------------------------
+
+def fp8_e4m3_to_fp16_bits(x: int) -> int:
+    return mx_elem_to_fp16_bits(x, 4, 3, 7)
+
+def mxfp8_decode_bits(fp8_val: int, shared_exp: int) -> int:
+    return mx_decode_bits(fp8_val, shared_exp, 4, 3, 7)
+
+def fp16_bits_to_fp8_e4m3_unscaled(x: int) -> int:
+    return fp16_to_mx_elem_unscaled(x, 4, 3, 7)
+
+def mxfp8_encode_bits(val_fp16: int, shared_exp: int) -> int:
+    return mx_encode_bits(val_fp16, shared_exp, 4, 3, 7)
+
+def mxfp8_decode(fp8_val: int, shared_exp: int) -> np.float16:
+    bits = np.uint16(mxfp8_decode_bits(fp8_val, shared_exp))
+    return bits.view(np.float16)
+
+def mxfp8_encode(val_fp16: np.float16, shared_exp: int) -> int:
+    bits = np.uint16(np.array(val_fp16, dtype=np.float16).view(np.uint16))
+    return mxfp8_encode_bits(int(bits), shared_exp)

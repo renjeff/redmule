@@ -154,31 +154,65 @@ int main() {
   // MX output goes to z_oup (via Z_OUT_ADDR register), not y
   errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
-  // // Print byte-level mismatches (commented out: very slow in sim with many errors)
-  // {
-  //   int words_per_row = k_size / 4;
-  //   int rows_to_check = m_size;
-  //   int printed = 0;
-  //   for (int row = 0; row < rows_to_check && printed < 120; row++) {
-  //     for (int w = 0; w < words_per_row; w++) {
-  //       int idx = row * words_per_row + w;
-  //       uint32_t hw = ((uint32_t *)z)[idx];
-  //       uint32_t gm = ((uint32_t *)golden_mx)[idx];
-  //       if (hw != gm) {
-  //         int col = w * 4;
-  //         for (int b = 0; b < 4; b++) {
-  //           uint8_t hb = (hw >> (b*8)) & 0xFF;
-  //           uint8_t gb = (gm >> (b*8)) & 0xFF;
-  //           if (hb != gb) {
-  //             tfp_printf("[ERR] r=%d c=%d hw=0x%02x gm=0x%02x d=%d\n",
-  //                        row, col+b, hb, gb, (int)hb-(int)gb);
-  //             printed++;
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
+  // Per-row error counts for debug
+  {
+    int words_per_row = k_size / 4;
+    int tile_size = 32;  // ARRAY_WIDTH
+    int ktile_size = 64; // TILE
+    int m_tiles = (m_size + tile_size - 1) / tile_size;
+    int k_tiles = (k_size + ktile_size - 1) / ktile_size;
+    // Per-row error count (limited output)
+    for (int row = 0; row < m_size; row++) {
+      int row_errs = 0;
+      for (int w = 0; w < words_per_row; w++) {
+        int idx = row * words_per_row + w;
+        uint32_t hw = ((uint32_t *)z)[idx];
+        uint32_t gm = ((uint32_t *)golden_mx)[idx];
+        if (hw != gm) {
+          for (int b = 0; b < 4; b++) {
+            uint8_t hb = (hw >> (b*8)) & 0xFF;
+            uint8_t gb = (gm >> (b*8)) & 0xFF;
+            if (hb != gb) row_errs++;
+          }
+        }
+      }
+      if (row_errs > 0) {
+        // Count errors per K-tile (columns 0-63 vs 64+)
+        int errs_k0 = 0, errs_k1 = 0;
+        for (int c = 0; c < k_size; c++) {
+          int idx8 = row * k_size + c;
+          uint8_t hb = ((uint8_t *)z)[idx8];
+          uint8_t gb = ((uint8_t *)golden_mx)[idx8];
+          if (hb != gb) {
+            if (c < ktile_size) errs_k0++;
+            else errs_k1++;
+          }
+        }
+        tfp_printf("[ROWDBG] row=%d errs=%d k0=%d k1=%d\n", row, row_errs, errs_k0, errs_k1);
+      }
+    }
+    // Print first 20 byte-level mismatches for detail
+    int printed = 0;
+    for (int row = 0; row < m_size && printed < 20; row++) {
+      for (int w = 0; w < words_per_row && printed < 20; w++) {
+        int idx = row * words_per_row + w;
+        uint32_t hw = ((uint32_t *)z)[idx];
+        uint32_t gm = ((uint32_t *)golden_mx)[idx];
+        if (hw != gm) {
+          int col = w * 4;
+          for (int b = 0; b < 4 && printed < 20; b++) {
+            uint8_t hb = (hw >> (b*8)) & 0xFF;
+            uint8_t gb = (gm >> (b*8)) & 0xFF;
+            if (hb != gb) {
+              tfp_printf("[ERR] r=%d c=%d hw=0x%02x gm=0x%02x\n",
+                         row, col+b, hb, gb);
+              printed++;
+            }
+          }
+        }
+      }
+    }
+  }
 #else
   if (float_fmt == Float16 || float_fmt == Float16Alt)
     errors = redmule16_compare_int((uint32_t *)y, (uint32_t *)golden, m_size * k_size / 2);

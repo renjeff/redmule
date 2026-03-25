@@ -9,6 +9,7 @@
 // information arrives at the output aligned with the decoded values.
 
 module redmule_mx_decoder
+  import redmule_pkg::*;
 #(
   parameter int unsigned DATA_W = 256,
   parameter int unsigned BITW = 16,
@@ -18,6 +19,7 @@ module redmule_mx_decoder
 )(
   input  logic                    clk_i,
   input  logic                    rst_ni,
+  input  mx_format_e              mx_format_i,
 
   input  logic                    mx_val_valid_i,
   output logic                    mx_val_ready_o,

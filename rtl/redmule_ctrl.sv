@@ -273,6 +273,7 @@ module redmule_ctrl
   assign cntrl_flags_o.mx_enable = (current != REDMULE_LATCH_RST && current != REDMULE_IDLE)
                                    ? reg_file_d.hwpe_params[MACFG][16]
                                    : 1'b0;
+  assign cntrl_flags_o.mx_format = mx_format_e'(reg_file_d.hwpe_params[MACFG][19:17]);
 
   always_comb begin : controller_fsm
     cntrl_flags_o.idle = 1'b0;

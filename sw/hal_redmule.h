@@ -102,14 +102,18 @@ void redmule_cfg(unsigned int x, unsigned int w, unsigned int z,
   mcfg_reg0 = (k_size << 16) | m_size_cfg;
   mcfg_reg1 = n_size_cfg;
 
-  // Bit [16]: MX enable (1=enabled with pre-encoded FP8, 0=disabled FP16)
+  // Bit [16]:    MX enable (1=enabled with pre-encoded MX, 0=disabled FP16)
+  // Bits [19:17]: MX format (0=E4M3, 1=E5M2, 2=E3M2, 3=E2M3, 4=E2M1)
   // Bits [12:10]: GEMM operation
-  // Bits [9:7]: Data format
+  // Bits [9:7]:   Data format
   arith_reg = (gemm_op << 10) | (gemm_fmt << 7);
 
-  // Set MX enable bit - toggle with compile flag
+  // Set MX enable bit and format - toggle with compile flag
   #ifdef MX_ENABLE
     arith_reg |= (1 << 16);
+    #ifdef MX_FORMAT
+      arith_reg |= ((MX_FORMAT & 0x7) << 17);
+    #endif
   #endif
 
   printf("[DEBUG] Writing ARITH reg: 0x%08x (MX enable=%u)\n",

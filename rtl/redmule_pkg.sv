@@ -227,10 +227,20 @@ package redmule_pkg;
     logic            w_loaded;
   } flgs_scheduler_t;
 
+  // MX element format selector
+  typedef enum logic [2:0] {
+    MX_FMT_E4M3 = 3'b000,
+    MX_FMT_E5M2 = 3'b001,
+    MX_FMT_E3M2 = 3'b010,
+    MX_FMT_E2M3 = 3'b011,
+    MX_FMT_E2M1 = 3'b100
+  } mx_format_e;
+
   typedef struct packed {
     logic idle;
     logic mx_enable;
     logic mx_output_ready;  // First MX encoded output available (or not in MX mode)
+    mx_format_e mx_format;  // MX element format (E4M3, E5M2, ...)
   } cntrl_flags_t;
 
   typedef enum logic [2:0] { MATMUL=3'h0, GEMM=3'h1, ADDMAX=3'h2, ADDMIN=3'h3, MULMAX=3'h4, MULMIN=3'h5, MAXMIN=3'h6, MINMAX=3'h7 } gemm_op_e;
