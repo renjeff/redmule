@@ -26,6 +26,8 @@ else
 	VsimFlags += -c
 endif
 
+# MX_DEBUG_DUMP disabled for sweep performance. Re-enable for targeted debug:
+# VsimFlags += -suppress 3009 +MX_DEBUG_DUMP
 VsimFlags += -suppress 3009
 
 hw-clean:

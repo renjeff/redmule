@@ -18,6 +18,7 @@ module redmule_mx_input_mux
   input  logic clk_i,
   input  logic rst_ni,
   input  logic clear_i,
+  input  logic w_clear_i,   // W-only pack state clear (pipeline flush)
   input  logic mx_enable_i,
 
   // Target gating (active-high enable, tie to 1'b1 with dedicated decoders)
@@ -157,6 +158,12 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     x_pack_strb_q  <= '0;
     x_pack_count_q <= '0;
     x_pack_valid_q <= 1'b0;
+    w_pack_data_q  <= '0;
+    w_pack_strb_q  <= '0;
+    w_pack_count_q <= '0;
+    w_pack_valid_q <= 1'b0;
+  end else if (w_clear_i) begin
+    // W-only clear: flush W pack state without touching X
     w_pack_data_q  <= '0;
     w_pack_strb_q  <= '0;
     w_pack_count_q <= '0;

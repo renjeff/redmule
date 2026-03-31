@@ -54,12 +54,12 @@ module redmule_mx_decoder
   end
 
   // ---------------------------------------------------------------
-  //  Conversion functions (unchanged)
+  //  Conversion functions
   // ---------------------------------------------------------------
 
-  localparam int BIAS_FP8  = 7;
   localparam int BIAS_FP16 = 15;
 
+  // E4M3: 1 sign + 4 exp + 3 mantissa, bias = 7
   function automatic logic [15:0] fp8_e4m3_to_fp16 (input logic [7:0] in);
     logic       s;
     logic [3:0] e8;
@@ -81,11 +81,142 @@ module redmule_mx_decoder
           fp8_e4m3_to_fp16 = {s,5'b11111,10'b1000000000};
         end
       end else begin
-        e16_int = int'(e8) - BIAS_FP8 + BIAS_FP16;
+        e16_int = int'(e8) - 7 + BIAS_FP16;
         e16     = e16_int[4:0];
         m16     = {m8,7'b0};
         fp8_e4m3_to_fp16 = {s, e16, m16};
       end
+    end
+  endfunction
+
+  // E5M2: 1 sign + 5 exp + 2 mantissa, bias = 15
+  function automatic logic [15:0] fp8_e5m2_to_fp16 (input logic [7:0] in);
+    logic       s;
+    logic [4:0] e8;
+    logic [1:0] m8;
+    logic [4:0] e16;
+    logic [9:0] m16;
+    int         e16_int;
+    begin
+      s  = in[7];
+      e8 = in[6:2];
+      m8 = in[1:0];
+
+      if (e8 == 5'b00000) begin
+        fp8_e5m2_to_fp16 = {s,5'b0,10'b0};
+      end else if (e8 == 5'b11111) begin
+        if (m8 == 2'b00) begin
+          fp8_e5m2_to_fp16 = {s,5'b11111,10'b0};
+        end else begin
+          fp8_e5m2_to_fp16 = {s,5'b11111,10'b1000000000};
+        end
+      end else begin
+        // E5M2 bias = 15, same as FP16, so exponent maps directly
+        e16_int = int'(e8) - 15 + BIAS_FP16;
+        e16     = e16_int[4:0];
+        m16     = {m8,8'b0};
+        fp8_e5m2_to_fp16 = {s, e16, m16};
+      end
+    end
+  endfunction
+
+  // E2M1: 1 sign + 2 exp + 1 mantissa, bias = 1
+  // Stored in low 4 bits of 8-bit container: {4'b0, S, EE, M}
+  // OCP MX spec: E2M1 has NO Inf and NO NaN — all exponent values are normal.
+  // E=00: zero/subnormal (flush to zero)
+  // E=01,10,11: normal values
+  function automatic logic [15:0] fp4_e2m1_to_fp16 (input logic [7:0] in);
+    logic       s;
+    logic [1:0] e4;
+    logic       m4;
+    logic [4:0] e16;
+    logic [9:0] m16;
+    int         e16_int;
+    begin
+      s  = in[3];
+      e4 = in[2:1];
+      m4 = in[0];
+
+      if (e4 == 2'b00) begin
+        // Zero (subnormals flush to zero for MX)
+        fp4_e2m1_to_fp16 = {s, 5'b0, 10'b0};
+      end else begin
+        // Normal (all non-zero exponents, including 11 = max normal)
+        e16_int = int'({3'b0, e4}) - 1 + BIAS_FP16;
+        e16     = e16_int[4:0];
+        m16     = {m4, 9'b0};
+        fp4_e2m1_to_fp16 = {s, e16, m16};
+      end
+    end
+  endfunction
+
+  // E3M2: 1 sign + 3 exp + 2 mantissa, bias = 3
+  // Stored in low 6 bits of 8-bit container: {2'b0, S, EEE, MM}
+  // OCP MX spec: E3M2 has Inf (E=111,M=00) and NaN (E=111,M!=00)
+  function automatic logic [15:0] fp6_e3m2_to_fp16 (input logic [7:0] in);
+    logic       s;
+    logic [2:0] e6;
+    logic [1:0] m6;
+    logic [4:0] e16;
+    logic [9:0] m16;
+    int         e16_int;
+    begin
+      s  = in[5];
+      e6 = in[4:2];
+      m6 = in[1:0];
+
+      if (e6 == 3'b000) begin
+        fp6_e3m2_to_fp16 = {s, 5'b0, 10'b0};
+      end else if (e6 == 3'b111) begin
+        if (m6 == 2'b00)
+          fp6_e3m2_to_fp16 = {s, 5'b11111, 10'b0};           // Inf
+        else
+          fp6_e3m2_to_fp16 = {s, 5'b11111, 10'b1000000000};  // NaN
+      end else begin
+        e16_int = int'({2'b0, e6}) - 3 + BIAS_FP16;
+        e16     = e16_int[4:0];
+        m16     = {m6, 8'b0};
+        fp6_e3m2_to_fp16 = {s, e16, m16};
+      end
+    end
+  endfunction
+
+  // E2M3: 1 sign + 2 exp + 3 mantissa, bias = 1
+  // Stored in low 6 bits of 8-bit container: {2'b0, S, EE, MMM}
+  // OCP MX spec: E2M3 has NO Inf/NaN (all exponent values are normal)
+  function automatic logic [15:0] fp6_e2m3_to_fp16 (input logic [7:0] in);
+    logic       s;
+    logic [1:0] e6;
+    logic [2:0] m6;
+    logic [4:0] e16;
+    logic [9:0] m16;
+    int         e16_int;
+    begin
+      s  = in[5];
+      e6 = in[4:3];
+      m6 = in[2:0];
+
+      if (e6 == 2'b00) begin
+        fp6_e2m3_to_fp16 = {s, 5'b0, 10'b0};
+      end else begin
+        e16_int = int'({3'b0, e6}) - 1 + BIAS_FP16;
+        e16     = e16_int[4:0];
+        m16     = {m6, 7'b0};
+        fp6_e2m3_to_fp16 = {s, e16, m16};
+      end
+    end
+  endfunction
+
+  // Format-aware MX element → FP16 conversion
+  function automatic logic [15:0] fp8_to_fp16 (input logic [7:0] in, input mx_format_e fmt);
+    begin
+      case (fmt)
+        MX_FMT_E5M2:  fp8_to_fp16 = fp8_e5m2_to_fp16(in);
+        MX_FMT_E2M1:  fp8_to_fp16 = fp4_e2m1_to_fp16(in);
+        MX_FMT_E3M2:  fp8_to_fp16 = fp6_e3m2_to_fp16(in);
+        MX_FMT_E2M3:  fp8_to_fp16 = fp6_e2m3_to_fp16(in);
+        default:       fp8_to_fp16 = fp8_e4m3_to_fp16(in);
+      endcase
     end
   endfunction
 
@@ -159,7 +290,7 @@ module redmule_mx_decoder
   logic [NUM_LANES-1:0][BITW-1:0] input_unscaled;
 
   for (genvar i = 0; i < NUM_LANES; i++) begin : gen_convert
-    assign input_unscaled[i] = fp8_e4m3_to_fp16(mx_val_data_i[ELEM_WIDTH*i +: ELEM_WIDTH]);
+    assign input_unscaled[i] = fp8_to_fp16(mx_val_data_i[ELEM_WIDTH*i +: ELEM_WIDTH], mx_format_i);
   end
 
   // ---------------------------------------------------------------

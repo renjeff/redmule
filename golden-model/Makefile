@@ -77,6 +77,7 @@ gemm: check_penv
 	IncludeDir=$(IncludeDir)                  \
 	python3 ./$@.py                           \
 	--m_size $(M) --n_size $(N) --k_size $(K) \
+	$(if $(DETERMINISTIC),--deterministic,)   \
 	--inc_dir $(SW)                           \
 	--txt_dir $(CUR_DIR)/$@/txt;              \
 	cd $(PENV);                               \

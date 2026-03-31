@@ -34,6 +34,8 @@ parser.add_argument( '--k_size', type=int, default=3 )
 parser.add_argument( '--file_name', type=str, default='net_parameters.h')
 parser.add_argument( '--inc_dir', type=str)
 parser.add_argument( '--txt_dir', type=str)
+parser.add_argument( '--deterministic', action='store_true',
+                     help='Use incrementing W, X=1, Y=0 for debugging')
 args = parser.parse_args()
 
 # Network parameters
@@ -44,13 +46,23 @@ k_size = args.k_size
 f = open(args.file_name, "w")
 
 # We want to perform a GEMM, of the kind Z = Y + X*W
-# Fixed seed for reproducible testing across designs
-torch.manual_seed(42)
-# Test Matrices
-X = torch.rand(m_size, n_size)
-W = torch.rand(n_size, k_size)
-Y = torch.rand(m_size, k_size)
-Z = torch.rand(m_size, k_size)
+if args.deterministic:
+    print("\n[DETERMINISTIC MODE] X=1, Y=0, W=incrementing")
+    # W[n][k] = (n*k_size + k + 1) / (n_size*k_size) → values in (0, 1]
+    # Each element is unique and traceable
+    W_flat = [(i + 1) / (n_size * k_size) for i in range(n_size * k_size)]
+    W = torch.tensor(W_flat, dtype=torch.float32).reshape(n_size, k_size)
+    X = torch.ones(m_size, n_size, dtype=torch.float32)
+    Y = torch.zeros(m_size, k_size, dtype=torch.float32)
+    Z = torch.zeros(m_size, k_size, dtype=torch.float32)
+else:
+    # Fixed seed for reproducible testing across designs
+    torch.manual_seed(42)
+    # Test Matrices
+    X = torch.rand(m_size, n_size)
+    W = torch.rand(n_size, k_size)
+    Y = torch.rand(m_size, k_size)
+    Z = torch.rand(m_size, k_size)
 
 print("\nInput Data: ")
 print("\nX is: ", X, X.shape, X.dtype)

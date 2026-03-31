@@ -58,19 +58,44 @@ assign config_d.gemm_output_fmt = gemm_fmt_e'(reg_file_i.hwpe_params[MACFG][ 9: 
 // MX mode enable flag (bit 16 of MACFG/ARITH register)
 logic mx_enable;
 assign mx_enable = reg_file_i.hwpe_params[MACFG][16];
+mx_format_e mx_format;
+assign mx_format = mx_format_e'(reg_file_i.hwpe_params[MACFG][19:17]);
 
 // TILE size for iteration calculations. Match the actual TCDM beat width so we
 // request the correct number of beats even when ARRAY_HEIGHT*(PIPE_REGS+1)
 // exceeds DATAW/BITW.
 localparam int unsigned TILE = TOT_DEPTH;
-localparam int unsigned MX_PACK_FACTOR = 2;  // FP8 packs 2x more slots per beat
+
+// Runtime pack factor as fraction: elements_per_beat / FP16_elements_per_beat
+// FP8:  128/64 = 2/1.   FP4: 256/64 = 4/1.   FP6: 160/64 = 5/2.
+logic [3:0] mx_pack_num;  // numerator
+logic [1:0] mx_pack_den;  // denominator
+logic [2:0] mx_pack_factor;  // integer pack factor (for modules that need it)
+always_comb begin
+  case (mx_format)
+    MX_FMT_E2M1: begin mx_pack_num = 4'd4; mx_pack_den = 2'd1; mx_pack_factor = 3'd4; end
+    MX_FMT_E3M2,
+    MX_FMT_E2M3: begin mx_pack_num = 4'd5; mx_pack_den = 2'd2; mx_pack_factor = 3'd2; end // integer approx for non-fraction uses
+    default:     begin mx_pack_num = 4'd2; mx_pack_den = 2'd1; mx_pack_factor = 3'd2; end
+  endcase
+end
 
 // Unpack m_size and n_size for X buffer and systolic control
-// FP8 packs 2 elements per word in memory, but X buffer pad and systolic need full dimensions
+// FP4: 4 elements per 16-bit word. All others: 2 elements per word.
 logic [15:0] m_size_for_x_buffer;
 logic [15:0] n_size_for_systolic;
-assign m_size_for_x_buffer = mx_enable ? (config_d.m_size * MX_PACK_FACTOR) : config_d.m_size;
-assign n_size_for_systolic = mx_enable ? (config_d.n_size * MX_PACK_FACTOR) : config_d.n_size;
+always_comb begin
+  if (!mx_enable) begin
+    m_size_for_x_buffer = config_d.m_size;
+    n_size_for_systolic = config_d.n_size;
+  end else if (mx_format == MX_FMT_E2M1) begin
+    m_size_for_x_buffer = config_d.m_size << 2;  // * 4
+    n_size_for_systolic = config_d.n_size << 2;
+  end else begin
+    m_size_for_x_buffer = config_d.m_size << 1;  // * 2
+    n_size_for_systolic = config_d.n_size << 1;
+  end
+end
 
 // Calculating the number of iterations alng the two dimensions of the X matrix
 // X buffer iterations need UNPACKED sizes for correct buffer allocation
@@ -255,7 +280,7 @@ assign config_d.x_rows_offs = ARRAY_WIDTH*config_d.x_d1_stride;
 // ensures W_TOT_LEN provides enough beats for all M-tile replays.
 logic [31:0] w_tot_len_raw;
 assign w_tot_len_raw = config_d.w_rows_iter * buf_x_rows_by_w_cols_iter[15:0];
-assign config_d.w_tot_len   = mx_enable ? ((w_tot_len_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
+assign config_d.w_tot_len   = mx_enable ? (mx_format == MX_FMT_E2M1 ? ((w_tot_len_raw + 3) >> 2) : ((w_tot_len_raw + 1) >> 1))
                                         : w_tot_len_raw;
 assign config_d.w_d0_stride = ((NumByte*BITW)/ADDR_W)*(((DATAW/BITW)*w_cols_iter_nolftovr) + config_d.w_cols_lftovr);
 assign config_d.yz_tot_len  = ARRAY_WIDTH*buf_x_rows_by_w_cols_iter[15:0];  // Use buffer iterations for output

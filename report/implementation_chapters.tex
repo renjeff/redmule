@@ -1,0 +1,500 @@
+% =============================================================================
+% Chapter: Implementation
+% =============================================================================
+\chapter{Implementation}
+\label{ch:implementation}
+
+This chapter describes the design and integration of Microscaling (MX) format
+support into the RedMulE GEMM accelerator. The core challenge is that the
+existing systolic array and its surrounding memory subsystem operate exclusively
+on FP16 data, while MX-encoded tensors arrive as 8-bit mantissas with shared
+exponents packed into 1024-bit TCDM beats. The implementation therefore spans
+three areas:
+
+\begin{enumerate}
+    \item \textbf{MX datapath architecture}
+          (\autoref{sec:mx-codec}--\autoref{sec:w-buffer-scm}): a
+          decode-before-compute input pipeline that converts MX blocks to FP16 on
+          the fly, and a symmetric encode-after-compute output stage. The codec
+          units are designed as format-agnostic modules, parameterized to support
+          the full MX element type family (E4M3, E5M2, E3M2, E2M3, E2M1).
+    \item \textbf{Tiling extensions}
+          (\autoref{sec:tiling}): adaptations to the
+          scheduler, memory scheduler, and exponent buffer that enable
+          multi-tile execution along all three GEMM dimensions (M, N, K) in MX
+          mode.
+    \item \textbf{Multi-format support and verification}
+          (\autoref{sec:multi-format}--\autoref{sec:verification}): a
+          format-selector mechanism for switching between MX element types at
+          runtime, a bit-accurate Python golden model, and the debug
+          infrastructure used throughout integration.
+\end{enumerate}
+
+% TODO: Add top-level block diagram here showing the MX datapath inserted between
+% the TCDM/streamer interface and the existing RedMulE engine.
+
+
+% =============================================================================
+% MX Datapath Architecture
+% =============================================================================
+\section{MX Codec Design}
+\label{sec:mx-codec}
+
+% ---- Decoder ----
+\subsection{Decoder}
+\label{ssec:mx-decoder}
+
+The MX decoder converts a block of MX-encoded FP8 mantissas and their shared
+exponent into FP16 values. Each MX block consists of 32 eight-bit elements
+sharing a single eight-bit scale exponent. Decoding is a two-step process:
+format conversion (FP8$\to$FP16) and exponent scaling.
+
+The decoder is implemented as a two-stage elastic pipeline:
+
+\begin{itemize}
+    \item \textbf{Stage~0 (S0):} Latches the input FP8 block and shared
+          exponent. In parallel, all 32 elements are combinationally converted
+          from FP8 to FP16. For E4M3, this involves rebasing the 4-bit exponent
+          from bias~7 to bias~15 and zero-extending the 3-bit mantissa to 10
+          bits. E5M2 follows the analogous mapping. Subnormals and special values
+          (NaN, Inf) are handled explicitly.
+    \item \textbf{Stage~1 (S1):} Applies the MX shared exponent as an additive
+          correction $\delta = \text{scale} - 127$ to each element's FP16
+          exponent. The result is registered and presented at the output.
+          Overflow saturates to FP16 max; underflow flushes to zero.
+\end{itemize}
+
+Both stages use elastic handshaking with bubble collapsing: a stage advances
+when it is empty or its downstream consumer is ready, yielding a sustained
+throughput of one MX block (32 FP16 values) per cycle.
+
+% TODO: Insert pipeline timing diagram (S0/S1 stages, showing throughput).
+
+The conversion logic is implemented as purely combinational functions
+(\texttt{fp8\_e4m3\_to\_fp16}, \texttt{fp8\_e5m2\_to\_fp16}) selected by the
+\texttt{mx\_format\_i} signal, which makes adding new MX element types
+(E3M2, E2M1) a matter of adding the corresponding conversion function and
+bias constants.
+
+% TODO: Note the evolution from scalar -> parallel -> pipelined versions
+% (commits e15c672a -> 3607c83e -> adbc577d) if relevant for showing the
+% design-space exploration.
+
+
+% ---- Encoder ----
+\subsection{Encoder}
+\label{ssec:mx-encoder}
+
+The encoder performs the reverse operation: it receives 32 FP16 values from the
+engine output and produces an MX-encoded block (32 FP8 mantissas + one shared
+exponent). The encoding proceeds through a three-state FSM:
+
+\begin{enumerate}
+    \item \textbf{IDLE:} Waits for valid FP16 input.
+    \item \textbf{SCAN:} Iterates over groups of input lanes to determine the
+          maximum FP16 exponent across the block. This maximum determines the
+          shared exponent.
+    \item \textbf{ENCODE:} Iterates over the same groups, down-converting each
+          FP16 element to FP8 relative to the shared exponent, using
+          round-to-nearest-even (RNE). The packed mantissa block and shared
+          exponent are output on separate valid/ready channels.
+\end{enumerate}
+
+The encoder operates on \texttt{NUM\_LANES} elements per cycle (parameterized,
+currently 8 for the 32-wide engine output), requiring $32/\text{NUM\_LANES}$
+cycles for the scan pass and equally many for the encode pass. The resulting
+throughput is lower than the decoder, but this is acceptable because the engine
+produces output at a much lower rate than it consumes input (one Z row every
+$N_\text{unpacked}$ engine cycles).
+
+% TODO: Consider adding a table comparing decoder vs. encoder throughput.
+
+
+% -----------------------------------------------------------------------------
+\section{Input Datapath}
+\label{sec:mx-input-datapath}
+% -----------------------------------------------------------------------------
+
+The MX input datapath is inserted between the HCI streamer interface and the
+existing X/W data FIFOs. It consists of four modules connected in series.
+
+% TODO: Insert detailed datapath block diagram.
+
+\subsection{Slot Buffer}
+\label{ssec:slot-buffer}
+
+A single 1024-bit TCDM beat contains $1024/8 = 128$ FP8 elements, but the
+decoder processes 32 elements at a time (one MX block). The slot buffer
+(\texttt{redmule\_mx\_slot\_buffer}) splits each incoming beat into four
+256-bit \emph{slots} and buffers them in independent FIFOs for the X and W
+paths.
+
+Mantissa slots and exponent data are queued independently, so the exponent
+prefetch can proceed even when the mantissa consumer is stalled. For each
+stream, the buffer presents a valid slot and its corresponding exponent; a
+per-stream \texttt{consume} signal advances to the next entry.
+
+\subsection{Exponent Buffer}
+\label{ssec:exp-buffer}
+
+Shared exponents are streamed from TCDM through dedicated source ports
+(X\_EXP, W\_EXP) into exponent prefetch buffers
+(\texttt{redmule\_exp\_buffer}). Each buffer is a circular SRAM that unpacks
+individual exponents from tightly packed beats and stores them sequentially.
+
+The exponent buffer supports three features critical for multi-tile operation:
+
+\begin{itemize}
+    \item \textbf{Total count cap:} When the last beat has fewer valid exponents
+          than the beat capacity (e.g., 64 valid in a 128-slot beat), the buffer
+          discards junk padding based on \texttt{total\_count\_i}.
+    \item \textbf{Segment gating:} Limits the number of exponents consumed
+          per segment to \texttt{segment\_size\_i}, preventing the decoder from
+          reading ahead into future M-tile exponents.
+    \item \textbf{Mark/rewind:} Saves and restores the read pointer to replay
+          exponents across K-tile and M-tile iterations. Mark is triggered at
+          M-tile boundaries (\texttt{x\_rows\_iter\_en}); rewind at K-tile
+          boundaries (\texttt{x\_w\_iters\_en}).
+\end{itemize}
+
+\subsection{Decoder Scheduling}
+\label{ssec:decoder-scheduling}
+
+Two decoder architectures were explored, representing a throughput--complexity
+trade-off:
+
+\paragraph{Shared Arbiter (Single Decoder).}
+A round-robin arbiter (\texttt{redmule\_mx\_arbiter}) multiplexes X and W slot
+pairs into a single decoder instance. The arbiter gives priority to W when the
+W FIFO is empty, preventing engine starvation. An elastic buffer (depth~4)
+between the decoder output and the W FIFO absorbs bursts. This design is
+simple but creates a bottleneck: when the W elastic buffer or W FIFO is full,
+the arbiter blocks the decoder entirely, stalling X decoding even when X FIFO
+space is available.
+
+\paragraph{Dual Decoder.}
+Two independent decoder instances (\texttt{i\_mx\_decoder\_x},
+\texttt{i\_mx\_decoder\_w}) each consume directly from their respective slot
+buffer outputs. This eliminates cross-path blocking entirely: X and W decode at
+full speed regardless of the other path's FIFO state. The input mux target
+gating signals (\texttt{target\_is\_x\_i}, \texttt{target\_is\_w\_i}) are tied
+high since each decoder always feeds its own path.
+
+The dual decoder provides higher sustained throughput but removes the natural
+stall cycles that the arbiter's blocking behavior created at tile boundaries.
+This exposed a latent W buffer issue where stale data from the previous K-tile
+remained in the SCM (Standard Cell Memory) during the first cycles of a new
+tile, which is discussed in \autoref{sec:w-buffer-scm}. A quantitative
+comparison of both architectures is presented in \autoref{ch:results}.
+
+\subsection{Input Mux and Beat Packing}
+\label{ssec:input-mux}
+
+The input mux (\texttt{redmule\_mx\_input\_mux}) reassembles decoded FP16
+values back into 512-bit beats compatible with the downstream data FIFOs. Since
+the decoder outputs 32 FP16 values ($32 \times 16 = 512$ bits) per cycle, and
+the data FIFO expects 512-bit beats, the packing ratio is $512/512 = 1$
+(no multi-cycle accumulation needed at 512-bit FIFO width).
+
+For the W path, the mux additionally tracks the row-chunk position
+(\texttt{w\_dec\_pos\_q}) to correctly handle K-tile boundaries where the number
+of chunks per W row may vary.
+
+In FP16 bypass mode (\texttt{mx\_enable\_i = 0}), the mux passes the raw
+streamer data through unchanged.
+
+
+% -----------------------------------------------------------------------------
+\section{Output Datapath}
+\label{sec:mx-output-datapath}
+% -----------------------------------------------------------------------------
+
+The output stage (\texttt{redmule\_mx\_output\_stage}) sits between the engine
+Z output and the Z stream sink. In MX mode, the FP16 engine output is buffered
+in a small FIFO and then fed to the MX encoder, which produces packed FP8
+mantissa beats and a separate exponent stream. The mantissa data is forwarded to
+the Z FIFO for TCDM write-back; the exponent is written through a dedicated
+exponent stream port.
+
+In FP16 mode, the output stage is bypassed and the engine output passes directly
+to the Z FIFO.
+
+% TODO: The serialization factor (32 FP16 -> 32 FP8 + 1 exp takes multiple
+% cycles) and how the scheduler Z drain logic accounts for this.
+
+
+% -----------------------------------------------------------------------------
+\section{W Buffer}
+\label{sec:w-buffer-scm}
+% -----------------------------------------------------------------------------
+
+The W buffer (\texttt{redmule\_w\_buffer}) is a shift-register backed by an SCM
+(Standard Cell Memory) array of $\text{ARRAY\_HEIGHT} = 32$ rows. Each
+\texttt{LOAD\_W} cycle writes one new W row into the SCM and shifts all rows
+down by one position. The engine reads \emph{all 32 rows simultaneously} each
+cycle (one element per row feeds one row of the systolic array).
+
+This design creates a fill latency: after a K-tile or M-tile boundary, the
+first 32 \texttt{LOAD\_W} cycles produce partially stale output. Rows that have
+not yet been overwritten still contain data from the previous tile. Under the
+shared arbiter design, the natural stalls from W FIFO backpressure provided
+enough fill time to mask this effect. With the dual decoder, the faster W
+decoding pipeline removes these stalls, exposing the stale data to the engine.
+
+% TODO: Add timing diagram showing the fill progression and stale window.
+
+This is an area of active investigation. Several mitigation approaches were
+explored, including SCM data clearing, per-row valid-bit masking, and W row
+counter resynchronization. Each approach faced the fundamental constraint that
+the engine reads all 32 SCM rows every cycle while only one row is written per
+cycle, and the shift operation must continue during the Z buffer fill phase
+(\texttt{z\_avail}). The currently most promising solutions are double-buffering
+the SCM or introducing a dedicated preload state at M-tile boundaries.
+
+% TODO: Update this section once the fix is finalized.
+
+
+% =============================================================================
+% Tiling and Verification
+% =============================================================================
+\section{Tiling Extensions}
+\label{sec:tiling}
+
+The baseline RedMulE engine supports tiled GEMM execution for matrices larger
+than the hardware tile size. For a computation
+$Z[M \times K] = X[M \times N] \times W[N \times K] + Y[M \times K]$, the
+tiler decomposes the problem into iterations along three dimensions:
+
+\begin{itemize}
+    \item \textbf{M-tiling:} \texttt{x\_rows\_iter} $= M / \text{ARRAY\_WIDTH}$
+          iterations over groups of 32 output rows.
+    \item \textbf{N-tiling:} \texttt{x\_cols\_iter} $= N / \text{TILE}$
+          iterations over the reduction dimension (TILE = 64 FP16 elements per
+          beat).
+    \item \textbf{K-tiling:} \texttt{w\_cols\_iter} $= K / \text{TILE}$
+          iterations over groups of 64 output columns.
+\end{itemize}
+
+In MX mode, the tiler adjusts the reduction dimension by the MX pack factor:
+$N_\text{unpacked} = N_\text{cfg} \times 2$, since each MX FP8 element occupies
+half the bus width of an FP16 element. The following sections describe the bugs
+encountered when enabling each tiling dimension for MX and the fixes applied.
+
+
+% -----------------------------------------------------------------------------
+\subsection{M-Tiling}
+\label{sec:m-tiling}
+% -----------------------------------------------------------------------------
+
+M-tiling iterates over groups of \texttt{ARRAY\_WIDTH}~=~32 output rows. Each
+M-tile requires a full pass over all N-tiles and K-tiles before advancing to the
+next group of rows. Two interacting bugs prevented correct M-tiling in MX mode.
+
+\subsubsection{Z Buffer Fill/Drain Overlap}
+\label{ssec:z-drain-overlap}
+
+Between M-tiles, the Z buffer transitions from the drain phase (writing
+accumulated results to TCDM) to the fill phase (loading Y-bias for the next
+tile). When the fill phase for the next K-tile began while the Z buffer was
+still draining, the \texttt{fill\_shift} counter incremented prematurely. Upon
+drain completion, the non-zero \texttt{fill\_shift} permanently disabled the
+load enable, deadlocking the pipeline.
+
+The fix introduces a \texttt{z\_drain\_guard} signal: a one-cycle-delayed copy
+of the Z buffer's \texttt{z\_valid} (drain-active) flag. During the guard
+window, the engine clock is gated, preventing the fill counter from advancing
+until the drain has fully completed and its effects have propagated. The Z
+buffer's \texttt{fill\_shift} and \texttt{d\_index} counters are explicitly
+reset on the \texttt{PUSHED}$\to$\texttt{EMPTY} transition.
+
+
+\subsubsection{Fill/Engine Clock Gate Desynchronization}
+\label{ssec:fill-engine-desync}
+
+The Z buffer fill signal (\texttt{cntrl\_z\_buffer\_o.fill}) is combinational,
+responding immediately to changes in \texttt{stall\_engine}. The engine clock
+gate (\texttt{row\_clk\_en\_q}), however, is registered with a one-cycle delay
+through a flip-flop and \texttt{tc\_clk\_gating} latch. When
+\texttt{stall\_engine} deasserts during the fill phase:
+
+\begin{enumerate}
+    \item The fill counter resumes \emph{immediately} (combinational path).
+    \item The engine clock resumes \emph{next cycle} (registered
+          \texttt{row\_clk\_en\_q}).
+    \item For one cycle, the fill counter captures a value that the engine has
+          not yet produced---a duplicate of the previous cycle's output.
+\end{enumerate}
+
+This manifested as exactly one duplicated value at fill position 57 in the first
+M-tile of a 96$\times$64$\times$64 MX computation (19 errors, all $\pm$1--2 ULP).
+
+The fix aligns fill advancement with the engine clock by gating the fill signal
+and \texttt{z\_avail\_counter} with \texttt{row\_clk\_en\_q[0]} (the registered
+engine clock enable state) rather than the combinational stall conditions.
+
+% TODO: Consider a timing waveform figure showing the 1-cycle misalignment.
+
+
+% -----------------------------------------------------------------------------
+\subsection{K-Tiling}
+\label{sec:k-tiling}
+% -----------------------------------------------------------------------------
+
+K-tiling iterates over groups of $\text{TILE} = 64$ output columns. Each K-tile
+pass reuses the same X data but loads a new horizontal strip of W. Three issues
+arose in the exponent buffer management for K-tiling.
+
+\subsubsection{Exponent Beat Padding}
+
+Each 1024-bit TCDM beat carries up to 128 X exponents (8 bits each). For
+non-power-of-two configurations, the last beat may contain fewer than 128 valid
+exponents. Without a cap, the buffer stored junk padding values as real
+exponents, corrupting the scale factors for subsequent blocks.
+
+The fix adds a \texttt{total\_count\_i} parameter to the exponent buffer,
+computed by the memory scheduler from the actual number of exponents for the
+current dimension. The buffer discards entries beyond this count when unpacking
+the final beat.
+
+\subsubsection{Mark/Rewind Timing}
+
+The exponent buffer's mark and rewind operations were originally triggered by
+engine-side signals (\texttt{start\_computation}, \texttt{w\_mat\_iters\_en}).
+However, the decoder runs ahead of the engine by several cycles (due to FIFO
+buffering), so engine-side triggers caused the buffer to mark or rewind at
+positions that were already stale from the decoder's perspective.
+
+The fix retargets both operations to X-side streamer signals:
+\begin{itemize}
+    \item \textbf{Rewind:} Triggered by \texttt{x\_w\_iters\_en} (K-tile
+          boundary on the X memory read side), which aligns with when the decoder
+          actually needs to replay exponents.
+    \item \textbf{Mark:} Triggered by \texttt{x\_rows\_iter\_en} (M-tile
+          boundary on the X memory read side), saving the pointer at the start of
+          each M-tile's exponent range.
+\end{itemize}
+
+\subsubsection{Segment Gating}
+
+Without segment gating, the decoder consumed exponents as fast as slots were
+available, potentially reading into exponents belonging to the next M-tile before
+the current one completed. The \texttt{segment\_size\_i} parameter limits the
+exponent buffer to emit at most $N_\text{unpacked}$ exponents per segment
+(between consecutive mark/rewind events), enforcing M-tile isolation.
+
+
+% -----------------------------------------------------------------------------
+\subsection{N-Tiling}
+\label{sec:n-tiling}
+% -----------------------------------------------------------------------------
+
+N-tiling iterates over the reduction dimension in groups of
+$\text{TILE} = 64$ elements. This was the final tiling dimension to be enabled
+and required fixes in both the software test infrastructure and the RTL.
+
+\subsubsection{X Memory Layout Reordering}
+
+The original test vector generator produced X data in N-tile-major order: all M
+rows for N-tile~0, then all M rows for N-tile~1, etc. The memory scheduler,
+however, reads linearly per M-tile. For multi-M-tile configurations, M-tile~0's
+reader would consume M-tile~1's data from N-tile~0 instead of its own N-tile~1
+data.
+
+The fix reorders the X memory layout to M-tile-major order: within each M-tile,
+all N-tiles are stored contiguously. This was implemented in the Python test
+vector generator (\texttt{gen\_mx\_test\_vectors.py}) with a
+\texttt{reorder\_mn\_tile\_major()} function parameterized by
+\texttt{--m-tile-rows} (= ARRAY\_WIDTH = 32).
+
+\subsubsection{Address Offset Advancement}
+
+The \texttt{x\_rows\_offs\_q} register in the memory scheduler tracks the TCDM
+address offset for each M-tile's X data. The update condition compared the
+column iteration counter (\texttt{x\_cols\_iters\_q}) against a tiler register
+(\texttt{X\_ITERS[15:0]}), which holds the original column iteration count. In
+MX mode, however, the effective column iteration limit
+(\texttt{msched\_x\_cols\_limit}) differs from the stored value. For $N = 64$
+both values coincidentally equal~1, so the bug was invisible. For $N > 64$ (e.g.,
+$N = 128 \Rightarrow \texttt{x\_cols\_iter} = 2$), the comparison was never
+true, and the address offset never advanced---all M-tiles read from the same
+base address.
+
+The fix changes the comparison target to \texttt{msched\_x\_cols\_limit - 1},
+consistent with how the row iteration update already operated.
+
+
+% -----------------------------------------------------------------------------
+\subsection{Multi-Format Support}
+\label{sec:multi-format}
+% -----------------------------------------------------------------------------
+
+The MX specification defines multiple element types with different
+exponent/mantissa splits. The current implementation supports E4M3 and E5M2;
+E3M2 (FP6) and E2M1 (FP4) are planned extensions.
+
+The format selector is encoded as a 3-bit enum (\texttt{mx\_format\_e}) carried
+through the control path from the software configuration register to the decoder
+and encoder. The decoder selects the appropriate conversion function (bias
+constant, mantissa width, special-value handling) based on this signal. The
+encoder symmetrically adjusts its down-conversion logic.
+
+Adding E3M2 and E2M1 requires:
+\begin{itemize}
+    \item New conversion functions in the decoder and encoder.
+    \item Adjusted pack factors: FP6 elements are 6 bits wide
+          ($\lfloor 8/6 \rfloor$ packing requires padding handling), and FP4
+          elements are 4 bits wide ($256/4 = 64$ elements per 256-bit slot).
+    \item Updated slot buffer unpacking logic to handle non-byte-aligned element
+          widths (FP6) or increased element counts (FP4).
+    \item Golden model extensions for bit-accurate reference computation.
+\end{itemize}
+
+% TODO: Expand this section after FP4/FP6 implementation is complete.
+
+
+% -----------------------------------------------------------------------------
+\subsection{Verification}
+\label{sec:verification}
+% -----------------------------------------------------------------------------
+
+\subsubsection{Golden Model}
+\label{ssec:golden-model}
+
+A bit-accurate Python golden model (\texttt{mx\_fp\_golden.py}) serves as the
+reference for simulation comparison. The model performs the full MX GEMM
+pipeline: encodes FP32 input matrices to MX format (shared exponent selection,
+FP8 quantization with RNE), decodes back to FP16, computes the GEMM in FP16
+arithmetic, and encodes the result. This mirrors the hardware pipeline exactly,
+ensuring that any numerical difference is a true hardware bug rather than a
+precision artifact.
+
+The test vector generator (\texttt{gen\_mx\_test\_vectors.py}) produces
+TCDM-layout binary stimuli with the correct M-tile-major ordering, exponent
+packing, and byte alignment. A companion script
+(\texttt{gen\_mx\_golden.py}) generates the expected output in the same binary
+format for comparison.
+
+\subsubsection{Debug Methodology}
+\label{ssec:debug-methodology}
+
+Several techniques were developed during integration to diagnose the tiling bugs
+described in \autoref{sec:m-tiling}--\autoref{sec:n-tiling}:
+
+\begin{itemize}
+    \item \textbf{W increment override (\texttt{+W\_INCR\_OVERRIDE}):} A
+          simulation-time flag that replaces the W buffer output with
+          monotonically incrementing FP16 values. This isolates W-data-dependent
+          errors from engine pipeline issues by making the W contribution
+          deterministic and position-traceable.
+    \item \textbf{Per-stage display dumps:} \texttt{\$display}-based probes at
+          the slot buffer output, decoder output, input mux, and engine input
+          that log cycle-by-cycle data flow, enabling visual diff against the
+          golden model.
+    \item \textbf{Engine input probes:} Direct observation of the values
+          presented to the systolic array on each engine cycle, with M-tile,
+          K-tile, and W-row annotations. This was instrumental in identifying
+          the W buffer SCM stale data issue.
+\end{itemize}
+
+The full test matrix, cycle counts, and correctness results are presented in
+\autoref{ch:results}.

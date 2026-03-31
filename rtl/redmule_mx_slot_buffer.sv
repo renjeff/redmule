@@ -24,6 +24,7 @@ module redmule_mx_slot_buffer
   input  logic rst_ni,
   input  logic clear_i,
   input  logic mx_enable_i,
+  input  mx_format_e mx_format_i,
 
   // Data streams from streamer (streaming interfaces)
   hwpe_stream_intf_stream.sink x_data_i,
@@ -52,8 +53,8 @@ module redmule_mx_slot_buffer
   input  logic consume_w_slot_i
 );
 
-// FP8 unpacking function
-function automatic logic [MX_DATA_W-1:0] mx_unpack_half(input logic [MX_DATA_W-1:0] half_data);
+// FP8 unpacking: extract 32 bytes from interleaved 16-bit layout
+function automatic logic [MX_DATA_W-1:0] mx_unpack_fp8(input logic [MX_DATA_W-1:0] half_data);
   logic [MX_DATA_W-1:0] unpacked;
   for (int i = 0; i < MX_INPUT_NUM_ELEMS; i++) begin
     automatic int word_idx = i / 2;
@@ -65,12 +66,45 @@ function automatic logic [MX_DATA_W-1:0] mx_unpack_half(input logic [MX_DATA_W-1
   return unpacked;
 endfunction
 
-localparam int unsigned SLOTS_PER_BEAT = DATAW_ALIGN / MX_DATA_W;  // one MX block per 256b slot
+// FP6 unpacking: extract 32 six-bit elements from 192-bit block into 256-bit slot
+// Input: 192 bits = 32 tightly-packed 6-bit elements
+// Output: 256 bits = 32 × 8-bit containers ({2'b0, 6-bit element})
+function automatic logic [MX_DATA_W-1:0] mx_unpack_fp6(input logic [191:0] packed_data);
+  logic [MX_DATA_W-1:0] unpacked;
+  for (int i = 0; i < 32; i++) begin
+    unpacked[i*8 +: 8] = {2'b0, packed_data[i*6 +: 6]};
+  end
+  return unpacked;
+endfunction
+
+// FP4 unpacking: extract 32 nibbles from 128-bit block into 256-bit slot
+// Input: 128 bits = 32 tightly-packed 4-bit elements
+// Output: 256 bits = 32 × 8-bit containers ({4'b0, nibble})
+function automatic logic [MX_DATA_W-1:0] mx_unpack_fp4(input logic [127:0] packed_data);
+  logic [MX_DATA_W-1:0] unpacked;
+  for (int i = 0; i < 32; i++) begin
+    unpacked[i*8 +: 8] = {4'b0, packed_data[i*4 +: 4]};
+  end
+  return unpacked;
+endfunction
+
+// Max slots per beat: FP4 has 8 blocks of 128b in 1024b beat
+localparam int unsigned SLOTS_PER_BEAT_FP8 = DATAW_ALIGN / MX_DATA_W;  // 4
+localparam int unsigned SLOTS_PER_BEAT     = DATAW_ALIGN / (MX_DATA_W / 2);  // 8 (max for FP4)
 localparam int unsigned SLOT_BYTES     = MX_DATA_W / 8;
 localparam int unsigned SLOT_PTR_W     = (SLOT_FIFO_DEPTH > 1) ? $clog2(SLOT_FIFO_DEPTH) : 1;
 localparam int unsigned SLOT_CNT_W     = $clog2(SLOT_FIFO_DEPTH + 1);
-localparam logic [SLOT_CNT_W-1:0] SLOT_ACCEPT_LEVEL =
-    SLOT_FIFO_DEPTH - SLOTS_PER_BEAT;
+// Runtime accept level based on format
+localparam int unsigned SLOTS_PER_BEAT_FP6 = 5;  // 5 × 192 = 960 bits per beat
+logic [SLOT_CNT_W-1:0] rt_slots_per_beat;
+always_comb begin
+  case (mx_format_i)
+    MX_FMT_E2M1: rt_slots_per_beat = SLOT_CNT_W'(SLOTS_PER_BEAT);      // 8 for FP4
+    MX_FMT_E3M2,
+    MX_FMT_E2M3: rt_slots_per_beat = SLOT_CNT_W'(SLOTS_PER_BEAT_FP8);  // FP6 uses 8-bit containers (same as FP8)
+    default:      rt_slots_per_beat = SLOT_CNT_W'(SLOTS_PER_BEAT_FP8);  // 4 for FP8
+  endcase
+end
 
 localparam int unsigned X_EXP_FIFO_DEPTH = SLOT_FIFO_DEPTH + 2;  // room for pending beats
 localparam int unsigned X_EXP_PTR_W      = (X_EXP_FIFO_DEPTH > 1) ? $clog2(X_EXP_FIFO_DEPTH) : 1;
@@ -84,10 +118,7 @@ localparam logic [W_EXP_CNT_W-1:0] W_EXP_DEPTH_CONST = W_EXP_FIFO_DEPTH;
 
 initial begin
   if (SLOT_FIFO_DEPTH < 2*SLOTS_PER_BEAT) begin
-    $fatal(1, "Slot buffer depth (%0d) must hold at least two beats", SLOT_FIFO_DEPTH);
-  end
-  if (SLOT_FIFO_DEPTH % SLOTS_PER_BEAT != 0) begin
-    $fatal(1, "Slot buffer depth (%0d) must be a multiple of %0d", SLOT_FIFO_DEPTH, SLOTS_PER_BEAT);
+    $fatal(1, "Slot buffer depth (%0d) must hold at least two max-beats (%0d)", SLOT_FIFO_DEPTH, 2*SLOTS_PER_BEAT);
   end
 end
 
@@ -170,35 +201,63 @@ logic [SLOTS_PER_BEAT-1:0] w_slot_has_data;
 logic [SLOT_CNT_W-1:0] x_slots_in_beat;
 logic [SLOT_CNT_W-1:0] w_slots_in_beat;
 
+// FP6 block size
+localparam int unsigned FP6_BLOCK_W     = 192;  // 32 × 6 bits
+localparam int unsigned FP6_BLOCK_BYTES = FP6_BLOCK_W / 8;  // 24 bytes
+
+// FP4 block size
+localparam int unsigned FP4_BLOCK_W     = 128;  // 32 × 4 bits
+localparam int unsigned FP4_BLOCK_BYTES = FP4_BLOCK_W / 8;
+
 always_comb begin
   x_slots_in_beat = '0;
   w_slots_in_beat = '0;
+
+  // Default zero
   for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
-    if (mx_enable_i) begin
-      x_unpacked[s] = mx_unpack_half(x_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
-      w_unpacked[s] = mx_unpack_half(w_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
+    x_unpacked[s] = '0;
+    w_unpacked[s] = '0;
+    x_slot_has_data[s] = 1'b0;
+    w_slot_has_data[s] = 1'b0;
+  end
+
+  if (!mx_enable_i) begin
+    // FP16 passthrough
+    x_unpacked[0] = x_data_i.data[MX_DATA_W-1:0];
+    w_unpacked[0] = w_data_i.data[MX_DATA_W-1:0];
+    x_slot_has_data[0] = 1'b1;
+    w_slot_has_data[0] = 1'b1;
+    x_slots_in_beat = 1;
+    w_slots_in_beat = 1;
+  end else if (mx_format_i == MX_FMT_E2M1) begin
+    // FP4 tight packed: 8 blocks of 128 bits per 1024-bit beat
+    for (int s = 0; s < SLOTS_PER_BEAT; s++) begin
+      x_unpacked[s] = mx_unpack_fp4(x_data_i.data[s*FP4_BLOCK_W +: FP4_BLOCK_W]);
+      w_unpacked[s] = mx_unpack_fp4(w_data_i.data[s*FP4_BLOCK_W +: FP4_BLOCK_W]);
+      x_slot_has_data[s] = |x_data_i.strb[s*FP4_BLOCK_BYTES +: FP4_BLOCK_BYTES];
+      w_slot_has_data[s] = |w_data_i.strb[s*FP4_BLOCK_BYTES +: FP4_BLOCK_BYTES];
+      if (x_slot_has_data[s]) x_slots_in_beat = x_slots_in_beat + 1'b1;
+      if (w_slot_has_data[s]) w_slots_in_beat = w_slots_in_beat + 1'b1;
+    end
+  end else begin
+    // FP8/FP6: 4 blocks of 256 bits per 1024-bit beat
+    for (int s = 0; s < SLOTS_PER_BEAT_FP8; s++) begin
+      x_unpacked[s] = mx_unpack_fp8(x_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
+      w_unpacked[s] = mx_unpack_fp8(w_data_i.data[s*MX_DATA_W +: MX_DATA_W]);
       x_slot_has_data[s] = |x_data_i.strb[s*SLOT_BYTES +: SLOT_BYTES];
       w_slot_has_data[s] = |w_data_i.strb[s*SLOT_BYTES +: SLOT_BYTES];
-    end else begin
-      x_unpacked[s] = (s == 0) ? x_data_i.data[MX_DATA_W-1:0] : '0;
-      w_unpacked[s] = (s == 0) ? w_data_i.data[MX_DATA_W-1:0] : '0;
-      x_slot_has_data[s] = (s == 0);
-      w_slot_has_data[s] = (s == 0);
-    end
-
-    if (x_slot_has_data[s]) begin
-      x_slots_in_beat = x_slots_in_beat + 1'b1;
-    end
-    if (w_slot_has_data[s]) begin
-      w_slots_in_beat = w_slots_in_beat + 1'b1;
+      if (x_slot_has_data[s]) x_slots_in_beat = x_slots_in_beat + 1'b1;
+      if (w_slot_has_data[s]) w_slots_in_beat = w_slots_in_beat + 1'b1;
     end
   end
 end
 
-// Ready/accept logic for mantissas
+// Ready/accept logic for mantissas (runtime: room for actual slots per beat)
 logic x_data_ready_for_beat, w_data_ready_for_beat;
-assign x_data_ready_for_beat = (x_data_count_q <= SLOT_ACCEPT_LEVEL);
-assign w_data_ready_for_beat = (w_data_count_q <= SLOT_ACCEPT_LEVEL);
+logic [SLOT_CNT_W-1:0] rt_accept_level;
+assign rt_accept_level = SLOT_CNT_W'(SLOT_FIFO_DEPTH) - rt_slots_per_beat;
+assign x_data_ready_for_beat = (x_data_count_q <= rt_accept_level);
+assign w_data_ready_for_beat = (w_data_count_q <= rt_accept_level);
 
 assign x_data_i.ready = mx_enable_i ? x_data_ready_for_beat : 1'b1;
 assign w_data_i.ready = mx_enable_i ? w_data_ready_for_beat : 1'b1;

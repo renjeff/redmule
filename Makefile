@@ -235,7 +235,7 @@ fp16-headers:
 		echo "[FP16] Skipping baseline regeneration (MX_SKIP_FP16=1)"; \
 	else \
 		echo "[FP16] Generating baseline headers (M=$(M), N=$(N), K=$(K)) via golden model..."; \
-		$(MAKE) -C golden-model gemm SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=FP16; \
+		$(MAKE) -C golden-model gemm SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=FP16 $(if $(DETERMINISTIC),DETERMINISTIC=1,); \
 	fi
 
 # Generate instructions and data stimuli
@@ -273,7 +273,7 @@ N      ?= 32
 K      ?= 32
 
 golden: golden-clean
-	$(MAKE) -C golden-model $(OP) SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=$(fp_fmt)
+	$(MAKE) -C golden-model $(OP) SW=$(SW)/inc M=$(M) N=$(N) K=$(K) fp_fmt=$(fp_fmt) $(if $(DETERMINISTIC),DETERMINISTIC=1,)
 
 golden-clean:
 	$(MAKE) -C golden-model golden-clean

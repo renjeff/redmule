@@ -34,6 +34,7 @@ module redmule_memory_scheduler
   localparam int unsigned BYTES_PER_BEAT = DW/8;
   localparam int unsigned WORDS_PER_BEAT = DW/16;
   localparam int unsigned MX_PACK_FACTOR = 2;
+  // FP4 needs pack_factor=4. Use format-conditional for each division site.
   localparam int unsigned FP16_BLOCK_BYTES = W * (ELW/8);
   localparam int unsigned FP16_BLOCKS_PER_BEAT_RAW = (FP16_BLOCK_BYTES == 0) ? 0 : (BYTES_PER_BEAT / FP16_BLOCK_BYTES);
   localparam int unsigned FP16_BLOCKS_PER_BEAT = (FP16_BLOCKS_PER_BEAT_RAW == 0) ? 1 : FP16_BLOCKS_PER_BEAT_RAW;
@@ -68,7 +69,9 @@ module redmule_memory_scheduler
   // value (m*2/ARRAY_WIDTH for MX). Divide by MX_PACK_FACTOR to get memory passes.
   logic [15:0] mem_m_tiles;
   assign mem_m_tiles = cntrl_flags_i.mx_enable
-      ? ((x_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)
+      ? (cntrl_flags_i.mx_format == MX_FMT_E2M1
+         ? ((x_rows_iter_cfg + 3) / 4)
+         : ((x_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR))
       : x_rows_iter_cfg;
 `ifndef SYNTHESIS
   bit dbg_disable_exp_req;
@@ -222,7 +225,9 @@ module redmule_memory_scheduler
   logic [31:0]        x_rows_packed;
   logic [31:0]        x_total_words;
   assign num_x_reads_raw = x_rows_iters_q == reg_file_i.hwpe_params[X_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][31:24] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][31:24] : W;
-  assign x_rows_packed = (num_x_reads_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  assign x_rows_packed = cntrl_flags_i.mx_format == MX_FMT_E2M1
+                         ? ((num_x_reads_raw + 3) / 4)
+                         : ((num_x_reads_raw + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR);
   assign x_total_words = x_rows_packed * n_size_unpacked;
   assign num_x_reads = cntrl_flags_i.mx_enable ? ((x_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT) : num_x_reads_raw;
 
@@ -260,7 +265,9 @@ module redmule_memory_scheduler
   logic [31:0] w_words_per_x_tile;
   // W payload words in MX are packed over logical N rows (2 elements/word).
   assign w_rows_packed = cntrl_flags_i.mx_enable ?
-                         ((n_size_unpacked + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR) :
+                         (cntrl_flags_i.mx_format == MX_FMT_E2M1
+                          ? ((n_size_unpacked + 3) / 4)
+                          : ((n_size_unpacked + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR)) :
                          ((w_rows_iter_cfg + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR);
   assign w_words_per_x_tile = k_size_unpacked * w_rows_packed;
   // Single-pass W beat count: covers one full W matrix read.
@@ -310,7 +317,9 @@ module redmule_memory_scheduler
   logic [31:0] z_total_beats;
   // In MX mode, Z output is FP8 (8-bit per element). Two FP8 values pack into
   // each 16-bit word slot, so divide total element count by MX_PACK_FACTOR.
-  assign z_total_words = ((m_size_unpacked * k_size_unpacked) + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR;
+  assign z_total_words = cntrl_flags_i.mx_format == MX_FMT_E2M1
+                         ? ((m_size_unpacked * k_size_unpacked + 3) / 4)
+                         : ((m_size_unpacked * k_size_unpacked + MX_PACK_FACTOR - 1) / MX_PACK_FACTOR);
   assign z_total_beats = (z_total_words + WORDS_PER_BEAT - 1) / WORDS_PER_BEAT;
   assign z_store_tot_len = cntrl_flags_i.mx_enable ? z_total_beats
                                                     : reg_file_i.hwpe_params[Z_TOT_LEN];

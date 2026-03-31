@@ -43,6 +43,55 @@ def pack_fp8_to_16bit_words(fp8_values):
         packed.append(packed_word)
     return packed
 
+def pack_fp4_to_16bit_words(fp4_values):
+    """Pack 4 FP4 nibbles into each 16-bit word (tight packing).
+    Each fp4_value is a 4-bit value (0-15) stored in an 8-bit container.
+    Output: 4 nibbles per 16-bit word, little-endian nibble order.
+    nibble[0] at bits [3:0], nibble[1] at [7:4], nibble[2] at [11:8], nibble[3] at [15:12].
+    """
+    packed = []
+    for i in range(0, len(fp4_values), 4):
+        word = 0
+        for j in range(4):
+            val = fp4_values[i+j] if i+j < len(fp4_values) else 0
+            word |= (val & 0xF) << (j * 4)
+        packed.append(word)
+    return packed
+
+def pack_fp6_to_16bit_words(fp6_values):
+    """Pack FP6 6-bit values tightly into 16-bit words.
+    Each fp6_value is a 6-bit value (0-63) stored in an 8-bit container.
+    Pack as a continuous bit stream, then extract 16-bit words.
+    """
+    # Build bit stream
+    bits = 0
+    bit_count = 0
+    packed = []
+    for val in fp6_values:
+        bits |= (val & 0x3F) << bit_count
+        bit_count += 6
+        while bit_count >= 16:
+            packed.append(bits & 0xFFFF)
+            bits >>= 16
+            bit_count -= 16
+    # Flush remaining bits
+    if bit_count > 0:
+        packed.append(bits & 0xFFFF)
+    return packed
+
+def pack_fp4_to_32bit_words(fp4_values):
+    """Pack 8 FP4 nibbles into each 32-bit word (tight packing).
+    nibble[0] at bits [3:0], nibble[1] at [7:4], ..., nibble[7] at [31:28].
+    """
+    packed = []
+    for i in range(0, len(fp4_values), 8):
+        word = 0
+        for j in range(8):
+            val = fp4_values[i+j] if i+j < len(fp4_values) else 0
+            word |= (val & 0xF) << (j * 4)
+        packed.append(word)
+    return packed
+
 def pack_fp8_to_32bit_words(fp8_values):
     """Pack 4 FP8 values into each 32-bit word (byte0 = lowest FP8)."""
     packed = []
@@ -277,19 +326,27 @@ def main():
 
     # Output MX data
     if args.pack_fp8:
-        # Pack 2 FP8 values per 16-bit word
         all_fp8_values = [val for block in mx_per_block for val in block]
-        packed_words = pack_fp8_to_16bit_words(all_fp8_values)
+
+        # Format-dependent tight packing
+        if args.mx_format == 'e2m1':
+            # FP4: pack 4 nibbles per 16-bit word (tight packing for 4x BW)
+            packed_words = pack_fp4_to_16bit_words(all_fp8_values)
+            pack_desc = f'{len(packed_words)} packed 16-bit words (4 FP4 per word)'
+        else:
+            # FP8: pack 2 values per 16-bit word (8-bit containers)
+            packed_words = pack_fp8_to_16bit_words(all_fp8_values)
+            pack_desc = f'{len(packed_words)} packed 16-bit words (2 FP8 per word)'
 
         # Write hex format if requested
         if args.output_mx:
             write_hex_lines(args.output_mx, packed_words, width=4)  # 16-bit words
-            print(f'Wrote {len(packed_words)} packed 16-bit words (2 FP8 per word) to {args.output_mx}')
+            print(f'Wrote {pack_desc} to {args.output_mx}')
 
         # Write C header if requested
         if args.output_mx_header:
             write_c_header(args.output_mx_header, args.mx_array_name, packed_words, elem_type='uint16_t')
-            print(f'Wrote C header with {len(packed_words)} uint16_t values to {args.output_mx_header}')
+            print(f'Wrote C header with {pack_desc} to {args.output_mx_header}')
     else:
         # Unpacked format
         mx_blocks = []

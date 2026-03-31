@@ -58,6 +58,47 @@ def unpack_fp8_from_16bit(packed_values):
     return fp8_values
 
 
+def unpack_fp4_from_16bit(packed_values):
+    """Unpack FP4 nibbles from 16-bit words (4 nibbles per word, tight packed)."""
+    fp4_values = []
+    for word in packed_values:
+        for j in range(4):
+            fp4_values.append((word >> (j * 4)) & 0xF)
+    return fp4_values
+
+
+def unpack_fp6_from_16bit(packed_values):
+    """Unpack FP6 6-bit values from tightly-packed 16-bit words."""
+    bits = 0
+    bit_count = 0
+    fp6_values = []
+    for word in packed_values:
+        bits |= (word & 0xFFFF) << bit_count
+        bit_count += 16
+        while bit_count >= 6:
+            fp6_values.append(bits & 0x3F)
+            bits >>= 6
+            bit_count -= 6
+    return fp6_values
+
+
+def pack_fp6_to_32bit_words(fp6_values):
+    """Pack FP6 6-bit values tightly into 32-bit words."""
+    bits = 0
+    bit_count = 0
+    packed = []
+    for val in fp6_values:
+        bits |= (val & 0x3F) << bit_count
+        bit_count += 6
+        while bit_count >= 32:
+            packed.append(bits & 0xFFFFFFFF)
+            bits >>= 32
+            bit_count -= 32
+    if bit_count > 0:
+        packed.append(bits & 0xFFFFFFFF)
+    return packed
+
+
 def unpack_exponents_8bit(packed_words):
     """Unpack 8-bit exponents from 32-bit words (4 exponents per word)."""
     exponents = []
@@ -198,6 +239,18 @@ def pack_fp8_to_32bit_words(fp8_values):
     return packed
 
 
+def pack_fp4_to_32bit_words(fp4_values):
+    """Pack 8 FP4 nibbles per 32-bit word (tight packing, little-endian nibble order)."""
+    packed = []
+    for i in range(0, len(fp4_values), 8):
+        word = 0
+        for j in range(8):
+            if i + j < len(fp4_values):
+                word |= (fp4_values[i + j] & 0xF) << (j * 4)
+        packed.append(word)
+    return packed
+
+
 def pack_exponents_compact_8bit(exponents):
     """Pack 4 exponents per 32-bit word (little-endian)."""
     packed = []
@@ -288,8 +341,12 @@ def main():
 
     # X matrix
     x_packed = parse_c_header_array(args.x_mx_header)
-    x_fp8 = unpack_fp8_from_16bit(x_packed)
-    print(f"   X data: {len(x_packed)} packed words -> {len(x_fp8)} FP8 values")
+    if args.mx_format == 'e2m1':
+        x_fp8 = unpack_fp4_from_16bit(x_packed)
+        print(f"   X data: {len(x_packed)} packed words -> {len(x_fp8)} FP4 values")
+    else:
+        x_fp8 = unpack_fp8_from_16bit(x_packed)
+        print(f"   X data: {len(x_packed)} packed words -> {len(x_fp8)} FP8 values")
 
     x_exp_packed = parse_c_header_array(args.x_exp_header)
     if args.x_exp_format == '8bit':
@@ -300,8 +357,12 @@ def main():
 
     # W matrix
     w_packed = parse_c_header_array(args.w_mx_header)
-    w_fp8 = unpack_fp8_from_16bit(w_packed)
-    print(f"   W data: {len(w_packed)} packed words -> {len(w_fp8)} FP8 values")
+    if args.mx_format == 'e2m1':
+        w_fp8 = unpack_fp4_from_16bit(w_packed)
+        print(f"   W data: {len(w_packed)} packed words -> {len(w_fp8)} FP4 values")
+    else:
+        w_fp8 = unpack_fp8_from_16bit(w_packed)
+        print(f"   W data: {len(w_packed)} packed words -> {len(w_fp8)} FP8 values")
 
     w_exp_packed = parse_c_header_array(args.w_exp_header)
     if args.w_exp_format == '8bit':
@@ -413,8 +474,11 @@ def main():
     # 5. Pack and write output
     print(f"\n5. Writing output headers...")
 
-    # Pack MX elements to 32-bit words
-    z_packed = pack_fp8_to_32bit_words(z_mx)
+    # Pack MX elements to 32-bit words (format-dependent)
+    if args.mx_format == 'e2m1':
+        z_packed = pack_fp4_to_32bit_words(z_mx)
+    else:
+        z_packed = pack_fp8_to_32bit_words(z_mx)
     write_c_header(args.output_mx_header, args.mx_array_name, z_packed,
                    elem_type='uint32_t', guard_name='__GOLDEN_MX_H__')
     print(f"   Wrote {len(z_packed)} uint32_t values to {args.output_mx_header}")

@@ -107,8 +107,21 @@ int main() {
   asm volatile("wfi" ::: "memory");
 
 #ifdef MX_ENABLE
+#if defined(MX_FORMAT) && (MX_FORMAT == 4)
+  // E2M1 (FP4): 8 nibbles per 32-bit word
+  errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
+                                m_size * k_size / 8);
+#elif defined(MX_FORMAT) && (MX_FORMAT == 2 || MX_FORMAT == 3)
+  // E3M2/E2M3 (FP6): 6-bit elements packed tightly, compare 32-bit words
+  {
+    int total_bits = m_size * k_size * 6;
+    int total_words = (total_bits + 31) / 32;
+    errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx, total_words);
+  }
+#else
   errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
+#endif
 #else
   errors = redmule16_compare_int(y, golden, m_size * k_size / 2);
 #endif
@@ -152,11 +165,36 @@ int main() {
 
 #ifdef MX_ENABLE
   // MX output goes to z_oup (via Z_OUT_ADDR register), not y
+  // FP4 tight packing: 8 nibbles per 32-bit word. FP8: 4 bytes per word.
+#if defined(MX_FORMAT) && (MX_FORMAT == 4)
+  // E2M1 (FP4): compare at nibble granularity
+  {
+    int total_words = m_size * k_size / 8;  // 8 nibbles per word
+    int errs = 0;
+    for (int i = 0; i < total_words; i++) {
+      uint32_t hw = ((uint32_t *)z)[i];
+      uint32_t gm = ((uint32_t *)golden_mx)[i];
+      if (hw != gm) {
+        for (int n = 0; n < 8; n++) {
+          uint8_t hn = (hw >> (n*4)) & 0xF;
+          uint8_t gn = (gm >> (n*4)) & 0xF;
+          if (hn != gn) errs++;
+        }
+      }
+    }
+    errors = errs;
+  }
+#else
   errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
+#endif
   // Per-row error counts for debug
   {
+#if defined(MX_FORMAT) && (MX_FORMAT == 4)
+    int words_per_row = k_size / 8;  // FP4: 8 nibbles per word
+#else
     int words_per_row = k_size / 4;
+#endif
     int tile_size = 32;  // ARRAY_WIDTH
     int ktile_size = 64; // TILE
     int m_tiles = (m_size + tile_size - 1) / tile_size;
@@ -169,10 +207,18 @@ int main() {
         uint32_t hw = ((uint32_t *)z)[idx];
         uint32_t gm = ((uint32_t *)golden_mx)[idx];
         if (hw != gm) {
+#if defined(MX_FORMAT) && (MX_FORMAT == 4)
+          for (int b = 0; b < 8; b++) {
+            uint8_t hb = (hw >> (b*4)) & 0xF;
+            uint8_t gb = (gm >> (b*4)) & 0xF;
+#else
           for (int b = 0; b < 4; b++) {
             uint8_t hb = (hw >> (b*8)) & 0xFF;
             uint8_t gb = (gm >> (b*8)) & 0xFF;
-            if (hb != gb) row_errs++;
+#endif
+            if (hb != gb) {
+              row_errs++;
+            }
           }
         }
       }
@@ -191,27 +237,7 @@ int main() {
         tfp_printf("[ROWDBG] row=%d errs=%d k0=%d k1=%d\n", row, row_errs, errs_k0, errs_k1);
       }
     }
-    // Print first 20 byte-level mismatches for detail
-    int printed = 0;
-    for (int row = 0; row < m_size && printed < 20; row++) {
-      for (int w = 0; w < words_per_row && printed < 20; w++) {
-        int idx = row * words_per_row + w;
-        uint32_t hw = ((uint32_t *)z)[idx];
-        uint32_t gm = ((uint32_t *)golden_mx)[idx];
-        if (hw != gm) {
-          int col = w * 4;
-          for (int b = 0; b < 4 && printed < 20; b++) {
-            uint8_t hb = (hw >> (b*8)) & 0xFF;
-            uint8_t gb = (gm >> (b*8)) & 0xFF;
-            if (hb != gb) {
-              tfp_printf("[ERR] r=%d c=%d hw=0x%02x gm=0x%02x\n",
-                         row, col+b, hb, gb);
-              printed++;
-            }
-          }
-        }
-      }
-    }
+    // Detail prints removed for sweep performance
   }
 #else
   if (float_fmt == Float16 || float_fmt == Float16Alt)

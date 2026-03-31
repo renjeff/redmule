@@ -231,12 +231,49 @@ assign mx_exp_valid_o   = mx_exp_valid;
 assign mx_exp_ready_o   = mx_exp_ready;
 assign mx_exp_data_o    = mx_exp_data;
 
-// MX encoder output packing: collect DATAW_ALIGN/MX_DATA_W blocks per beat
-localparam int unsigned MX_BLOCK_WIDTH  = MX_DATA_W;
-localparam int unsigned MX_BLOCK_BYTES  = MX_DATA_W/8;
-localparam int unsigned BLOCKS_PER_BEAT = DATAW_ALIGN / MX_BLOCK_WIDTH;
-localparam int unsigned BLOCK_CNT_W     = (BLOCKS_PER_BEAT > 1) ? $clog2(BLOCKS_PER_BEAT) : 1;
+// MX encoder output packing
+localparam int unsigned MX_BLOCK_WIDTH_FP8  = MX_DATA_W;         // 256
+localparam int unsigned MX_BLOCK_WIDTH_FP4  = MX_DATA_W / 2;     // 128
+localparam int unsigned MX_BLOCK_BYTES_FP8  = MX_DATA_W / 8;     // 32
+localparam int unsigned MX_BLOCK_BYTES_FP4  = MX_DATA_W / 16;    // 16
+localparam int unsigned BLOCKS_PER_BEAT_FP8 = DATAW_ALIGN / MX_BLOCK_WIDTH_FP8;  // 4
+localparam int unsigned BLOCKS_PER_BEAT_MAX = DATAW_ALIGN / MX_BLOCK_WIDTH_FP4;  // 8
+localparam int unsigned BLOCK_CNT_W     = (BLOCKS_PER_BEAT_MAX > 1) ? $clog2(BLOCKS_PER_BEAT_MAX) : 1;
 localparam int unsigned TOTAL_BYTES     = DATAW_ALIGN/8;
+
+// FP6 block size
+localparam int unsigned MX_BLOCK_WIDTH_FP6  = 192;  // 32 × 6 bits
+localparam int unsigned MX_BLOCK_BYTES_FP6  = 24;   // 192 / 8
+localparam int unsigned BLOCKS_PER_BEAT_FP6 = 5;    // 5 × 192 = 960 ≤ 1024
+
+// Runtime blocks per beat
+logic [BLOCK_CNT_W:0] rt_blocks_per_beat;
+always_comb begin
+  case (mx_format_i)
+    MX_FMT_E2M1: rt_blocks_per_beat = BLOCKS_PER_BEAT_MAX;  // 8
+    MX_FMT_E3M2,
+    MX_FMT_E2M3: rt_blocks_per_beat = BLOCKS_PER_BEAT_FP8;  // FP6 uses 8-bit containers
+    default:      rt_blocks_per_beat = BLOCKS_PER_BEAT_FP8;  // 4
+  endcase
+end
+
+// FP6 repacking: extract low 6 bits from 32×8-bit encoder output → 192 bits
+function automatic logic [MX_BLOCK_WIDTH_FP6-1:0] repack_fp6(input logic [MX_DATA_W-1:0] enc_out);
+  logic [MX_BLOCK_WIDTH_FP6-1:0] repacked;
+  for (int i = 0; i < 32; i++) begin
+    repacked[i*6 +: 6] = enc_out[i*8 +: 6];
+  end
+  return repacked;
+endfunction
+
+// FP4 repacking: extract low nibbles from 32×8-bit encoder output → 128 bits
+function automatic logic [MX_BLOCK_WIDTH_FP4-1:0] repack_fp4(input logic [MX_DATA_W-1:0] enc_out);
+  logic [MX_BLOCK_WIDTH_FP4-1:0] repacked;
+  for (int i = 0; i < 32; i++) begin
+    repacked[i*4 +: 4] = enc_out[i*8 +: 4];
+  end
+  return repacked;
+endfunction
 
 logic [DATAW_ALIGN-1:0] pack_data_q, pack_data_d;
 logic [TOTAL_BYTES-1:0] pack_strb_q, pack_strb_d;
@@ -288,9 +325,17 @@ always_comb begin
       pack_data_d = '0;
       pack_strb_d = '0;
     end
-    pack_data_d[MX_BLOCK_WIDTH*pack_count_q +: MX_BLOCK_WIDTH] = mx_val_data;
-    pack_strb_d[MX_BLOCK_BYTES*pack_count_q +: MX_BLOCK_BYTES] = {MX_BLOCK_BYTES{1'b1}};
-    if (pack_count_q == BLOCKS_PER_BEAT-1) begin
+    // Format-dependent block packing
+    if (mx_format_i == MX_FMT_E2M1) begin
+      // FP4: repack 256b encoder output → 128b packed nibbles
+      pack_data_d[MX_BLOCK_WIDTH_FP4*pack_count_q +: MX_BLOCK_WIDTH_FP4] = repack_fp4(mx_val_data);
+      pack_strb_d[MX_BLOCK_BYTES_FP4*pack_count_q +: MX_BLOCK_BYTES_FP4] = {MX_BLOCK_BYTES_FP4{1'b1}};
+    end else begin
+      // FP8: place 256b block directly
+      pack_data_d[MX_BLOCK_WIDTH_FP8*pack_count_q +: MX_BLOCK_WIDTH_FP8] = mx_val_data;
+      pack_strb_d[MX_BLOCK_BYTES_FP8*pack_count_q +: MX_BLOCK_BYTES_FP8] = {MX_BLOCK_BYTES_FP8{1'b1}};
+    end
+    if (pack_count_q == rt_blocks_per_beat[BLOCK_CNT_W-1:0] - 1'b1) begin
       pack_valid_d = 1'b1;
       pack_count_d = '0;
     end else begin

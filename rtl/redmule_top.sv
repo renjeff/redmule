@@ -412,6 +412,7 @@ redmule_mx_slot_buffer #(
   .rst_ni           ( rst_ni                  ),
   .clear_i          ( clear                   ),
   .mx_enable_i      ( cntrl_flags.mx_enable   ),
+  .mx_format_i      ( cntrl_flags.mx_format   ),
   .x_data_i         ( x_buffer_slot          ),
   .w_data_i         ( w_buffer_slot         ),
   .x_exp_data_i     ( x_exp_buf_data         ),

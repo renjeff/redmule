@@ -94,9 +94,16 @@ void redmule_cfg(unsigned int x, unsigned int w, unsigned int z,
   uint16_t n_size_cfg = n_size;
 
 #ifdef MX_ENABLE
-  // Packed FP8: two elements per 16-bit word 
-  m_size_cfg = (m_size + 1) >> 1;
-  n_size_cfg = (n_size + 1) >> 1;
+  // Pack elements into 16-bit words: FP8 = 2 per word, FP4 = 4 per word
+  #if defined(MX_FORMAT) && (MX_FORMAT == 4)
+    // E2M1 (FP4 tight): 4 nibbles per word
+    m_size_cfg = (m_size + 3) >> 2;
+    n_size_cfg = (n_size + 3) >> 2;
+  #else
+    // FP8/FP6: 2 bytes per word
+    m_size_cfg = (m_size + 1) >> 1;
+    n_size_cfg = (n_size + 1) >> 1;
+  #endif
 #endif
 
   mcfg_reg0 = (k_size << 16) | m_size_cfg;

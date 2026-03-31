@@ -117,6 +117,7 @@ def fp16_to_mx_elem_unscaled(x: int, exp_bits: int, mant_bits: int, bias: int) -
         return s << (exp_bits + mant_bits)
 
     # Inf / NaN
+    # Inf / NaN
     if e16 == 0x1F:
         if m16 == 0:
             return (s << (exp_bits + mant_bits)) | (exp_mask << mant_bits)
@@ -219,8 +220,8 @@ def encode_block_fp16_to_mx(fp16_block_bits, fmt='e4m3'):
     Returns (shared_exp, mx_vals)
     """
     exp_bits, mant_bits, bias = MX_FORMAT_SPECS[fmt]
-    max_ub = bias  # max_unbiased = max_finite_biased - bias = (2^exp_bits-2) - bias
-    # Actually: max_finite_biased = (2^exp_bits - 2), max_unbiased = max_finite_biased - bias
+    # Formats with Inf/NaN: max_finite_biased = 2^exp_bits - 2 (all-ones is special)
+    # Formats without (E2M1, E2M3): max_finite_biased = 2^exp_bits - 1 (all normal)
     max_finite_biased = (1 << exp_bits) - 2
     max_ub = max_finite_biased - bias
 
