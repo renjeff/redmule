@@ -60,7 +60,7 @@ module redmule_w_rewind_fifo
   logic [RADDR_W-1:0] capture_count_q;   // number of captured entries - 1
 
   // ---- FSM ----
-  typedef enum logic { NORMAL, REPLAYING } state_e;
+  typedef enum logic [1:0] { NORMAL, REPLAYING, DRAINING } state_e;
   state_e state_q, state_d;
 
   // ---- Replay write (capture) ----
@@ -121,6 +121,11 @@ module redmule_w_rewind_fifo
   assign replay_last = (replay_rd_ptr_q == capture_count_q);
   assign replay_rd_en = (state_q == REPLAYING) && pop_o.ready;
 
+  // ---- Drain counter: skip capture_count+1 entries from inner FIFO after replay ----
+  logic [RADDR_W-1:0] drain_cnt_q;
+  logic drain_last;
+  assign drain_last = (drain_cnt_q == capture_count_q);
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       replay_rd_ptr_q <= '0;
@@ -128,6 +133,19 @@ module redmule_w_rewind_fifo
       replay_rd_ptr_q <= '0;
     end else if (replay_rd_en) begin
       replay_rd_ptr_q <= replay_rd_ptr_q + 1;
+    end
+  end
+
+  // ---- Drain counter ----
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      drain_cnt_q <= '0;
+    end else if (clear_i) begin
+      drain_cnt_q <= '0;
+    end else if (state_q == REPLAYING && state_d == DRAINING) begin
+      drain_cnt_q <= '0;
+    end else if (state_q == DRAINING && fifo_pop.valid && fifo_pop.ready) begin
+      drain_cnt_q <= drain_cnt_q + 1;
     end
   end
 
@@ -156,7 +174,11 @@ module redmule_w_rewind_fifo
         if (rewind_pending_q) state_d = REPLAYING;
       end
       REPLAYING: begin
-        if (replay_last && replay_rd_en) state_d = NORMAL;
+        if (replay_last && replay_rd_en) state_d = DRAINING;
+      end
+      DRAINING: begin
+        // Skip capture_count+1 entries from inner FIFO (already replayed)
+        if (drain_last && fifo_pop.valid) state_d = NORMAL;
       end
     endcase
   end
@@ -186,6 +208,14 @@ module redmule_w_rewind_fifo
       pop_o.strb  = replay_strb;
       // Don't pop inner FIFO during replay
       fifo_pop.ready = 1'b0;
+    end else if (state_q == DRAINING) begin
+      // Discard entries from inner FIFO (already provided by replay).
+      // Output invalid to scheduler — scheduler stalls on check_w_valid.
+      pop_o.valid    = 1'b0;
+      pop_o.data     = '0;
+      pop_o.strb     = '0;
+      // Pop inner FIFO to drain duplicates
+      fifo_pop.ready = fifo_pop.valid;
     end else if (rewind_pending_q) begin
       // Transition cycle: deassert valid to avoid data glitch
       pop_o.valid    = 1'b0;

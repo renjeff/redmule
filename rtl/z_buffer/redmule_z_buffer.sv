@@ -27,7 +27,9 @@ module redmule_z_buffer
   output logic                    [DW-1:0] z_buffer_o  ,
   output logic           [W-1:0][BITW-1:0] y_buffer_o  ,
   output logic                  [DW/8-1:0] z_strb_o    ,
-  output z_buffer_flgs_t                   flags_o
+  output z_buffer_flgs_t                   flags_o   ,
+  output logic [$clog2(Width)-1:0]         w_index_o ,
+  output logic [$clog2(DW/fpnew_pkg::fp_width(FpFormat))-1:0] d_index_o
 );
 
 typedef enum logic [1:0] {
@@ -73,6 +75,8 @@ redmule_z_buffer_scm #(
 );
 
 assign flags_o.y_ready = load_en && ctrl_i.y_valid;
+assign w_index_o = w_index;
+assign d_index_o = d_index;
 assign flags_o.z_valid = store_en;
 assign flags_o.z_priority = store_en;
 
@@ -267,6 +271,13 @@ always @(posedge clk_i or negedge rst_ni) begin
   end else begin
     zbuf_wait_cnt <= 0;
   end
+end
+
+// Y width debug (ungated)
+always @(posedge clk_i) begin
+  if (load_en && ctrl_i.y_valid)
+    $display("[YWDEBUG] t=%0t w_idx=%0d y_width=%0d rst_w=%b",
+             $time, w_index, ctrl_i.y_width, rst_w_load);
 end
 
 always @(posedge clk_i) begin

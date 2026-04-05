@@ -47,11 +47,13 @@ f = open(args.file_name, "w")
 
 # We want to perform a GEMM, of the kind Z = Y + X*W
 if args.deterministic:
-    print("\n[DETERMINISTIC MODE] X=1, Y=0, W=incrementing")
-    # W[n][k] = (n*k_size + k + 1) / (n_size*k_size) → values in (0, 1]
-    # Each element is unique and traceable
-    W_flat = [(i + 1) / (n_size * k_size) for i in range(n_size * k_size)]
-    W = torch.tensor(W_flat, dtype=torch.float32).reshape(n_size, k_size)
+    print("\n[DETERMINISTIC MODE] X=1, Y=0, W=row_index (simple)")
+    # W[n][k] = n + 1 for all k → each column identical, easy to trace
+    # Z[m][k] = sum_n(W[n][k]) = sum(1..N) = N*(N+1)/2 for all m,k
+    # With MX quantization: values 1-64 fit in E4M3 range
+    W = torch.zeros(n_size, k_size, dtype=torch.float32)
+    for n in range(n_size):
+        W[n, :] = float(n + 1)
     X = torch.ones(m_size, n_size, dtype=torch.float32)
     Y = torch.zeros(m_size, k_size, dtype=torch.float32)
     Z = torch.zeros(m_size, k_size, dtype=torch.float32)

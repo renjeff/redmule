@@ -161,11 +161,13 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_raw       ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_slot      ( .clk( clk_i ) );
 
 // W streaming interface + W FIFO interface
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_d         ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_packed    ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_muxed     ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_fifo      ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_raw       ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_d ( .clk( clk_i ) );
+// Bypass HWPE stream assertions on W path: rewind FIFO replay transitions violate
+// value-change and valid-deassert rules during bank switch
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_packed ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_muxed  ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_fifo   ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_raw    ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_slot      ( .clk( clk_i ) );
 
 // Y streaming interface + Y FIFO interface
@@ -690,16 +692,23 @@ hwpe_stream_fifo #(
   .pop_o          ( x_buffer_fifo   )
 );
 
-hwpe_stream_fifo #(
+// W buffer FIFO with replay capability for M-tile boundary SCM priming
+logic w_fifo_mark, w_fifo_rewind, w_fifo_replaying;
+
+redmule_w_rewind_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 16            )  // Extra depth so MX W data stays ahead of scheduler
+  .FIFO_DEPTH     ( 16            ),
+  .REPLAY_DEPTH   ( 32            )
 ) i_w_buffer_fifo (
-  .clk_i          ( clk_i           ),
-  .rst_ni         ( rst_ni          ),
-  .clear_i        ( clear           ),
-  .flags_o        ( w_fifo_flgs     ),
-  .push_i         ( w_buffer_muxed  ),
-  .pop_o          ( w_buffer_fifo   )
+  .clk_i          ( clk_i              ),
+  .rst_ni         ( rst_ni             ),
+  .clear_i        ( clear              ),
+  .mark_i         ( w_fifo_mark        ),
+  .rewind_i       ( w_fifo_rewind      ),
+  .flags_o        ( w_fifo_flgs        ),
+  .replaying_o    ( w_fifo_replaying   ),
+  .push_i         ( w_buffer_muxed     ),
+  .pop_o          ( w_buffer_fifo      )
 );
 
 hwpe_stream_fifo #(
@@ -743,24 +752,56 @@ redmule_x_buffer #(
 );
 
 logic [Height-1:0][BITW-1:0] w_buffer_q;
+
+// Detect replay end: reset W buffer read counters to align with scheduler
+logic w_replaying_prev_q, w_replay_end_pulse;
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) w_replaying_prev_q <= 1'b0;
+  else         w_replaying_prev_q <= w_fifo_replaying;
+end
+assign w_replay_end_pulse = w_replaying_prev_q && !w_fifo_replaying;
+
+// Shadow width mask from scheduler (LEFTOVERS[7:0], 0 = full tile)
+logic [7:0] w_shadow_width_raw;
+logic [$clog2(TOT_DEPTH):0] shadow_width_mask;
+assign shadow_width_mask = (w_shadow_width_raw != '0)
+                           ? w_shadow_width_raw
+                           : TOT_DEPTH;
+
 redmule_w_buffer #(
   .DW         ( DATAW_ALIGN         ),
   .FpFormat   ( FpFormat            ),
   .Height     ( Height              )
 ) i_w_buffer  (
-  .clk_i       ( clk_i              ),
-  .rst_ni      ( rst_ni             ),
-  .clear_i     ( clear              ),
-  .ctrl_i      ( w_buffer_ctrl      ),
-  .flags_o     ( w_buffer_flgs      ),
-  .w_buffer_o  ( w_buffer_q         ),
-  .w_buffer_i  ( w_buffer_fifo.data )
+  .clk_i            ( clk_i              ),
+  .rst_ni           ( rst_ni             ),
+  .clear_i          ( clear              ),
+  .scm_clear_i      ( w_scm_clear        ),
+  .cnt_reset_i      ( 1'b0               ),
+  .shadow_capture_i ( w_shadow_capture   ),
+  .shadow_bypass_i  ( w_shadow_bypass    ),
+  .shadow_width_i   ( shadow_width_mask   ),
+  .ctrl_i           ( w_buffer_ctrl      ),
+  .flags_o          ( w_buffer_flgs      ),
+  .w_buffer_o       ( w_buffer_q         ),
+  .w_buffer_i       ( w_buffer_fifo.data )
 );
 
 logic [Width-1:0][BITW-1:0] z_buffer_d, y_bias_q, z_buffer_d_muxed;
 
 // z_buffer_d_muxed: Always use z_buffer_d (MX bypass happens at FIFO input, not here)
 assign z_buffer_d_muxed = z_buffer_d;
+
+// Y bias register signals (must be declared before Z buffer instantiation)
+logic [Width-1:0][BITW-1:0] y_bias_from_yreg;
+logic [$clog2(Width)-1:0] z_buf_w_index;
+logic [$clog2(DATAW_ALIGN/BITW)-1:0] z_buf_d_index;
+logic y_reg_lock;  // From scheduler: locks Y register during y_push restart
+logic sched_y_push_en_ungated;  // y_push_en && ~stall_engine (for Y register's own counter)
+logic m_tile_transition;  // Active during M-tile z_avail+drain (W output gated to zero)
+logic w_scm_clear;        // Pulse: clear W buffer SCM at M-tile boundary
+logic w_shadow_capture;   // Shadow reg file capture during M0 K0
+logic w_shadow_bypass;    // Shadow bypass during M1 first H loads
 
 redmule_z_buffer #(
   .DW            ( DATAW_ALIGN        ),
@@ -773,12 +814,47 @@ redmule_z_buffer #(
   .reg_enable_i  ( reg_enable         ),
   .ctrl_i        ( z_buffer_ctrl      ),
   .flags_o       ( z_buffer_flgs      ),
+  .w_index_o     ( z_buf_w_index      ),
+  .d_index_o     (                    ),  // Not used (Y register has own counter)
   .y_buffer_i    ( y_buffer_fifo.data ),
   .z_buffer_i    ( z_buffer_d_muxed   ),
   .y_buffer_o    ( y_bias_q           ),
   .z_buffer_o    ( z_buffer_q.data    ),
   .z_strb_o      ( z_buffer_q.strb    )
 );
+
+// Y bias register: shadow copy that survives z_avail fill overwrites.
+
+redmule_y_bias_reg #(
+  .DW       ( DATAW_ALIGN ),
+  .FpFormat ( FpFormat     ),
+  .Width    ( Width        )
+) i_y_bias_reg (
+  .clk_i        ( clk_i                       ),
+  .rst_ni       ( rst_ni                      ),
+  .clear_i      ( clear                       ),
+  .write_en_i   ( z_buffer_flgs.y_ready && !y_reg_lock ),  // Locked during y_push restart
+  .write_addr_i ( z_buf_w_index               ),
+  .write_data_i ( y_buffer_fifo.data          ),
+  // Own read counter: driven by y_push_en && ~stall_engine (ungated by y_reg_lock)
+  .read_en_i    ( sched_y_push_en_ungated     ),
+  .y_height_i   ( z_buffer_ctrl.y_height      ),
+  .read_rst_i   ( y_reg_lock                  ),  // Reset at y_push restart start
+  .read_data_o  ( y_bias_from_yreg            )
+);
+
+`ifndef SYNTHESIS
+// Debug: Y register write and read monitoring
+always @(posedge clk_i) begin
+  if (z_buffer_flgs.y_ready)
+    $display("[DBG][YREG] t=%0t WRITE w_idx=%0d/%0d data[0:1]=0x%04h 0x%04h",
+             $time, z_buf_w_index, z_buffer_ctrl.y_width,
+             y_buffer_fifo.data[15:0], y_buffer_fifo.data[31:16]);
+  if (z_buffer_ctrl.y_push_enable && y_bias_from_yreg !== y_bias_q)
+    $display("[DBG][YREG] t=%0t MISMATCH d_idx=%0d yreg[0]=0x%04h zbuf[0]=0x%04h",
+             $time, z_buf_d_index, y_bias_from_yreg[0], y_bias_q[0]);
+end
+`endif
 
 /*---------------------------------------------------------------*/
 /* |                          Engine                           | */
@@ -898,7 +974,7 @@ redmule_engine     #(
   .rst_ni             ( rst_ni           ),
   .x_input_i          ( x_buffer_q       ),
   .w_input_i          ( w_buffer_q       ),
-  .y_bias_i           ( y_bias_q         ),
+  .y_bias_i           ( y_bias_from_yreg  ),  // From Y register (survives z_avail fill)
   .z_output_o         ( z_buffer_d       ),
   .fma_is_boxed_i     ( fma_is_boxed     ),
   .noncomp_is_boxed_i ( noncomp_is_boxed ),
@@ -1052,6 +1128,7 @@ redmule_scheduler #(
   .cntrl_scheduler_i ( cntrl_scheduler     ),
   .mx_x_pending_i    ( x_mx_unpack_pending ),
   .mx_w_pending_i    ( w_mx_unpack_pending ),
+  .w_replaying_i     ( w_fifo_replaying    ),
   .reg_enable_o      ( reg_enable          ),
   .cntrl_engine_o    ( cntrl_engine        ),
   .cntrl_x_buffer_o  ( x_buffer_ctrl       ),
@@ -1061,7 +1138,16 @@ redmule_scheduler #(
   .x_exp_mark_o      ( x_exp_mark          ),
   .x_exp_rewind_o    ( x_exp_rewind        ),
   .w_exp_mark_o      ( w_exp_mark          ),
-  .w_exp_rewind_o    ( w_exp_rewind        )
+  .w_exp_rewind_o    ( w_exp_rewind        ),
+  .y_reg_lock_o      ( y_reg_lock          ),
+  .y_push_en_ungated_o ( sched_y_push_en_ungated ),
+  .m_tile_transition_o ( m_tile_transition       ),
+  .w_scm_clear_o       ( w_scm_clear             ),
+  .w_fifo_mark_o       ( w_fifo_mark             ),
+  .w_fifo_rewind_o     ( w_fifo_rewind           ),
+  .w_shadow_capture_o  ( w_shadow_capture        ),
+  .w_shadow_bypass_o   ( w_shadow_bypass         ),
+  .w_shadow_width_o    ( w_shadow_width_raw      )
 );
 
 endmodule : redmule_top

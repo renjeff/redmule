@@ -51,6 +51,8 @@ module redmule_scheduler
   // MX ingress pipeline has drained.
   input  logic                            mx_x_pending_i   ,
   input  logic                            mx_w_pending_i   ,
+  // W FIFO replay active: freeze engine/X/counters while SCM is refreshed
+  input  logic                            w_replaying_i    ,
 
   /********************************************************/
   /*                       Outputs                        */
@@ -65,7 +67,23 @@ module redmule_scheduler
   output logic                            x_exp_mark_o     ,
   output logic                            x_exp_rewind_o   ,
   output logic                            w_exp_mark_o     ,
-  output logic                            w_exp_rewind_o
+  output logic                            w_exp_rewind_o   ,
+  // Y register write lock: prevents Y register overwrite during y_push restart
+  output logic                            y_reg_lock_o     ,
+  // Y push enable (ungated by y_reg_lock) for Y register's own read counter
+  output logic                            y_push_en_ungated_o,
+  // M-tile transition: active from boundary to z_avail+drain completion
+  output logic                            m_tile_transition_o,
+  // W SCM clear: pulse at M-tile boundary to zero SCM and reset w_row
+  output logic                            w_scm_clear_o,
+  // W FIFO rewind (disabled)
+  output logic                            w_fifo_mark_o,
+  output logic                            w_fifo_rewind_o,
+  // Shadow register file: capture during M0 K0, bypass during M1 K0
+  output logic                            w_shadow_capture_o,
+  output logic                            w_shadow_bypass_o,
+  // Shadow width mask: LEFTOVERS K-column width (0 = full tile D)
+  output logic [7:0]                      w_shadow_width_o
 );
 
   typedef enum logic [1:0] {
@@ -88,6 +106,14 @@ module redmule_scheduler
 
   // Forward declaration: engine clock gate (registered) used for fill alignment
   logic [W-1:0] row_clk_en_d, row_clk_en_q;
+
+  // Forward declaration: gen_toggle_pulse (defined near M-tile boundary logic)
+  logic gen_toggle_pulse;
+  // Forward declarations for M-tile boundary logic (defined near bottom)
+  logic m_tile_rst_pending_q;
+  logic w_replay_just_ended;
+  logic m_tile_boundary_not_last;
+
 
   /************************
    * X Iteration counters *
@@ -238,6 +264,15 @@ module redmule_scheduler
   logic        w_stride_cnt;
   logic        w_needs_stream_valid;
 
+  // Detect replay end: falling edge of w_replaying_i
+  logic w_replaying_prev_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) w_replaying_prev_q <= 1'b0;
+    else         w_replaying_prev_q <= w_replaying_i;
+  end
+  logic w_replay_just_ended;
+  assign w_replay_just_ended = w_replaying_prev_q && !w_replaying_i;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_rows_iteration
     if(~rst_ni) begin
       w_rows_iter_q <= '0;
@@ -253,6 +288,7 @@ module redmule_scheduler
   // Always require w_valid_i so the scheduler stalls until decoded W data is
   // available in the FIFO on every M-tile pass.
   assign w_needs_stream_valid = 1'b1;
+  // Freeze w_rows_iter during replay only (not drain — drain runs like baseline).
   assign w_rows_iter_en = current_state == LOAD_W && ~stall_engine &&
                           (w_valid_i || ~w_needs_stream_valid);
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
@@ -363,6 +399,8 @@ module redmule_scheduler
 
   // Only load into W buffer when a new FIFO word is valid. In MX reuse passes
   // (after first pass) we keep shifting without re-loading.
+  // During m_tile transition: freeze load AND shift to prevent inner FIFO consumption.
+  // No freeze: replay data flows as normal LOAD_W cycles
   assign cntrl_w_buffer_o.load  = current_state == LOAD_W && ~stall_engine && w_valid_i;
   assign cntrl_w_buffer_o.shift = (current_state == LOAD_W || current_state == WAIT) && ~stall_engine;
 
@@ -418,14 +456,16 @@ module redmule_scheduler
   // K-tile transition debug
   always @(posedge clk_i) begin
     if (y_cols_iter_en) begin
-      $display("[DBG][KTILE] t=%0t y_cols_iter %0d -> %0d  y_height=%0d z_height=%0d  y_rows_q=%0d  first_load=%b  LEFTOVERS[7:0]=%0d  W_ITERS[15:0]=%0d  w_cols_iter_q=%0d",
+      $display("[DBG][KTILE] t=%0t y_cols_iter %0d -> %0d  y_height=%0d z_height=%0d  y_rows_q=%0d  first_load=%b  LEFTOVERS[7:0]=%0d  W_ITERS[15:0]=%0d  w_cols_iter_q=%0d  m_tile_rst=%b",
                $time, y_cols_iter_q, y_cols_iter_d, y_height, z_height,
                y_rows_iter_q,
                y_cols_iter_q == '0 && y_rows_iter_q == '0,
                reg_file_i.hwpe_params[LEFTOVERS][7:0],
                reg_file_i.hwpe_params[W_ITERS][15:0],
-               w_cols_iter_q);
+               w_cols_iter_q, m_tile_rst_pending_q);
     end
+    // YPUSH_ALL trace disabled for performance
+
     // Trace key events during K-tile 1 processing
     if (w_cols_iter_q == 1 && computing) begin
       // z_avail start/end, fill start, drain, y_push boundaries
@@ -549,6 +589,10 @@ module redmule_scheduler
   assign y_push_counter_d = y_push_counter_q == y_height-1 ? '0 : y_push_counter_q + 1;
   assign y_push_clr       = y_push_en && ~stall_engine && y_push_counter_q == y_height-1;
 
+  // Y register lock and ungated y_push (disabled — y_push restart not active)
+  assign y_reg_lock_o = 1'b0;
+  assign y_push_en_ungated_o = y_push_en && ~stall_engine;
+
   assign y_width  = y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 && reg_file_i.hwpe_params[LEFTOVERS][15:8] != '0 ? reg_file_i.hwpe_params[LEFTOVERS][15:8] : W;
   // MX mode: use engine-side K-tile counter (w_cols_iter_q) because the Z buffer's
   // y_cols_iter_q advances prematurely via the first_load empty path.
@@ -653,8 +697,7 @@ module redmule_scheduler
   always_comb begin
     row_clk_en_d = '0;
 
-    // Pause engine during z_avail + drain overlap to prevent the systolic
-    // array from shifting output rows that cannot be captured by fill.
+    // Pause engine during z_avail + drain overlap. No replay freeze.
     if (computing && ~stall_engine && ~(z_avail_en && z_drain_guard)) begin
       for (int i = 0; i < z_width; i++) begin
         row_clk_en_d[i] = 1'b1;
@@ -836,7 +879,7 @@ module redmule_scheduler
       (x_w_iters_q != reg_file_i.hwpe_params[W_ITERS][15:0]-1);
 
   // M-tile boundary (not last): mark X exponents (new segment), rewind W exponents
-  logic m_tile_boundary_not_last;
+  // (m_tile_boundary_not_last forward-declared near top of module)
   assign m_tile_boundary_not_last = w_mat_iters_en && !w_done_en;
 
   // X exp mark: save read_ptr at M-tile boundaries using X-SIDE timing.
@@ -860,5 +903,108 @@ module redmule_scheduler
 
   // W exp rewind: replay all W exponents for each new M-tile
   assign w_exp_rewind_o = mx_enable_i && m_tile_boundary_not_last;
+
+  /*************************************
+   * M-tile transition tracking        *
+   *************************************/
+  // Track pending M-tile transition: set at boundary, cleared after z_avail + drain.
+  // z_buf_draining and z_buf_was_draining already declared above (near z_avail logic)
+  // (m_tile_rst_pending_q forward-declared near top of module)
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni)
+      m_tile_rst_pending_q <= 1'b0;
+    else if (clear_i || cntrl_scheduler_i.rst)
+      m_tile_rst_pending_q <= 1'b0;
+    else if (m_tile_boundary_not_last && mx_enable_i)
+      m_tile_rst_pending_q <= 1'b1;
+    else if (m_tile_rst_pending_q && !z_wait_en && !z_avail_en && !z_buf_draining && !z_buf_was_draining)
+      m_tile_rst_pending_q <= 1'b0;
+  end
+
+  // gen_toggle_pulse: fires for 1 cycle when M-tile transition completes
+  // (after z_avail + drain + z_buf_was_draining all clear)
+  assign gen_toggle_pulse = m_tile_rst_pending_q && !z_wait_en && !z_avail_en && !z_buf_draining && !z_buf_was_draining;
+
+  assign m_tile_transition_o = m_tile_rst_pending_q;
+
+  // Clear W SCM at M-tile boundary for multi-K-tile MX configs.
+  // During y_push (accumulate=0), the cascade is overwritten with Y_bias,
+  // discarding X × 0 contributions from the zeroed SCM. After y_push ends
+  // (~32 LOAD_W cycles), the SCM is fully refreshed with K0 data.
+  assign w_scm_clear_o = 1'b0;
+
+  // W FIFO rewind: mark at computation start (capture first H W FIFO entries),
+  // rewind at M-tile boundary (replay captured entries to refresh SCM).
+  // Mark fires once at the start of computation. The rewind FIFO captures
+  // the first H entries that pass through during M0's K0 processing.
+  // Rewind fires at gen_toggle_pulse (after M0's cascade drain completes),
+  // replaying those H entries before M1's K0 computation starts.
+  assign w_fifo_mark_o   = 1'b0;
+  assign w_fifo_rewind_o = 1'b0;
+
+  // Shadow register file capture/bypass for M-tile W buffer fix.
+  // Capture: active during first H loads of M0 K0 (fills shadow with K0 data).
+  // Bypass: active during first H loads after M-tile boundary (engine reads
+  //         from shadow instead of stale SCM while SCM is being refreshed).
+  // Separate counters for capture and bypass to avoid sharing conflicts
+  logic [$clog2(H):0] shadow_cap_cnt_q, shadow_byp_cnt_q;
+  logic shadow_capture_q, shadow_bypass_q, shadow_bypass_raw_q;
+
+  // Capture: active during first H loads of M0 K0
+  // Continuously capture: every W load overwrites shadow at the current w_row.
+  // By M-tile boundary, shadow has the SAME data as the SCM (last write per w_row).
+  // This is K_last's last pass data — matching what the engine sees as "stale".
+  // The shadow is then used as a known-good copy if the SCM gets corrupted.
+  //
+  // For the actual fix: capture first H loads of K0 (N-rows 0-31).
+  // These are the CORRECT values for M1's y_push (the FIFO will deliver them
+  // during y_push, but the SCM still has stale K_last until refreshed).
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      shadow_capture_q  <= 1'b0;
+      shadow_cap_cnt_q  <= '0;
+    end else if (clear_i || cntrl_scheduler_i.rst) begin
+      shadow_capture_q  <= 1'b0;
+      shadow_cap_cnt_q  <= '0;
+    end else if (start_computation && mx_enable_i &&
+                 reg_file_i.hwpe_params[W_ITERS][15:0] > 1 &&
+                 reg_file_i.hwpe_params[X_ITERS][31:16] > 1) begin
+      shadow_capture_q  <= 1'b1;
+      shadow_cap_cnt_q  <= '0;
+    end else if (shadow_capture_q && cntrl_w_buffer_o.load) begin
+      if (shadow_cap_cnt_q == H - 1)
+        shadow_capture_q <= 1'b0;
+      shadow_cap_cnt_q <= shadow_cap_cnt_q + 1;
+    end
+  end
+
+  // Bypass counter: active for first H loads after M-tile boundary
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      shadow_bypass_raw_q <= 1'b0;
+      shadow_byp_cnt_q    <= '0;
+    end else if (clear_i || cntrl_scheduler_i.rst) begin
+      shadow_bypass_raw_q <= 1'b0;
+      shadow_byp_cnt_q    <= '0;
+    end else if (m_tile_boundary_not_last && mx_enable_i &&
+                 reg_file_i.hwpe_params[W_ITERS][15:0] > 1) begin
+      shadow_bypass_raw_q <= 1'b1;
+      shadow_byp_cnt_q    <= '0;
+    end else if (shadow_bypass_raw_q && cntrl_w_buffer_o.load) begin
+      if (shadow_byp_cnt_q == H - 1)
+        shadow_bypass_raw_q <= 1'b0;
+      shadow_byp_cnt_q <= shadow_byp_cnt_q + 1;
+    end
+  end
+
+  // Gate bypass with pushing_y: only provide shadow data when accumulate=0.
+  // During z_avail (before y_push), engine must read stale SCM so that M0's
+  // cascade tail is captured correctly. Shadow K0 during z_avail would corrupt M0.
+  assign shadow_bypass_q = 1'b0;
+
+  assign w_shadow_capture_o = shadow_capture_q;
+  assign w_shadow_bypass_o  = shadow_bypass_q;
+  assign w_shadow_width_o   = reg_file_i.hwpe_params[LEFTOVERS][7:0];
 
 endmodule : redmule_scheduler

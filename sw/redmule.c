@@ -188,56 +188,27 @@ int main() {
   errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
 #endif
-  // Per-row error counts for debug
+  // Dump first 16 elements of rows 0, 32, 33 as hex bytes
   {
-#if defined(MX_FORMAT) && (MX_FORMAT == 4)
-    int words_per_row = k_size / 8;  // FP4: 8 nibbles per word
-#else
     int words_per_row = k_size / 4;
-#endif
-    int tile_size = 32;  // ARRAY_WIDTH
-    int ktile_size = 64; // TILE
-    int m_tiles = (m_size + tile_size - 1) / tile_size;
-    int k_tiles = (k_size + ktile_size - 1) / ktile_size;
-    // Per-row error count (limited output)
-    for (int row = 0; row < m_size; row++) {
-      int row_errs = 0;
-      for (int w = 0; w < words_per_row; w++) {
-        int idx = row * words_per_row + w;
-        uint32_t hw = ((uint32_t *)z)[idx];
-        uint32_t gm = ((uint32_t *)golden_mx)[idx];
-        if (hw != gm) {
-#if defined(MX_FORMAT) && (MX_FORMAT == 4)
-          for (int b = 0; b < 8; b++) {
-            uint8_t hb = (hw >> (b*4)) & 0xF;
-            uint8_t gb = (gm >> (b*4)) & 0xF;
-#else
-          for (int b = 0; b < 4; b++) {
-            uint8_t hb = (hw >> (b*8)) & 0xFF;
-            uint8_t gb = (gm >> (b*8)) & 0xFF;
-#endif
-            if (hb != gb) {
-              row_errs++;
-            }
-          }
-        }
+    int rows[] = {0, 32, 33};
+    for (int ri = 0; ri < 3 && ri < (m_size > 32 ? 3 : 1); ri++) {
+      int row = rows[ri];
+      tfp_printf("[DUMP] r%d:", row);
+      for (int b = 0; b < 16 && b < k_size; b++) {
+        int idx = row * k_size + b;
+        uint8_t hb = ((uint8_t *)z)[idx];
+        tfp_printf(" %x", hb);
       }
-      if (row_errs > 0) {
-        // Count errors per K-tile (columns 0-63 vs 64+)
-        int errs_k0 = 0, errs_k1 = 0;
-        for (int c = 0; c < k_size; c++) {
-          int idx8 = row * k_size + c;
-          uint8_t hb = ((uint8_t *)z)[idx8];
-          uint8_t gb = ((uint8_t *)golden_mx)[idx8];
-          if (hb != gb) {
-            if (c < ktile_size) errs_k0++;
-            else errs_k1++;
-          }
-        }
-        tfp_printf("[ROWDBG] row=%d errs=%d k0=%d k1=%d\n", row, row_errs, errs_k0, errs_k1);
+      tfp_printf("\n");
+      tfp_printf("[GOLD] r%d:", row);
+      for (int b = 0; b < 16 && b < k_size; b++) {
+        int idx = row * k_size + b;
+        uint8_t gb = ((uint8_t *)golden_mx)[idx];
+        tfp_printf(" %x", gb);
       }
+      tfp_printf("\n");
     }
-    // Detail prints removed for sweep performance
   }
 #else
   if (float_fmt == Float16 || float_fmt == Float16Alt)
