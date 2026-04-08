@@ -43,9 +43,7 @@ module redmule_top
   // Periph slave port for the controller side
   hwpe_ctrl_intf_periph.slave periph,
   // TCDM master ports for the memory side
-  hci_core_intf.initiator tcdm,
-  // MX shared exponent output stream (separate from data)
-  hwpe_stream_intf_stream.source mx_exp_stream
+  hci_core_intf.initiator tcdm
 );
 
 localparam int unsigned DATAW_ALIGN = `HCI_SIZE_GET_DW(tcdm) - SysDataWidth;
@@ -53,6 +51,23 @@ localparam int unsigned HCI_ECC = (`HCI_SIZE_GET_EW(tcdm)>1);
 localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements per MX block
 
 logic                       enable, clear;
+
+// Internal MX exponent stream (packed exponents from encoder → FIFO → streamer Z exp sink)
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) mx_exp_stream     ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) mx_exp_stream_buf ( .clk( clk_i ) );
+
+// Decouple exp output from TCDM backpressure so the encoder never stalls on exp writes.
+hwpe_stream_fifo #(
+  .DATA_WIDTH ( DATAW_ALIGN ),
+  .FIFO_DEPTH ( 8           )
+) i_mx_exp_decouple_fifo (
+  .clk_i   ( clk_i              ),
+  .rst_ni  ( rst_ni             ),
+  .clear_i ( clear              ),
+  .flags_o (                    ),
+  .push_i  ( mx_exp_stream     ),
+  .pop_o   ( mx_exp_stream_buf )
+);
 logic                       reg_enable;
 logic                       start_cfg, cfg_complete;
 
@@ -231,6 +246,7 @@ redmule_streamer #(
   .w_exp_stream_o  ( w_exp_from_streamer ),
   // Sink interface for the outgoing stream
   .z_stream_i      ( z_buffer_muxed      ),
+  .z_exp_stream_i  ( mx_exp_stream_buf   ),
   // Master TCDM interface ports for the memory side
   .tcdm            ( tcdm                ),
   .ecc_errors_o    ( ecc_errors_streamer ),
@@ -607,11 +623,60 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
   end
 end
 
-// X row chunking for MX mode.
+// X row chunking for MX mode (analogous to W K-tile leftover handling).
 // With N-tile-major memory layout, all data for one N-tile arrives before the next.
+// Each full N-tile has TILE / MX_NUM_LANES chunks per M-row packed per beat.
+// When N is not a multiple of TILE, the last N-tile has fewer chunks per row.
+// A position counter on X decode acceptances determines the correct packing.
 localparam int unsigned X_CHUNKS_FULL_N = TOT_DEPTH / MX_NUM_LANES;  // = 2
 
-assign x_row_chunks = mx_mode_active ? 8'(X_CHUNKS_FULL_N) :
+logic [15:0] x_dec_pos_q;
+logic        x_dec_accept;
+logic        x_has_n_leftovers;
+logic [7:0]  x_chunks_lftovr_n;
+logic [15:0] x_num_full_n_tiles;
+logic [15:0] x_slots_full_n;
+logic [15:0] x_slots_per_m_tile;
+
+// LEFTOVERS[23:16] = x_cols_lftovr (systolic FP16 element count for leftover N-tile)
+assign x_has_n_leftovers  = (reg_file.hwpe_params[LEFTOVERS][23:16] != '0);
+assign x_chunks_lftovr_n  = x_has_n_leftovers ?
+    8'((reg_file.hwpe_params[LEFTOVERS][23:16] + MX_NUM_LANES - 1) / MX_NUM_LANES) :
+    8'(X_CHUNKS_FULL_N);
+assign x_num_full_n_tiles = x_has_n_leftovers ?
+    (reg_file.hwpe_params[X_ITERS][15:0] - 16'd1) :
+    reg_file.hwpe_params[X_ITERS][15:0];
+
+// Slots in full N-tiles per M-tile: num_full_n_tiles × ARRAY_WIDTH × X_CHUNKS_FULL_N
+assign x_slots_full_n = x_num_full_n_tiles
+                         * 16'(ARRAY_WIDTH)
+                         * 16'(X_CHUNKS_FULL_N);
+
+// Total slots per M-tile: full + leftover
+assign x_slots_per_m_tile = x_slots_full_n
+    + (x_has_n_leftovers
+       ? (16'(ARRAY_WIDTH) * 16'(x_chunks_lftovr_n))
+       : 16'd0);
+
+// Count X decode acceptances (decoder → input_mux handshake)
+assign x_dec_accept = mx_mode_active && x_mx_fp16_valid && x_mx_fp16_ready;
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni)
+    x_dec_pos_q <= '0;
+  else if (clear)
+    x_dec_pos_q <= '0;
+  else if (x_dec_accept) begin
+    if (x_dec_pos_q == x_slots_per_m_tile - 16'd1)
+      x_dec_pos_q <= '0;
+    else
+      x_dec_pos_q <= x_dec_pos_q + 16'd1;
+  end
+end
+
+// Row chunking: X uses position-aware N-tile packing (like W for K-tiles).
+assign x_row_chunks = mx_mode_active ?
+    ((x_dec_pos_q < x_slots_full_n) ? 8'(X_CHUNKS_FULL_N) : x_chunks_lftovr_n) :
     ((x_valid_lanes == '0) ? 8'd1 :
      ((x_valid_lanes + MX_NUM_LANES - 1) / MX_NUM_LANES));
 assign w_row_chunks = mx_mode_active ?

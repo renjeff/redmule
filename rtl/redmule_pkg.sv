@@ -88,6 +88,7 @@ package redmule_pkg;
   parameter int unsigned OP_SELECTION = 17; // 0x44
   parameter int unsigned X_EXP_ADDR   = 18; // 0x48
   parameter int unsigned W_EXP_ADDR   = 19; // 0x4C
+  parameter int unsigned Z_EXP_ADDR   = 20; // 0x50
 
   parameter int unsigned HCI_ECC_MASK = 4'b1001; // 0x90-0x9C
 
@@ -110,6 +111,10 @@ package redmule_pkg;
   } redmule_csr_num_e;
 
   parameter int unsigned NumStreamSources     = 5; // X, W, Y, X exp, W exp
+  // Sink IDs (after source channels in the LD/ST mux)
+  parameter int unsigned ZSinkId             = NumStreamSources;     // FP8 Z data
+  parameter int unsigned ZExpSinkId          = NumStreamSources + 1; // Z exponent data
+  parameter int unsigned NumSinks            = 2;
   parameter int unsigned XsourceStreamId      = 0;
   parameter int unsigned WsourceStreamId      = 1;
   parameter int unsigned YsourceStreamId      = 2;
@@ -124,6 +129,7 @@ package redmule_pkg;
     hci_package::hci_streamer_ctrl_t w_stream_source_ctrl;
     hci_package::hci_streamer_ctrl_t y_stream_source_ctrl;
     hci_package::hci_streamer_ctrl_t z_stream_sink_ctrl;
+    hci_package::hci_streamer_ctrl_t z_exp_stream_sink_ctrl;
     hci_package::hci_streamer_ctrl_t x_exp_stream_source_ctrl;
     hci_package::hci_streamer_ctrl_t w_exp_stream_source_ctrl;
     fpnew_pkg::fp_format_e           input_cast_src_fmt;
@@ -141,6 +147,7 @@ package redmule_pkg;
     hci_package::hci_streamer_flags_t x_exp_stream_source_flags;
     hci_package::hci_streamer_flags_t w_exp_stream_source_flags;
     hci_package::hci_streamer_flags_t z_stream_sink_flags;
+    hci_package::hci_streamer_flags_t z_exp_stream_sink_flags;
   } flgs_streamer_t;
 
   typedef struct packed {

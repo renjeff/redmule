@@ -214,11 +214,87 @@ redmule_mx_encoder #(
   .mx_exp_data_o  ( mx_exp_data    )
 );
 
-// Exponent streaming
-assign mx_exp_stream_o.valid = mx_exp_valid;
-assign mx_exp_stream_o.data  = {{(DATAW_ALIGN-8){1'b0}}, mx_exp_data};
+// Track MX enable to flush leftover blocks when the job ends (shared by exp and data packers)
+logic mx_enable_q;
+logic mx_mode_q;
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    mx_enable_q <= 1'b0;
+    mx_mode_q   <= 1'b0;
+  end else if (clear_i) begin
+    mx_enable_q <= 1'b0;
+    mx_mode_q   <= 1'b0;
+  end else begin
+    mx_enable_q <= mx_enable_i;
+    if (mx_enable_i)
+      mx_mode_q <= 1'b1;
+  end
+end
+
+// Exponent packing: collect DATAW_ALIGN/8 exponents per TCDM beat
+localparam int unsigned EXPS_PER_BEAT    = DATAW_ALIGN / 8;
+localparam int unsigned EXP_CNT_W        = $clog2(EXPS_PER_BEAT);
+
+logic [DATAW_ALIGN-1:0]  exp_pack_data_q, exp_pack_data_d;
+logic [EXP_CNT_W-1:0]    exp_pack_cnt_q,  exp_pack_cnt_d;
+logic                    exp_pack_valid_q, exp_pack_valid_d;
+
+// Accept an exponent when encoder produces one and we can store it
+logic exp_accept;
+assign exp_accept = mx_exp_valid && mx_exp_ready;
+
+always_comb begin
+  exp_pack_data_d  = exp_pack_data_q;
+  exp_pack_cnt_d   = exp_pack_cnt_q;
+  exp_pack_valid_d = exp_pack_valid_q;
+
+  // Drain: downstream consumed the packed beat
+  if (exp_pack_valid_q && mx_exp_stream_o.ready)
+    exp_pack_valid_d = 1'b0;
+
+  // Fill: accept a new exponent from the encoder
+  if (exp_accept) begin
+    if (exp_pack_cnt_q == '0)
+      exp_pack_data_d = '0;
+    exp_pack_data_d[8*exp_pack_cnt_q +: 8] = mx_exp_data;
+    if (exp_pack_cnt_q == EXP_CNT_W'(EXPS_PER_BEAT - 1)) begin
+      exp_pack_valid_d = 1'b1;
+      exp_pack_cnt_d   = '0;
+    end else begin
+      exp_pack_cnt_d = exp_pack_cnt_q + 1'b1;
+    end
+  end
+
+  // Flush partial beat when MX computation ends (mx_enable falling edge)
+  if ((exp_pack_cnt_q != '0) && !exp_pack_valid_q && !mx_enable_i && mx_enable_q) begin
+    exp_pack_valid_d = 1'b1;
+    exp_pack_cnt_d   = '0;
+  end
+end
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+  if (!rst_ni) begin
+    exp_pack_data_q  <= '0;
+    exp_pack_cnt_q   <= '0;
+    exp_pack_valid_q <= 1'b0;
+  end else if (clear_i) begin
+    exp_pack_data_q  <= '0;
+    exp_pack_cnt_q   <= '0;
+    exp_pack_valid_q <= 1'b0;
+  end else begin
+    exp_pack_data_q  <= exp_pack_data_d;
+    exp_pack_cnt_q   <= exp_pack_cnt_d;
+    exp_pack_valid_q <= exp_pack_valid_d;
+  end
+end
+
+// Encoder backpressure: stall when pack register is full and downstream isn't ready
+assign mx_exp_ready = !exp_pack_valid_q || mx_exp_stream_o.ready;
+
+// Packed exponent stream output
+assign mx_exp_stream_o.valid = exp_pack_valid_q;
+assign mx_exp_stream_o.data  = exp_pack_data_q;
 assign mx_exp_stream_o.strb  = '1;
-assign mx_exp_ready = mx_exp_stream_o.ready;
 
 // Debug/export wiring for MX instrumentation
 assign fifo_valid_o     = fifo_valid;
@@ -279,8 +355,6 @@ logic [DATAW_ALIGN-1:0] pack_data_q, pack_data_d;
 logic [TOTAL_BYTES-1:0] pack_strb_q, pack_strb_d;
 logic [BLOCK_CNT_W-1:0] pack_count_q, pack_count_d;
 logic                   pack_valid_q, pack_valid_d;
-logic                   mx_enable_q;
-logic                   mx_mode_q;
 logic                   mx_active;
 logic                   pack_ready;
 
@@ -288,22 +362,6 @@ logic                   pack_ready;
 // Using z_muxed_o.ready here creates a combinational loop via z_buffer ready/control.
 assign pack_ready  = !pack_valid_q;
 assign mx_val_ready = pack_ready;
-
-// Track MX enable to flush leftover blocks when the job ends
-always_ff @(posedge clk_i or negedge rst_ni) begin
-  if (!rst_ni) begin
-    mx_enable_q <= 1'b0;
-    mx_mode_q   <= 1'b0;
-  end else if (clear_i) begin
-    mx_enable_q <= 1'b0;
-    mx_mode_q   <= 1'b0;
-  end else begin
-    mx_enable_q <= mx_enable_i;
-    if (mx_enable_i) begin
-      mx_mode_q <= 1'b1;
-    end
-  end
-end
 
 assign mx_active = mx_mode_q || mx_enable_i || pack_valid_q || (pack_count_q != '0) || block_valid_q;
 

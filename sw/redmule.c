@@ -27,6 +27,7 @@
 #ifdef MX_ENABLE
 #include "golden_mx.h"
 #include "golden_mx_exp.h"  // MX golden exponents (for future exponent verification)
+uint8_t z_exp_oup[1024];
 #endif
 
 int main() {
