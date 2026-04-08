@@ -951,15 +951,18 @@ module redmule_scheduler
   logic [$clog2(H):0] shadow_cap_cnt_q, shadow_byp_cnt_q;
   logic shadow_capture_q, shadow_bypass_q, shadow_bypass_raw_q;
 
-  // Capture: active during first H loads of M0 K0
-  // Continuously capture: every W load overwrites shadow at the current w_row.
-  // By M-tile boundary, shadow has the SAME data as the SCM (last write per w_row).
-  // This is K_last's last pass data — matching what the engine sees as "stale".
-  // The shadow is then used as a known-good copy if the SCM gets corrupted.
-  //
-  // For the actual fix: capture first H loads of K0 (N-rows 0-31).
-  // These are the CORRECT values for M1's y_push (the FIFO will deliver them
-  // during y_push, but the SCM still has stale K_last until refreshed).
+  // Capture: re-triggered at every K0 start to track the current w_row offset.
+  // The shadow stores the first H W rows of each K0 pass at whatever w_row
+  // positions the buffer happens to be at. At bypass time (after gen_toggle_pulse),
+  // the FIFO delivers the same K0 data at the same w_row positions, so the shadow
+  // matches the expected fresh data.
+  logic k0_start_capture;
+  assign k0_start_capture = (start_computation ||
+      (w_cols_iter_en && w_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0] - 1))
+      && mx_enable_i
+      && reg_file_i.hwpe_params[W_ITERS][15:0] > 1
+      && reg_file_i.hwpe_params[X_ITERS][31:16] > 1;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       shadow_capture_q  <= 1'b0;
@@ -967,9 +970,7 @@ module redmule_scheduler
     end else if (clear_i || cntrl_scheduler_i.rst) begin
       shadow_capture_q  <= 1'b0;
       shadow_cap_cnt_q  <= '0;
-    end else if (start_computation && mx_enable_i &&
-                 reg_file_i.hwpe_params[W_ITERS][15:0] > 1 &&
-                 reg_file_i.hwpe_params[X_ITERS][31:16] > 1) begin
+    end else if (k0_start_capture) begin
       shadow_capture_q  <= 1'b1;
       shadow_cap_cnt_q  <= '0;
     end else if (shadow_capture_q && cntrl_w_buffer_o.load) begin
@@ -987,7 +988,7 @@ module redmule_scheduler
     end else if (clear_i || cntrl_scheduler_i.rst) begin
       shadow_bypass_raw_q <= 1'b0;
       shadow_byp_cnt_q    <= '0;
-    end else if (m_tile_boundary_not_last && mx_enable_i &&
+    end else if (gen_toggle_pulse && mx_enable_i &&
                  reg_file_i.hwpe_params[W_ITERS][15:0] > 1) begin
       shadow_bypass_raw_q <= 1'b1;
       shadow_byp_cnt_q    <= '0;
@@ -998,13 +999,29 @@ module redmule_scheduler
     end
   end
 
-  // Gate bypass with pushing_y: only provide shadow data when accumulate=0.
-  // During z_avail (before y_push), engine must read stale SCM so that M0's
-  // cascade tail is captured correctly. Shadow K0 during z_avail would corrupt M0.
-  assign shadow_bypass_q = 1'b0;
+  // Shadow bypass active after gen_toggle_pulse (M-tile transition complete).
+  // During z_avail the engine reads stale SCM for M0's cascade tail (correct).
+  // After gen_toggle_pulse: engine reads shadow K0 data for M1's first H loads,
+  // while SCM is being refreshed with fresh K0 data from the FIFO.
+  assign shadow_bypass_q = 1'b0;  // Shadow bypass not needed with SCM write-forwarding
 
   assign w_shadow_capture_o = shadow_capture_q;
   assign w_shadow_bypass_o  = shadow_bypass_q;
-  assign w_shadow_width_o   = reg_file_i.hwpe_params[LEFTOVERS][7:0];
+  // Shadow always has K0 data (full TILE width). Use D (TOT_DEPTH) not leftover.
+  assign w_shadow_width_o   = D;
+
+`ifndef SYNTHESIS
+  always @(posedge clk_i) begin
+    if (gen_toggle_pulse)
+      $display("[DBG][GEN_TOGGLE] t=%0t w_rows_q=%0d w_cols_q=%0d shadow_byp_raw=%0b shadow_cap=%0b cap_cnt=%0d byp_cnt=%0d",
+               $time, w_rows_iter_q, w_cols_iter_q, shadow_bypass_raw_q, shadow_capture_q, shadow_cap_cnt_q, shadow_byp_cnt_q);
+    if (k0_start_capture)
+      $display("[DBG][K0_CAP_START] t=%0t w_rows_q=%0d w_cols_q=%0d",
+               $time, w_rows_iter_q, w_cols_iter_q);
+    if (shadow_bypass_raw_q && cntrl_w_buffer_o.load && shadow_byp_cnt_q < 3)
+      $display("[DBG][BYPASS_LOAD] t=%0t byp_cnt=%0d w_rows_q=%0d",
+               $time, shadow_byp_cnt_q, w_rows_iter_q);
+  end
+`endif
 
 endmodule : redmule_scheduler

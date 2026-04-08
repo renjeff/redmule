@@ -93,6 +93,10 @@ always_ff @(posedge clk_i or negedge rst_ni) begin
     shadow_q <= '0;
   end else if (shadow_capture_i && buf_write_en) begin
     shadow_q[buf_write_addr] <= w_data;
+`ifndef SYNTHESIS
+    $display("[DBG][SHADOW_CAP] t=%0t w_row=%0d data[0]=%04h data[1]=%04h",
+             $time, buf_write_addr, w_data[0], w_data[1]);
+`endif
   end
 end
 
