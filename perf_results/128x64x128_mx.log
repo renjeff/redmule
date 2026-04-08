@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 17:56:44 on Apr 08,2026
+# Start time: 18:01:12 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -229,110 +229,129 @@ Reading pref.tcl
 # [TB] FW is responsible for loading MX exponent tables
 # [CORE_TRACER  0] Output filename is: trace_core_00000000.log
 # [DEBUG] Main started
-# [DEBUG] X exp addr: 0x1c01b900, W exp addr: 0x1c01b600
+# [DEBUG] X exp addr: 0x1c024600, W exp addr: 0x1c024200
 # [DEBUG] Writing ARITH reg: 0x00010480 (MX enable=1)
-# [DEBUG] X addr: 0x1c01d1c0, W addr: 0x1c01b9c0, Z addr: 0x1c016e00
-# [DEBUG] X exp addr: 0x1c01b900, W exp addr: 0x1c01b600
+# [DEBUG] X addr: 0x1c026700, W addr: 0x1c024700, Z addr: 0x1c01c200
+# [DEBUG] X exp addr: 0x1c024600, W exp addr: 0x1c024200
 # Triggering accelerator and going to sleep...
-# [DBG][KTILE] t=17422000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=0  first_load=1  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=17422000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=1
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=17423000  read_ptr 64 -> mark 0  occ 128 -> 192  seg_consumed 64 -> 0
-# [TB][STALL] Engine stalled at 17485000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
-# [DBG][KWAIT] t=17541000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
-# [DBG][YPUSH] t=17543000 y_push_cnt=0/32 y_height=32 accum=1 pushing_y=0 w_rows=0
-# [DBG][FILL] t=17544000 fill_cnt=0/64 z_height=64 y_height=32
-# [DBG][YPUSH] t=17574000 y_push_cnt=31/32 y_height=32 accum=0 pushing_y=1 w_rows=16
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=17607000  read_ptr=64  write_ptr=192  occ=128  total_written=192  total_count=192  seg_consumed=64
-# [DBG][FILL] t=17607000 fill_cnt=63/64 z_height=64 y_height=32
-# [DBG][KTILE] t=17639000 y_cols_iter 1 -> 0  y_height=32 z_height=64  y_rows_q=0  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=1
-# [DBG][ZEMPTY] t=17639000 w_cols_q=1 y_cols_q=1 y_height=32 z_height=64 first_load=0
-# [TB][STALL] Engine stalled at 17669000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=17691000  read_ptr 192 -> mark 0  occ 0 -> 192  seg_consumed 192 -> 0
-# [DBG][KWAIT] t=17691000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=32 y_height_now=32
-# [TB][STALL] Engine stalled at 17693000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=17765000  read_ptr 128 -> mark 64  occ 64 -> 128  seg_consumed 64 -> 0
-# [DBG][KTILE] t=17765000 y_cols_iter 0 -> 1  y_height=64 z_height=32  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=17765000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=32 first_load=0
-# [TB][STALL] Engine stalled at 17827000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
-# [DBG][KWAIT] t=17909000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
-# [DBG][YPUSH] t=17911000 y_push_cnt=0/32 y_height=32 accum=1 pushing_y=0 w_rows=0
-# [DBG][FILL] t=17912000 fill_cnt=0/64 z_height=64 y_height=32
-# [DBG][YPUSH] t=17942000 y_push_cnt=31/32 y_height=32 accum=0 pushing_y=1 w_rows=16
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=17975000  read_ptr=128  write_ptr=192  occ=64  total_written=192  total_count=192  seg_consumed=64
-# [DBG][FILL] t=17975000 fill_cnt=63/64 z_height=64 y_height=32
-# [DBG][KTILE] t=18007000 y_cols_iter 1 -> 0  y_height=32 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=1
-# [DBG][ZEMPTY] t=18007000 w_cols_q=1 y_cols_q=1 y_height=32 z_height=64 first_load=0
-# [TB][STALL] Engine stalled at 18037000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=18059000  read_ptr 192 -> mark 0  occ 0 -> 192  seg_consumed 192 -> 0
-# [DBG][KWAIT] t=18059000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=32 y_height_now=32
-# [TB][STALL] Engine stalled at 18061000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
-# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=18133000  read_ptr 192 -> mark 128  occ 0 -> 64  seg_consumed 64 -> 0
-# [DBG][KTILE] t=18133000 y_cols_iter 0 -> 1  y_height=64 z_height=32  y_rows_q=2  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=18133000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=32 first_load=0
-# [TB][STALL] Engine stalled at 18195000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
-# [DBG][KWAIT] t=18277000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
-# [DBG][YPUSH] t=18279000 y_push_cnt=0/32 y_height=32 accum=1 pushing_y=0 w_rows=0
-# [DBG][FILL] t=18280000 fill_cnt=0/64 z_height=64 y_height=32
-# [DBG][YPUSH] t=18310000 y_push_cnt=31/32 y_height=32 accum=0 pushing_y=1 w_rows=16
-# [DBG][FILL] t=18343000 fill_cnt=63/64 z_height=64 y_height=32
-# [DBG][KTILE] t=18375000 y_cols_iter 1 -> 0  y_height=32 z_height=64  y_rows_q=2  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=1
-# [DBG][ZEMPTY] t=18375000 w_cols_q=1 y_cols_q=1 y_height=32 z_height=64 first_load=0
-# [DBG][KWAIT] t=18405000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=32 y_height_now=32
-# [DBG][KTILE] t=18471000 y_cols_iter 0 -> 1  y_height=64 z_height=32  y_rows_q=3  first_load=0  LEFTOVERS[7:0]=32  W_ITERS[15:0]=2  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=18471000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=32 first_load=0
+# [DBG][KTILE] t=17391000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=0  first_load=1  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17391000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=1
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=17392000  read_ptr 64 -> mark 0  occ 192 -> 256  seg_consumed 64 -> 0
+# [TB][STALL] Engine stalled at 17454000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [DBG][KWAIT] t=17525000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][YPUSH] t=17527000 y_push_cnt=0/64 y_height=64 accum=1 pushing_y=0 w_rows=0
+# [DBG][FILL] t=17528000 fill_cnt=0/64 z_height=64 y_height=64
+# [DBG][YPUSH] t=17590000 y_push_cnt=63/64 y_height=64 accum=0 pushing_y=1 w_rows=32
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=17591000  read_ptr=64  write_ptr=256  occ=192  total_written=256  total_count=256  seg_consumed=64
+# [DBG][FILL] t=17591000 fill_cnt=63/64 z_height=64 y_height=64
+# [DBG][KTILE] t=17623000 y_cols_iter 1 -> 0  y_height=64 z_height=64  y_rows_q=0  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=1
+# [DBG][ZEMPTY] t=17623000 w_cols_q=1 y_cols_q=1 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 17651000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
+# [TB][STALL] Engine stalled at 17655000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=17692000  read_ptr 256 -> mark 0  occ 0 -> 256  seg_consumed 256 -> 0
+# [DBG][KWAIT] t=17692000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [TB][STALL] Engine stalled at 17694000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=17766000  read_ptr 128 -> mark 64  occ 128 -> 192  seg_consumed 64 -> 0
+# [DBG][KTILE] t=17798000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17798000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 17828000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
+# [DBG][KWAIT] t=17925000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][YPUSH] t=17927000 y_push_cnt=0/64 y_height=64 accum=1 pushing_y=0 w_rows=0
+# [DBG][FILL] t=17928000 fill_cnt=0/64 z_height=64 y_height=64
+# [DBG][YPUSH] t=17990000 y_push_cnt=63/64 y_height=64 accum=0 pushing_y=1 w_rows=32
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=17991000  read_ptr=128  write_ptr=256  occ=128  total_written=256  total_count=256  seg_consumed=64
+# [DBG][FILL] t=17991000 fill_cnt=63/64 z_height=64 y_height=64
+# [DBG][KTILE] t=18023000 y_cols_iter 1 -> 0  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=1
+# [DBG][ZEMPTY] t=18023000 w_cols_q=1 y_cols_q=1 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 18051000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
+# [TB][STALL] Engine stalled at 18055000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=18092000  read_ptr 256 -> mark 0  occ 0 -> 256  seg_consumed 256 -> 0
+# [DBG][KWAIT] t=18092000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [TB][STALL] Engine stalled at 18094000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=18166000  read_ptr 192 -> mark 128  occ 64 -> 128  seg_consumed 64 -> 0
+# [DBG][KTILE] t=18198000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=2  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=18198000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 18228000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
+# [DBG][KWAIT] t=18325000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][YPUSH] t=18327000 y_push_cnt=0/64 y_height=64 accum=1 pushing_y=0 w_rows=0
+# [DBG][FILL] t=18328000 fill_cnt=0/64 z_height=64 y_height=64
+# [DBG][YPUSH] t=18390000 y_push_cnt=63/64 y_height=64 accum=0 pushing_y=1 w_rows=32
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] MARK at t=18391000  read_ptr=192  write_ptr=256  occ=64  total_written=256  total_count=256  seg_consumed=64
+# [DBG][FILL] t=18391000 fill_cnt=63/64 z_height=64 y_height=64
+# [DBG][KTILE] t=18423000 y_cols_iter 1 -> 0  y_height=64 z_height=64  y_rows_q=2  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=1
+# [DBG][ZEMPTY] t=18423000 w_cols_q=1 y_cols_q=1 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 18451000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
+# [TB][STALL] Engine stalled at 18455000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=18492000  read_ptr 256 -> mark 0  occ 0 -> 256  seg_consumed 256 -> 0
+# [DBG][KWAIT] t=18492000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [TB][STALL] Engine stalled at 18494000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
+# [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=18566000  read_ptr 256 -> mark 192  occ 0 -> 64  seg_consumed 64 -> 0
+# [DBG][KTILE] t=18598000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=3  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=18598000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# [TB][STALL] Engine stalled at 18628000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
+# [DBG][KWAIT] t=18725000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][YPUSH] t=18727000 y_push_cnt=0/64 y_height=64 accum=1 pushing_y=0 w_rows=0
+# [DBG][FILL] t=18728000 fill_cnt=0/64 z_height=64 y_height=64
+# [DBG][YPUSH] t=18790000 y_push_cnt=63/64 y_height=64 accum=0 pushing_y=1 w_rows=32
+# [DBG][FILL] t=18791000 fill_cnt=63/64 z_height=64 y_height=64
+# [DBG][KTILE] t=18823000 y_cols_iter 1 -> 0  y_height=64 z_height=64  y_rows_q=3  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=1
+# [DBG][ZEMPTY] t=18823000 w_cols_q=1 y_cols_q=1 y_height=64 z_height=64 first_load=0
+# [DBG][KWAIT] t=18853000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][KTILE] t=18951000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=4  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=18951000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
 # Resumed!
 # Terminated test with 0 errors. See you!
-# [TB] - cnt_rd=4446    
-# [TB] - cnt_wr=648     
-# [PERF] total cycles    : 1368
-# [PERF] busy cycles     : 1357
-# [PERF] busy ratio      : 99.20 %
-# [PERF] MX blocks dec   : 960
-# [PERF] MX blocks dec X : 384
-# [PERF] MX blocks dec W : 576
-# [PERF] MX blocks enc   : 288
-# [PERF] X unpack in     : 192
-# [PERF] W unpack in     : 384
-# [PERF] X unpack out    : 192
-# [PERF] W unpack out    : 384
-# [PERF] X fifo pop      : 192
-# [PERF] W fifo pop      : 384
-# [PERF] W load cycles   : 384
-# [PERF] W shift cycles  : 904
-# [PERF] W valid cycles  : 999
-# [PERF] engine cycles   : 1368
-# [PERF] engine util     : 9.36 %
-# [PERF] load->store cycles : 1353
+# [TB] - cnt_rd=6372    
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 1912
+# [PERF] busy cycles     : 1901
+# [PERF] busy ratio      : 99.42 %
+# [PERF] MX blocks dec   : 1536
+# [PERF] MX blocks dec X : 512
+# [PERF] MX blocks dec W : 1024
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 256
+# [PERF] W unpack in     : 512
+# [PERF] X unpack out    : 256
+# [PERF] W unpack out    : 512
+# [PERF] X fifo pop      : 256
+# [PERF] W fifo pop      : 512
+# [PERF] W load cycles   : 512
+# [PERF] W shift cycles  : 1224
+# [PERF] W valid cycles  : 1392
+# [PERF] engine cycles   : 1912
+# [PERF] engine util     : 6.69 %
+# [PERF] load->store cycles : 1897
 # [PERF] ideal cycles       : 128
-# [PERF] engine utilization : 9.46 %
-# [PERF] X stream done   : 6
+# [PERF] engine utilization : 6.75 %
+# [PERF] X stream done   : 8
 # [PERF] W stream done   : 1
 # [PERF] Z stream done   : 1
-# [PERF] engine window cycles : 1185
-# [TB][STALL] events       : 7
-# [TB][STALL] cycles       : 280
+# [PERF] engine window cycles : 1728
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 503
 # [TB][ZHOLD] hold cycles  : 0
 # [TB][ZHOLD] violations   : 0
 # [TB] - Success!
 # [TB] - errors=00000000
 # ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
-#    Time: 176629 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+#    Time: 298994 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x70707271
-#   [1]: 0x70707070
-#   [2]: 0x71707171
-#   [3]: 0x72717171
-#   [4]: 0x72717170
-#   [5]: 0x71717171
-#   [6]: 0x71707072
-#   [7]: 0x71717170
+#   [0]: 0x71727071
+#   [1]: 0x71716f71
+#   [2]: 0x70716f71
+#   [3]: 0x726f7171
+#   [4]: 0x71707170
+#   [5]: 0x6f717071
+#   [6]: 0x70717070
+#   [7]: 0x6f6f7171
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
-# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=934
-# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=1005
-# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=761
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=1365
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=1394
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=1194
 # [load_fifo 3] depth=32 req_peak=2 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
-# [load_fifo 4] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
-# [mx_arbiter] force_rr=0 strict_alt=0 x_req=600 w_req=1006 both_req=504 x_block_fifo=0 w_block_fifo=347 x_grant=384 w_grant=576 rr_flips=299 w_prio_grants=64
-# End time: 17:58:42 on Apr 08,2026, Elapsed time: 0:01:58
+# [load_fifo 4] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [mx_arbiter] force_rr=0 strict_alt=0 x_req=922 w_req=1468 both_req=811 x_block_fifo=0 w_block_fifo=235 x_grant=512 w_grant=1024 rr_flips=619 w_prio_grants=97
+# End time: 18:04:35 on Apr 08,2026, Elapsed time: 0:03:23
 # Errors: 0, Warnings: 2

@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 17:08:54 on Mar 18,2026
+# Start time: 17:50:38 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -229,28 +229,18 @@ Reading pref.tcl
 # [TB] FW is responsible for loading MX exponent tables
 # [CORE_TRACER  0] Output filename is: trace_core_00000000.log
 # [DEBUG] Main started
-# [DEBUG] X exp addr: 0x1c012d00, W exp addr: 0x1c012b00
-# [DEBUG] Z exp out addr: 0x1c014544
+# [DEBUG] X exp addr: 0x1c012c00, W exp addr: 0x1c012a00
 # [DEBUG] Writing ARITH reg: 0x00010480 (MX enable=1)
-# [DEBUG] X addr: 0x1c013d40, W addr: 0x1c012d40, Z addr: 0x1c011ac0
-# [DEBUG] X exp addr: 0x1c012d00, W exp addr: 0x1c012b00
+# [DEBUG] X addr: 0x1c013c40, W addr: 0x1c012c40, Z addr: 0x1c011a00
+# [DEBUG] X exp addr: 0x1c012c00, W exp addr: 0x1c012a00
 # Triggering accelerator and going to sleep...
-# [DBG][KTILE] t=19734000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=0  first_load=1  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=19734000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=1
-# [DBG][KWAIT] t=19797000 w_cols_iter_en w_cols_q=0->0 w_rows_q=63 z_height_now=64 y_height_now=64
-# [DBG][KTILE] t=19895000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
-# [DBG][ZEMPTY] t=19895000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
+# [DBG][KTILE] t=17406000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=0  first_load=1  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17406000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=1
+# [DBG][KWAIT] t=17469000 w_cols_iter_en w_cols_q=0->0 w_rows_q=63 z_height_now=64 y_height_now=64
+# [DBG][KTILE] t=17567000 y_cols_iter 0 -> 0  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=1  w_cols_iter_q=0
+# [DBG][ZEMPTY] t=17567000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
 # Resumed!
-# [EXP_ERR] word 0: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 1: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 2: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 3: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 4: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 5: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 6: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP_ERR] word 7: hw=0x00000000 golden=0x7c7c7c7c
-# [EXP] 16/16 exponent words mismatched
-# Terminated test with 16 errors. See you!
+# Terminated test with 0 errors. See you!
 # [TB] - cnt_rd=1503    
 # [TB] - cnt_wr=144     
 # [PERF] total cycles    : 504
@@ -282,20 +272,19 @@ Reading pref.tcl
 # [TB][STALL] cycles       : 0
 # [TB][ZHOLD] hold cycles  : 0
 # [TB][ZHOLD] violations   : 0
-# [TB] - Fail!
-# ** Error: [TB] - errors=00000010
-#    Time: 83077 ns  Scope: redmule_tb_wrap.i_redmule_tb File: /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv Line: 1792
-# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1797)
-#    Time: 83077 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
+#    Time: 53897 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x6f6d6b70
-#   [1]: 0x706f6f6d
+#   [0]: 0x6f6f6f70
+#   [1]: 0x6e6d7070
 #   [2]: 0x70706f6e
-#   [3]: 0x6f71706e
-#   [4]: 0x6f70706e
-#   [5]: 0x706f716e
-#   [6]: 0x716e6e6e
-#   [7]: 0x6e706e70
+#   [3]: 0x6e716d6c
+#   [4]: 0x7170706e
+#   [5]: 0x716f706f
+#   [6]: 0x706f6f70
+#   [7]: 0x6e6e7070
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
 # [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=117
@@ -303,6 +292,6 @@ Reading pref.tcl
 # [load_fifo 2] depth=32 req_peak=22 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=163
 # [load_fifo 3] depth=32 req_peak=1 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [load_fifo 4] depth=32 req_peak=4 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
-# [mx_arbiter] force_rr=0 strict_alt=0 x_req=95 w_req=201 both_req=95 x_block_fifo=0 w_block_fifo=47 x_grant=64 w_grant=128 rr_flips=57 w_prio_grants=4
-# End time: 17:09:51 on Mar 18,2026, Elapsed time: 0:00:57
-# Errors: 1, Warnings: 2
+# [mx_arbiter] force_rr=0 strict_alt=0 x_req=95 w_req=201 both_req=95 x_block_fifo=0 w_block_fifo=49 x_grant=64 w_grant=128 rr_flips=55 w_prio_grants=4
+# End time: 17:51:21 on Apr 08,2026, Elapsed time: 0:00:43
+# Errors: 0, Warnings: 2

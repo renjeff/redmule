@@ -109,7 +109,7 @@ mx_dec_target_e next_owner;
 logic           next_owner_valid;
 logic           w_needs_priority;
 
-assign w_needs_priority = w_fifo_flgs_i.empty;
+assign w_needs_priority = w_fifo_flgs_i.empty || w_fifo_flgs_i.almost_empty;
 
 always_comb begin
   next_owner       = MX_DEC_NONE;

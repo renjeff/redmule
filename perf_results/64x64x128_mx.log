@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 15:28:15 on Mar 17,2026
+# Start time: 17:54:39 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -247,29 +247,14 @@ Reading pref.tcl
 # [DBG][KTILE] t=17643000 y_cols_iter 1 -> 0  y_height=64 z_height=64  y_rows_q=0  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=1
 # [DBG][ZEMPTY] t=17643000 w_cols_q=1 y_cols_q=1 y_height=64 z_height=64 first_load=0
 # [TB][STALL] Engine stalled at 17671000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17675000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [TB][STALL] Engine stalled at 17675000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
 # [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_w_exp_buffer] REWIND at t=17712000  read_ptr 256 -> mark 0  occ 0 -> 256  seg_consumed 256 -> 0
 # [DBG][KWAIT] t=17712000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=64
 # [TB][STALL] Engine stalled at 17714000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=1)
 # [DBG][EXPBUF][redmule_tb_wrap.i_redmule_tb.i_dut.i_redmule_top.i_x_exp_buffer] REWIND at t=17786000  read_ptr 128 -> mark 64  occ 0 -> 64  seg_consumed 64 -> 0
-# [TB][STALL] Engine stalled at 17796000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17800000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17806000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17809000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17812000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17817000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
 # [DBG][KTILE] t=17818000 y_cols_iter 0 -> 1  y_height=64 z_height=64  y_rows_q=1  first_load=0  LEFTOVERS[7:0]=0  W_ITERS[15:0]=2  w_cols_iter_q=0
 # [DBG][ZEMPTY] t=17818000 w_cols_q=0 y_cols_q=0 y_height=64 z_height=64 first_load=0
-# [TB][STALL] Engine stalled at 17826000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17830000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17836000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17839000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17842000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17847000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=0 (en=0)
-# [TB][STALL] Engine stalled at 17856000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=0)
-# [TB][STALL] Engine stalled at 17860000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=0)
-# [TB][STALL] Engine stalled at 17866000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=0) y_loaded=1 (en=0)
-# [TB][STALL] Engine stalled at 17869000 ps | state=2 w_valid=0 (en=1) x_full=0 (en=1) y_loaded=1 (en=0)
+# [TB][STALL] Engine stalled at 17848000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=1) y_loaded=0 (en=0)
 # [DBG][KWAIT] t=17945000 w_cols_iter_en w_cols_q=0->1 w_rows_q=63 z_height_now=64 y_height_now=64
 # [DBG][YPUSH] t=17947000 y_push_cnt=0/64 y_height=64 accum=1 pushing_y=0 w_rows=0
 # [DBG][FILL] t=17948000 fill_cnt=0/64 z_height=64 y_height=64
@@ -299,7 +284,7 @@ Reading pref.tcl
 # [PERF] W fifo pop      : 256
 # [PERF] W load cycles   : 256
 # [PERF] W shift cycles  : 712
-# [PERF] W valid cycles  : 722
+# [PERF] W valid cycles  : 746
 # [PERF] engine cycles   : 1112
 # [PERF] engine util     : 11.51 %
 # [PERF] load->store cycles : 1097
@@ -309,7 +294,7 @@ Reading pref.tcl
 # [PERF] W stream done   : 1
 # [PERF] Z stream done   : 1
 # [PERF] engine window cycles : 928
-# [TB][STALL] events       : 20
+# [TB][STALL] events       : 5
 # [TB][STALL] cycles       : 215
 # [TB][ZHOLD] hold cycles  : 0
 # [TB][ZHOLD] violations   : 0
@@ -318,21 +303,21 @@ Reading pref.tcl
 # ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
 #    Time: 158953 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x6f707070
-#   [1]: 0x70706f71
-#   [2]: 0x71707270
-#   [3]: 0x72707170
-#   [4]: 0x6f6f7071
-#   [5]: 0x70727071
-#   [6]: 0x716e6e6f
-#   [7]: 0x6f717171
+#   [0]: 0x706f7072
+#   [1]: 0x6e706e70
+#   [2]: 0x70716f70
+#   [3]: 0x716f706f
+#   [4]: 0x716f706e
+#   [5]: 0x71707070
+#   [6]: 0x7070706e
+#   [7]: 0x71707170
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
-# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=650
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=653
 # [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=722
 # [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=522
 # [load_fifo 3] depth=32 req_peak=1 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [load_fifo 4] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
-# [mx_arbiter] force_rr=0 strict_alt=0 x_req=434 w_req=760 both_req=399 x_block_fifo=0 w_block_fifo=109 x_grant=256 w_grant=512 rr_flips=317 w_prio_grants=58
-# End time: 15:29:56 on Mar 17,2026, Elapsed time: 0:01:41
+# [mx_arbiter] force_rr=0 strict_alt=0 x_req=434 w_req=758 both_req=397 x_block_fifo=0 w_block_fifo=141 x_grant=256 w_grant=512 rr_flips=283 w_prio_grants=35
+# End time: 17:56:26 on Apr 08,2026, Elapsed time: 0:01:47
 # Errors: 0, Warnings: 2

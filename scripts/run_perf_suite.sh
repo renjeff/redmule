@@ -1,6 +1,6 @@
 #!/bin/bash
 # Performance summary collection script
-# Runs FP16 and MX tests for various dimensions (N capped at 64)
+# Runs FP16 and MX tests for various dimensions up to 192x128x128
 
 OUTDIR="/scratch2/msc25h32/redmule/perf_results"
 mkdir -p "$OUTDIR"
@@ -9,6 +9,12 @@ run_test() {
     local M=$1 N=$2 K=$3 MODE=$4  # MODE: fp16 or mx
     local LABEL="${M}x${N}x${K}_${MODE}"
     local LOGFILE="$OUTDIR/${LABEL}.log"
+
+    # Skip if already done
+    if [ -f "$LOGFILE" ]; then
+        echo "=== Skipping $LABEL (already done) ==="
+        return
+    fi
 
     echo "=== Running $LABEL ==="
 
@@ -80,20 +86,33 @@ EOF
     echo "  Result: $PASS_FAIL  errors=$ERRORS  total_cycles=$TOTAL_CYCLES"
 }
 
-# Header
-echo "Test|Result|Errors|Stall_Ev|Stall_Cyc|L->S_Cyc|Total_Cyc|Engine_Cyc|cnt_rd|cnt_wr" > "$OUTDIR/summary.csv"
+# Header (only write if summary doesn't exist)
+if [ ! -f "$OUTDIR/summary.csv" ]; then
+    echo "Test|Result|Errors|Stall_Ev|Stall_Cyc|L->S_Cyc|Total_Cyc|Engine_Cyc|cnt_rd|cnt_wr" > "$OUTDIR/summary.csv"
+fi
 
 # Build HW once (shared between all runs)
 #echo "Building HW..."
 #make hw-build target=vsim > /dev/null 2>&1
 
-# MX tests: N=64 (regression) and N=128 (new N-tiling)
-run_test 32 64 64 mx
-run_test 64 64 64 mx
-run_test 96 64 64 mx
-run_test 32 128 64 mx
-run_test 64 128 64 mx
-run_test 96 128 64 mx
+# ── MX tile-boundary sweep (shared decoder) ───────────────────────────────
+# M-tiles=ARRAY_WIDTH(32), K-tiles=TILE(64), N-tiles=TILE/2(32 packed)
+#                                    M-tiles  N-tiles  K-tiles
+run_test  32  32  64 mx   # 1        1        1   (minimum)
+run_test  32  64  64 mx   # 1        2        1   (N boundary)
+run_test  32  64 128 mx   # 1        2        2   (K boundary)
+run_test  64  64  64 mx   # 2        2        1   (M boundary)
+run_test  64  64 128 mx   # 2        2        2   (M×K interaction)
+run_test  96  64  96 mx   # 3        2        1+L (K leftover)
+run_test  96 128  64 mx   # 3        4        1   (N×M interaction)
+run_test 128  64 128 mx   # 4        2        2   (large M)
+run_test 192  64  64 mx   # 6        2        1   (max M, single K)
+run_test 192 128 128 mx   # 6        4        2   (max, 169KB)
+
+# ── FP16 reference (subset) ──────────────────────────────────────────────
+run_test  64  64  64 fp16
+run_test  96  64  96 fp16
+run_test  96 128 128 fp16
 
 echo ""
 echo "=== Summary ==="

@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 15:11:53 on Mar 17,2026
+# Start time: 18:15:31 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -243,7 +243,7 @@ Reading pref.tcl
 # [DBG][FILL] t=9435000 fill_cnt=63/64 z_height=64 y_height=32
 # [DBG][KWAIT] t=9497000 w_cols_iter_en w_cols_q=1->0 w_rows_q=63 z_height_now=64 y_height_now=32
 # [TB][STALL] Engine stalled at 9499000 ps | state=2 w_valid=1 (en=1) x_full=0 (en=0) y_loaded=0 (en=1)
-# ** Warning: [TB][RSPCHK] redmule_tcdm changed under backpressure at 9515000: prev_valid=1 prev_data=0x346d39a337f0264336b83457378d32ba25e03a542d6b3bd53bb73b582bb134dd363835773986362f3871355d3a513b3c35283861368a3a47360c38373a6b25a936f5371d3926390e3a4a386c364b39ca326b398e383e300a3b67371239c938723bc63ad9297a386f2ebe3a3b2081394d38dd3858385634e83b3228413b2337522b75349e now_valid=1 now_data=0x393b39e63b7a354c3a0d35223673365c39d836c535683b6230853b3d399d3ae231453bae3ab03726357b356d3aef374034fb38c5387e39612242326e3809359239d12f49335a378030051df3371833e931ab34bf3be63aea399d381737e435803ac13bcc397132cf396d37033ab031d637dc3b6334d531a23bb32c662d822c5528cd2b27 r_ready=0
+# ** Warning: [TB][RSPCHK] redmule_tcdm changed under backpressure at 9515000: prev_valid=1 prev_data=0x34de34cc3bc034d82a3b391d3532345d353d38a033d43a5f3bab34db30013b46399b36ba387334403b0028f93bb936de3ab034893b643734396d30c33318332b386d2fc229782d78385638c838ad39f83b3538193b8829893a07333d268d313538b22dbd37cd33643a0e2c0539e439de3abf31433b04379338d9395931be38293a0e3782 now_valid=1 now_data=0x3757393e29682866343336613b8f306c36863ab23b123a71369e393d39a73aea3a9838be3b102a3f395631cd3bb63a5d36fe31883ae9388a386c392c392e36862c72398838742e1c352e2c1630e638cd37f63626268239cc3a273b47339a3a8c28ac375631a5326e38a2382e392838ad30cd3b663884338e35a9354733343b3d32333246 r_ready=0
 #    Time: 9515 ns  Scope: redmule_tb_wrap.i_redmule_tb.monitor_redmule_tcdm_rsp File: /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv Line: 693
 # ** Warning: HCI RSP-3 STABILITY protocol violation!          1
 #    Time: 9515001 ps Started: 9515001 ps  Scope: redmule_tb_wrap.i_redmule_tb.redmule_tcdm.HCI_RSP3 File: /scratch2/msc25h32/redmule/.bender/git/checkouts/hci-5afd8126f874b49f/rtl/common/hci_interfaces.sv Line: 200
@@ -359,14 +359,14 @@ Reading pref.tcl
 # ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
 #    Time: 154530 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x4c994bd1
-#   [1]: 0x4c4c4ac3
-#   [2]: 0x4a744b3d
-#   [3]: 0x4b9a4b51
-#   [4]: 0x4c164c3b
-#   [5]: 0x4c1f4b60
-#   [6]: 0x4c394bb6
-#   [7]: 0x4c8c4bdc
+#   [0]: 0x4c004b1e
+#   [1]: 0x4ade4a6f
+#   [2]: 0x4adf4b36
+#   [3]: 0x4ad44c13
+#   [4]: 0x4b354b36
+#   [5]: 0x4c594baf
+#   [6]: 0x4bf2499c
+#   [7]: 0x4bd74b09
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
 # [load_fifo 0] depth=32 req_peak=20 rsp_peak=16 req_bp=0 rsp_in_bp=0 rsp_out_bp=566
@@ -375,5 +375,5 @@ Reading pref.tcl
 # [load_fifo 3] depth=32 req_peak=0 rsp_peak=0 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [load_fifo 4] depth=32 req_peak=0 rsp_peak=0 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [mx_arbiter] force_rr=0 strict_alt=0 x_req=0 w_req=0 both_req=0 x_block_fifo=0 w_block_fifo=0 x_grant=0 w_grant=0 rr_flips=0 w_prio_grants=0
-# End time: 15:13:38 on Mar 17,2026, Elapsed time: 0:01:45
+# End time: 18:17:20 on Apr 08,2026, Elapsed time: 0:01:49
 # Errors: 0, Warnings: 5

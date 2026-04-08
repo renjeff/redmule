@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 15:07:29 on Mar 17,2026
+# Start time: 18:14:30 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -280,14 +280,14 @@ Reading pref.tcl
 # ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
 #    Time: 74496 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x4bba4c3b
-#   [1]: 0x4ac64b86
-#   [2]: 0x4c284aaf
-#   [3]: 0x4c664c41
-#   [4]: 0x4b824c06
-#   [5]: 0x4c304bba
-#   [6]: 0x4b774c14
-#   [7]: 0x4c944c77
+#   [0]: 0x4c104c1f
+#   [1]: 0x4c264ab2
+#   [2]: 0x4b324c08
+#   [3]: 0x4c2d4cb9
+#   [4]: 0x4bac4bc7
+#   [5]: 0x4c7a4c3e
+#   [6]: 0x4c954c30
+#   [7]: 0x4cb54c72
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
 # [load_fifo 0] depth=32 req_peak=20 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=96
@@ -296,5 +296,5 @@ Reading pref.tcl
 # [load_fifo 3] depth=32 req_peak=0 rsp_peak=0 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [load_fifo 4] depth=32 req_peak=0 rsp_peak=0 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [mx_arbiter] force_rr=0 strict_alt=0 x_req=0 w_req=0 both_req=0 x_block_fifo=0 w_block_fifo=0 x_grant=0 w_grant=0 rr_flips=0 w_prio_grants=0
-# End time: 15:08:19 on Mar 17,2026, Elapsed time: 0:00:50
+# End time: 18:15:23 on Apr 08,2026, Elapsed time: 0:00:53
 # Errors: 0, Warnings: 3

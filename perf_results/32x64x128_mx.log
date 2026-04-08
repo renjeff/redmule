@@ -13,7 +13,7 @@ Reading pref.tcl
 # 2023.4
 
 # vsim redmule_tb_wrap_opt -suppress vsim-3009 -suppress 3009 -c "+STIM_INSTR=/scratch2/msc25h32/redmule/sw/build/stim_instr.txt" "+STIM_DATA=/scratch2/msc25h32/redmule/sw/build/stim_data.txt" "+STACK_INIT=/scratch2/msc25h32/redmule/sw/build/stack_init.txt" -do "run -a" -gUseXif=0 -gPROB_STALL=0.0 
-# Start time: 15:26:59 on Mar 17,2026
+# Start time: 17:51:34 on Apr 08,2026
 # //  Questa Sim-64
 # //  Version 2023.4 linux_x86_64 Oct  9 2023
 # //
@@ -286,21 +286,21 @@ Reading pref.tcl
 # ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1766)
 #    Time: 88893 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
 # [TB DEBUG] Memory at y_inp (0x1c0103dc):
-#   [0]: 0x716f6f6e
-#   [1]: 0x6b6f6e6e
-#   [2]: 0x6f70706e
-#   [3]: 0x6f6e6e6f
-#   [4]: 0x6f6f6f6d
-#   [5]: 0x6f70706d
-#   [6]: 0x6f6e6d6f
-#   [7]: 0x706f6e6f
+#   [0]: 0x7071716f
+#   [1]: 0x706f7171
+#   [2]: 0x71707171
+#   [3]: 0x71717171
+#   [4]: 0x70707072
+#   [5]: 0x71707071
+#   [6]: 0x71706d71
+#   [7]: 0x70707170
 # [TB DEBUG] Memory at z_oup (check address):
 # [TB] - MX encoder outputs written to mx_encoder_*.txt
-# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=290
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=296
 # [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=386
 # [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=179
 # [load_fifo 3] depth=32 req_peak=1 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
 # [load_fifo 4] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
-# [mx_arbiter] force_rr=0 strict_alt=0 x_req=190 w_req=403 both_req=190 x_block_fifo=0 w_block_fifo=88 x_grant=128 w_grant=256 rr_flips=121 w_prio_grants=4
-# End time: 15:27:59 on Mar 17,2026, Elapsed time: 0:01:00
+# [mx_arbiter] force_rr=0 strict_alt=0 x_req=190 w_req=403 both_req=190 x_block_fifo=0 w_block_fifo=94 x_grant=128 w_grant=256 rr_flips=115 w_prio_grants=4
+# End time: 17:52:46 on Apr 08,2026, Elapsed time: 0:01:12
 # Errors: 0, Warnings: 2
