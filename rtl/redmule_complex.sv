@@ -78,8 +78,7 @@ module redmule_complex
   output core_inst_req_t               core_inst_req_o   ,
   input  core_data_rsp_t               core_data_rsp_i   ,
   output core_data_req_t               core_data_req_o   ,
-  hci_core_intf.initiator              tcdm              ,
-  hwpe_stream_intf_stream.source       mx_exp_stream
+  hci_core_intf.initiator              tcdm
 );
 
 localparam int unsigned XExt = (CoreType == CV32X) ? 1 : 0;
@@ -481,8 +480,7 @@ redmule_top #(
   .xif_result_if_o    ( core_xif.coproc_result     ),
   .xif_compressed_if_i( core_xif.coproc_compressed ),
   .xif_mem_if_o       ( core_xif.coproc_mem        ),
-  .periph             ( periph                     ),
-  .mx_exp_stream      ( mx_exp_stream              )
+  .periph             ( periph                     )
 );
 
 endmodule: redmule_complex

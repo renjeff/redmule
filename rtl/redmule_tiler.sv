@@ -337,6 +337,7 @@ assign reg_file_o.hwpe_params[ Z_D2_STRIDE]        = config_q.yz_d2_stride;
 assign reg_file_o.hwpe_params[ X_ROWS_OFFS]        = config_q.x_rows_offs;
 assign reg_file_o.hwpe_params[     X_SLOTS]        = config_q.x_buffer_slots;
 assign reg_file_o.hwpe_params[ Z_OUT_ADDR]        = config_d.z_out_addr; // do not register (straight from regfile)
+assign reg_file_o.hwpe_params[ Z_EXP_ADDR]       = reg_file_i.hwpe_params[Z_EXP_ADDR]; // pass through
 assign reg_file_o.hwpe_params[OP_SELECTION][31:29] = config_q.stage_1_rnd_mode;
 assign reg_file_o.hwpe_params[OP_SELECTION][28:26] = config_q.stage_2_rnd_mode;
 assign reg_file_o.hwpe_params[OP_SELECTION][25:21] = config_q.stage_1_op;

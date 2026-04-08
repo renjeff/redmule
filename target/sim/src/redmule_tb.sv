@@ -587,12 +587,6 @@ module redmule_tb
   hwpe_stream_intf_tcdm stack[0:0]  (.clk(clk_i));
   hwpe_stream_intf_tcdm tcdm [MP:0] (.clk(clk_i));
   
-  // MX exponent stream interface (encoder output)
-  hwpe_stream_intf_stream #(.DATA_WIDTH(32)) mx_exp_stream (.clk(clk_i));
-
-  // Drive ready to always accept encoder exponent outputs
-  assign mx_exp_stream.ready = 1'b1;
-  
     logic [NC-1:0][1:0]  evt;
   logic [MP-1:0]       tcdm_gnt;
   logic [MP-1:0][31:0] tcdm_r_data;
@@ -848,8 +842,7 @@ module redmule_tb
     .core_inst_req_o    ( core_inst_req    ),
     .core_data_rsp_i    ( core_data_rsp    ),
     .core_data_req_o    ( core_data_req    ),
-    .tcdm               ( redmule_tcdm     ),
-    .mx_exp_stream      ( mx_exp_stream    )
+    .tcdm               ( redmule_tcdm     )
   );
 
   integer f_x, f_W, f_y, f_tau;

@@ -43,9 +43,7 @@ module redmule_top
   // Periph slave port for the controller side
   hwpe_ctrl_intf_periph.slave periph,
   // TCDM master ports for the memory side
-  hci_core_intf.initiator tcdm,
-  // MX shared exponent output stream (separate from data)
-  hwpe_stream_intf_stream.source mx_exp_stream
+  hci_core_intf.initiator tcdm
 );
 
 localparam int unsigned DATAW_ALIGN = `HCI_SIZE_GET_DW(tcdm) - SysDataWidth;
@@ -55,6 +53,25 @@ localparam int unsigned MX_DATA_W = 256;  // 32 FP8 elements per MX block
 logic                       enable, clear;
 logic                       reg_enable;
 logic                       start_cfg, cfg_complete;
+
+// Internal MX exponent stream (packed exponents from encoder → FIFO → streamer Z exp sink)
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) mx_exp_stream     ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) mx_exp_stream_buf ( .clk( clk_i ) );
+
+// Decouple exp output from TCDM backpressure so the encoder never stalls on exp writes.
+// Without this, TCDM congestion on the exp sink stalls the encoder (which gates on
+// mx_exp_ready_i && mx_val_ready_i), cascading to stall Z data output and computation.
+hwpe_stream_fifo #(
+  .DATA_WIDTH ( DATAW_ALIGN ),
+  .FIFO_DEPTH ( 8           )
+) i_mx_exp_decouple_fifo (
+  .clk_i   ( clk_i              ),
+  .rst_ni  ( rst_ni             ),
+  .clear_i ( clear              ),
+  .flags_o (                    ),
+  .push_i  ( mx_exp_stream     ),
+  .pop_o   ( mx_exp_stream_buf )
+);
 
 hwpe_ctrl_intf_periph #( .ID_WIDTH  (ID_WIDTH) ) local_periph ( .clk(clk_i) );
 
@@ -227,8 +244,9 @@ redmule_streamer #(
   .y_stream_o      ( y_buffer_d          ),
   .x_exp_stream_o  ( x_exp_from_streamer ), // mx output exponent stream
   .w_exp_stream_o  ( w_exp_from_streamer ),
-  // Sink interface for the outgoing stream
+  // Sink interfaces for the outgoing streams
   .z_stream_i      ( z_buffer_muxed      ),
+  .z_exp_stream_i  ( mx_exp_stream_buf   ),
   // Master TCDM interface ports for the memory side
   .tcdm            ( tcdm                ),
   .ecc_errors_o    ( ecc_errors_streamer ),

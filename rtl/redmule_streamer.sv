@@ -33,6 +33,8 @@ module redmule_streamer
   hwpe_stream_intf_stream.source w_exp_stream_o,
   // Engine Z output + HS signals (intput for the streamer)
   hwpe_stream_intf_stream.sink   z_stream_i,
+  // MX Z exponent output (packed exponents to TCDM)
+  hwpe_stream_intf_stream.sink   z_exp_stream_i,
   // TCDM interface between the streamer and the memory
   hci_core_intf.initiator        tcdm      ,
 
@@ -134,10 +136,10 @@ hci_core_intf #(
 `endif
   .DW ( DW ),
   .UW ( UW )
-) virt_tcdm [0:NumStreamSources] ( .clk ( clk_i ) );
+) virt_tcdm [0:NumStreamSources+NumSinks-1] ( .clk ( clk_i ) );
 
 redmule_mux #(
-  .NB_CHAN              ( NumStreamSources + 1       ),
+  .NB_CHAN              ( NumStreamSources + NumSinks ),
   .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(ldst_tcdm) )
 ) i_ldst_mux          (
   .clk_i              ( clk_i                ),
@@ -350,7 +352,73 @@ hci_core_fifo #(
 );
 
 // Assigning the store FIFO output to the store side of the y/z multiplexer.
-hci_core_assign i_store_assign ( .tcdm_target (z_fifo_q), .tcdm_initiator (virt_tcdm[NumStreamSources]) );
+hci_core_assign i_store_assign ( .tcdm_target (z_fifo_q), .tcdm_initiator (virt_tcdm[ZSinkId]) );
+
+/************************************ Z Exponent Store Channel *************************************/
+/* MX mode Z exponent output: packed exponents are written to a separate TCDM address.            */
+
+hci_core_intf #( .DW ( DW ),
+                 .UW ( UW ) ) zexp2fifo ( .clk ( clk_i ) );
+hci_core_sink         #(
+  .MISALIGNED_ACCESSES ( REALIGN                      ),
+  .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(ldst_tcdm) )
+) i_z_exp_stream_sink  (
+  .clk_i               ( clk_i                           ),
+  .rst_ni              ( rst_ni                          ),
+  .test_mode_i         ( test_mode_i                     ),
+  .clear_i             ( clear_i                         ),
+  .enable_i            ( enable_i                        ),
+  .tcdm                ( zexp2fifo                       ),
+  .stream              ( z_exp_stream_i                  ),
+  .ctrl_i              ( ctrl_i.z_exp_stream_sink_ctrl   ),
+  .flags_o             ( flags_o.z_exp_stream_sink_flags )
+);
+
+hci_core_intf #(
+`ifndef SYNTHESIS
+  .WAIVE_RSP3_ASSERT ( 1'b1 ),
+  .WAIVE_RSP5_ASSERT ( 1'b1 ),
+`endif
+  .DW ( DW ),
+  .UW ( UW )
+) z_exp_fifo_d ( .clk ( clk_i ) );
+hci_core_intf #( .DW ( DW ),
+                 .UW ( UW ) ) z_exp_fifo_q ( .clk ( clk_i ) );
+
+// Z exp sink writes raw data (already packed exponents), no cast needed
+assign z_exp_fifo_d.data    = zexp2fifo.data;
+assign z_exp_fifo_d.req     = zexp2fifo.req;
+assign zexp2fifo.gnt        = z_exp_fifo_d.gnt;
+assign z_exp_fifo_d.add     = zexp2fifo.add;
+assign z_exp_fifo_d.wen     = zexp2fifo.wen;
+assign z_exp_fifo_d.be      = zexp2fifo.be;
+assign z_exp_fifo_d.r_ready = zexp2fifo.r_ready;
+assign z_exp_fifo_d.user    = zexp2fifo.user;
+assign z_exp_fifo_d.id      = zexp2fifo.id;
+assign zexp2fifo.r_data     = z_exp_fifo_d.r_data;
+assign zexp2fifo.r_valid    = z_exp_fifo_d.r_valid;
+assign zexp2fifo.r_user     = z_exp_fifo_d.r_user;
+assign zexp2fifo.r_id       = z_exp_fifo_d.r_id;
+assign z_exp_fifo_d.ereq    = zexp2fifo.ereq;
+assign zexp2fifo.egnt       = z_exp_fifo_d.egnt;
+assign zexp2fifo.r_evalid   = z_exp_fifo_d.r_evalid;
+assign z_exp_fifo_d.r_eready = zexp2fifo.r_eready;
+assign z_exp_fifo_d.ecc     = zexp2fifo.ecc;
+assign zexp2fifo.r_ecc      = z_exp_fifo_d.r_ecc;
+
+hci_core_fifo #(
+  .FIFO_DEPTH                      ( 8                          ),
+  .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(ldst_tcdm) )
+) i_z_exp_store_fifo (
+  .clk_i          ( clk_i          ),
+  .rst_ni         ( rst_ni         ),
+  .clear_i        ( clear_i        ),
+  .flags_o        (                ),
+  .tcdm_target    ( z_exp_fifo_d   ),
+  .tcdm_initiator ( z_exp_fifo_q   )
+);
+
+hci_core_assign i_z_exp_store_assign ( .tcdm_target (z_exp_fifo_q), .tcdm_initiator (virt_tcdm[ZExpSinkId]) );
 
 /**************************************** Load Channel ****************************************/
 /* The load channel of the streamer connects the incoming TCDM interface to three different   *

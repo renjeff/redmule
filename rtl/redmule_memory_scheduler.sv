@@ -377,6 +377,25 @@ module redmule_memory_scheduler
   // Only two dimensions (d0 then d1) required for exponent beats
   assign cntrl_streamer_o.w_exp_stream_source_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
 
+  // Z exponent output stream (linear addressing, enabled only when MX mode is active)
+  // Total output exponent blocks = ceil(M*K / 32), packed BYTES_PER_BEAT exponents per beat
+  logic [31:0] z_exp_blocks_out;
+  logic [31:0] z_exp_beats_out;
+  assign z_exp_blocks_out = (m_size_unpacked * k_size_unpacked + 31) >> 5;
+  assign z_exp_beats_out  = (z_exp_blocks_out + BYTES_PER_BEAT - 1) / BYTES_PER_BEAT;
+
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.req_start = cntrl_flags_i.mx_enable &&
+      cntrl_scheduler_i.first_load && flgs_streamer_i.z_exp_stream_sink_flags.ready_start;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.base_addr =
+      reg_file_i.hwpe_params[Z_EXP_ADDR];
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.tot_len = z_exp_beats_out;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.d0_len = 32'd1;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.d0_stride = 32'd0;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.d1_len = z_exp_beats_out;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.d1_stride = BYTES_PER_BEAT;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.d2_stride = 32'd0;
+  assign cntrl_streamer_o.z_exp_stream_sink_ctrl.addressgen_ctrl.dim_enable_1h = 2'b01;
+
   assign cntrl_streamer_o.input_cast_src_fmt  = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][15:13]);
   assign cntrl_streamer_o.input_cast_dst_fmt  = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][12:10]);
   assign cntrl_streamer_o.output_cast_src_fmt = fpnew_pkg::fp_format_e'(reg_file_i.hwpe_params[OP_SELECTION][12:10]);
