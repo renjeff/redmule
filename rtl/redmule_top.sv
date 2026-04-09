@@ -176,13 +176,13 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_raw       ( .c
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) x_buffer_slot      ( .clk( clk_i ) );
 
 // W streaming interface + W FIFO interface
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_d ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN )) w_buffer_d ( .clk( clk_i ) );
 // Bypass HWPE stream assertions on W path: rewind FIFO replay transitions violate
 // value-change and valid-deassert rules during bank switch
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_packed ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_muxed  ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_fifo   ( .clk( clk_i ) );
-hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ), .BYPASS_VCR_ASSERT ( 1'b1 ), .BYPASS_VDR_ASSERT ( 1'b1 ) ) w_buffer_raw    ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN )) w_buffer_packed ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN )) w_buffer_muxed  ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN )) w_buffer_fifo   ( .clk( clk_i ) );
+hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN )) w_buffer_raw    ( .clk( clk_i ) );
 hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW_ALIGN ) ) w_buffer_slot      ( .clk( clk_i ) );
 
 // Y streaming interface + Y FIFO interface
