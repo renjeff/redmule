@@ -293,6 +293,7 @@ module redmule_scheduler
                           (w_valid_i || ~w_needs_stream_valid);
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
 
+`ifndef SYNTHESIS
   bit dbg_sched;
   initial dbg_sched = $test$plusargs("MX_DEBUG_DUMP");
 
@@ -349,6 +350,7 @@ module redmule_scheduler
       stall_cnt <= 0;
     end
   end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_columns_iteration
     if(~rst_ni) begin
@@ -453,6 +455,7 @@ module redmule_scheduler
   assign y_rows_iter_en = y_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && y_cols_iter_en;
   assign y_rows_iter_d  =  y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : y_rows_iter_q + 1;
 
+`ifndef SYNTHESIS
   // K-tile transition debug
   always @(posedge clk_i) begin
     if (y_cols_iter_en) begin
@@ -464,11 +467,8 @@ module redmule_scheduler
                reg_file_i.hwpe_params[W_ITERS][15:0],
                w_cols_iter_q, m_tile_rst_pending_q);
     end
-    // YPUSH_ALL trace disabled for performance
 
-    // Trace key events during K-tile 1 processing
     if (w_cols_iter_q == 1 && computing) begin
-      // z_avail start/end, fill start, drain, y_push boundaries
       if (z_avail_en && row_clk_en_q[0] && (z_avail_counter_q == 0 || z_avail_counter_q == z_height-1))
         $display("[DBG][FILL] t=%0t fill_cnt=%0d/%0d z_height=%0d y_height=%0d",
                  $time, z_avail_counter_q, z_height, z_height, y_height);
@@ -476,16 +476,15 @@ module redmule_scheduler
         $display("[DBG][YPUSH] t=%0t y_push_cnt=%0d/%0d y_height=%0d accum=%b pushing_y=%b w_rows=%0d",
                  $time, y_push_counter_q, y_height, y_height, ~pushing_y, pushing_y, w_rows_iter_q);
     end
-    // Z buffer empty events
     if (flgs_z_buffer_i.empty && computing)
       $display("[DBG][ZEMPTY] t=%0t w_cols_q=%0d y_cols_q=%0d y_height=%0d z_height=%0d first_load=%b",
                $time, w_cols_iter_q, y_cols_iter_q, y_height, z_height,
                y_cols_iter_q == '0 && y_rows_iter_q == '0);
-    // z_wait_en rising edge
     if (w_cols_iter_en && computing)
       $display("[DBG][KWAIT] t=%0t w_cols_iter_en w_cols_q=%0d->%0d w_rows_q=%0d z_height_now=%0d y_height_now=%0d",
                $time, w_cols_iter_q, w_cols_iter_d, w_rows_iter_q, z_height, y_height);
   end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_wait_enable_register
     if(~rst_ni) begin
