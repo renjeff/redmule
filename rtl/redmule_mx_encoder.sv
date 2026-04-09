@@ -39,7 +39,8 @@ localparam int BIAS_FP16 = 15;
 typedef enum logic [1:0] {
     IDLE,
     SCAN,
-    ENCODE
+    ENCODE,
+    OUTPUT    // Registered output: val_reg_q has encoded data, present to consumer
 } redmule_mx_encode_state_e;
 
 redmule_mx_encode_state_e current_state, next_state;
@@ -595,32 +596,33 @@ end
                     // $display("[%0t] ENCODE: group=%0d lane=%0d elem_idx=%0d fp16_val=0x%04h shared=0x%02h fp8_val=0x%02h",
                     //     $time, group_idx_q, l, elem_idx, fp16_val, scale_reg_q, fp8_val);
                 end
-                // once at last group, block is ready
+                // once at last group, transition to OUTPUT (registered output)
                 if (group_idx_q == NUM_GROUPS -1) begin
-                    mx_val_valid_o = 1'b1;
-                    mx_exp_valid_o = 1'b1;
-                    mx_val_data_o  = val_reg_d;
-                    // DEBUG: dump final packed MX block
-                    // $display("[%0t] ENCODE DONE: shared_exp=0x%02h", $time, scale_reg_q);
-
-                    // wait for both outputs to be accepted
-                    if (mx_val_ready_i && mx_exp_ready_i) begin
-                        next_state = IDLE;
-                        group_idx_d = '0;
-                    end
-                // ellse: stay in ENCODE, keep val_reg_q stable and re-assert valid in next cycle
+                    next_state = OUTPUT;
                 end else begin
-                    // still filling block, move to nect group
                     group_idx_d = group_idx_q + 1;
-                    
                 end
             end
-            
+
+            // Registered output state: val_reg_q now holds encoded data
+            OUTPUT: begin
+                fp16_ready_o   = 1'b0;
+                mx_val_valid_o = 1'b1;
+                mx_exp_valid_o = 1'b1;
+                mx_val_data_o  = val_reg_q;  // registered, not combinational
+                mx_exp_data_o  = scale_reg_q;
+
+                if (mx_val_ready_i && mx_exp_ready_i) begin
+                    next_state = IDLE;
+                    group_idx_d = '0;
+                end
+            end
+
             default: begin
                 next_state = IDLE;
             end
 
-        endcase 
+        endcase
     end
 
 
