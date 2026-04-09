@@ -257,6 +257,7 @@ module redmule_scheduler
                           (w_valid_i || ~w_needs_stream_valid);
   assign w_rows_iter_d  = w_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : w_rows_iter_q + 1;
 
+`ifndef SYNTHESIS
   bit dbg_sched;
   initial dbg_sched = $test$plusargs("MX_DEBUG_DUMP");
 
@@ -313,6 +314,7 @@ module redmule_scheduler
       stall_cnt <= 0;
     end
   end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_columns_iteration
     if(~rst_ni) begin
@@ -415,6 +417,7 @@ module redmule_scheduler
   assign y_rows_iter_en = y_cols_iter_q == reg_file_i.hwpe_params[W_ITERS][15:0]-1 && y_cols_iter_en;
   assign y_rows_iter_d  =  y_rows_iter_q == reg_file_i.hwpe_params[W_ITERS][31:16]-1 ? '0 : y_rows_iter_q + 1;
 
+`ifndef SYNTHESIS
   // K-tile transition debug
   always @(posedge clk_i) begin
     if (y_cols_iter_en) begin
@@ -446,6 +449,7 @@ module redmule_scheduler
       $display("[DBG][KWAIT] t=%0t w_cols_iter_en w_cols_q=%0d->%0d w_rows_q=%0d z_height_now=%0d y_height_now=%0d",
                $time, w_cols_iter_q, w_cols_iter_d, w_rows_iter_q, z_height, y_height);
   end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : z_wait_enable_register
     if(~rst_ni) begin
