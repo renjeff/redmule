@@ -250,14 +250,6 @@ package redmule_pkg;
     mx_format_e mx_format;  // MX element format (E4M3, E5M2, ...)
   } cntrl_flags_t;
 
-  // MX output format selection for encoder
-  typedef enum logic [2:0] {
-    MX_FMT_E4M3 = 3'd0,  // FP8 E4M3 (default)
-    MX_FMT_E5M2 = 3'd1,  // FP8 E5M2
-    MX_FMT_E3M2 = 3'd2,  // FP6 E3M2
-    MX_FMT_E2M3 = 3'd3,  // FP6 E2M3
-    MX_FMT_E2M1 = 3'd4   // FP4 E2M1
-  } mx_format_e;
 
   typedef enum logic [2:0] { MATMUL=3'h0, GEMM=3'h1, ADDMAX=3'h2, ADDMIN=3'h3, MULMAX=3'h4, MULMIN=3'h5, MAXMIN=3'h6, MINMAX=3'h7 } gemm_op_e;
   typedef enum logic [1:0] { Float8=2'h0, Float16=2'h1, Float8Alt=2'h2, Float16Alt=2'h3 } gemm_fmt_e;
