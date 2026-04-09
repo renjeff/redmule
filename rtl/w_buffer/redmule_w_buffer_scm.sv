@@ -59,8 +59,31 @@ module redmule_w_buffer_scm
     assign cols_read_addr[r] = cols_read_offs_q >= r ? cols_read_offs_q - r : ROWS - (r - cols_read_offs_q);
   end
 
+  // Write-forwarding: detect when a row was written in the previous cycle
+  // (matching the SCM's 1-cycle write latency via wdata_q → latch_clk → buffer_q).
+  // Forward from wdata_q (registered data) using the registered write address
+  // to eliminate the read-before-write stale window at M-tile boundaries.
+  logic [$clog2(ROWS)-1:0] write_addr_q;
+  logic                    write_en_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      write_addr_q <= '0;
+      write_en_q   <= 1'b0;
+    end else if (clear_i) begin
+      write_addr_q <= '0;
+      write_en_q   <= 1'b0;
+    end else begin
+      write_addr_q <= write_addr_i;
+      write_en_q   <= write_en_i;
+    end
+  end
+
   for (genvar r = 0; r < ROWS; r++) begin : gen_output_assignment
-    assign rdata_o[r] = buffer_q[rows_read_addr_q[r]][cols_read_addr[r]][elms_read_addr_q];
+    logic forward_hit;
+    assign forward_hit = write_en_q && (write_addr_q == rows_read_addr_q[r]);
+    assign rdata_o[r] = forward_hit
+        ? wdata_q[cols_read_addr[r]][elms_read_addr_q]
+        : buffer_q[rows_read_addr_q[r]][cols_read_addr[r]][elms_read_addr_q];
   end
 
   if (USE_LATCHES) begin : gen_latches
