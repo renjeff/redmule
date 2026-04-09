@@ -1,4 +1,5 @@
 module redmule_mx_encoder
+  import redmule_pkg::*;
 #(
     parameter int unsigned DATA_W = 256,
     parameter int unsigned BITW = 16,
@@ -6,6 +7,7 @@ module redmule_mx_encoder
 )(
     input logic                    clk_i,
     input logic                   rst_ni,
+    input mx_format_e              mx_format_i,
 
     // FP16 input stream
     input logic                  fp16_valid_i,
@@ -28,6 +30,7 @@ localparam int unsigned NUM_ELEMS = DATA_W / ELEM_WIDTH;
 localparam int unsigned NUM_GROUPS = NUM_ELEMS / NUM_LANES;
 
 localparam int BIAS_FP8_E4M3 = 7;
+localparam int BIAS_FP8_E5M2 = 15;
 localparam int BIAS_FP16 = 15;
 
 
@@ -84,32 +87,31 @@ endgenerate
 //     compute_shared_exp = shared[7:0];
 //   end
 // endfunction
-function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16);
+function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16, input mx_format_e fmt);
   int signed eM_unbiased;
   int signed scale_needed;
   int signed e8m0;
+  int signed max_unbiased_e8;
   begin
-    // Special case: if no normal values found in block (max_e16 == 0),
-    // return neutral scale (127 = 0x7F) to match golden model behavior.
-    // This happens when all inputs are zero, subnormal, Inf, or NaN.
     if (max_e16 == 5'd0) begin
       compute_shared_exp = 8'd127;
     end else begin
-      // MX scaling: adjust so max FP16 exponent maps to max usable FP8 exponent
-      // For MXFP8 E4M3: max exponent is 14 (0b1110), representing unbiased 7
-      // 
-      // We want: max_e16 (unbiased) = e8_max (unbiased) + scale_bias
-      // scale_bias = max_e16_unbiased - e8_max_unbiased
-      //            = (max_e16 - 15) - (14 - 7)
-      //            = max_e16 - 15 - 7
-      //            = max_e16 - 22
-      // 
-      // E8M0 encoding: shared_exp = scale_bias + 127
-      
-      eM_unbiased = int'(max_e16) - BIAS_FP16;     // Unbiased FP16 max exp
-      scale_needed = eM_unbiased - 7;               // 7 = max unbiased FP8 E4M3 exp (14-7)
-      e8m0 = scale_needed + 127;                    // E8M0 biased format
-      
+      // Max unbiased exponent per format:
+      // With Inf/NaN: max_finite_biased = 2^e - 2.  Without: 2^e - 1.
+      // E4M3: (16-2)-7 = 7.  E5M2: (32-2)-15 = 15.
+      // E3M2: (8-2)-3 = 3.   E2M3: (4-1)-1 = 2 (no Inf).  E2M1: (4-1)-1 = 2 (no Inf).
+      case (fmt)
+        MX_FMT_E5M2:  max_unbiased_e8 = 15;
+        MX_FMT_E3M2:  max_unbiased_e8 = 3;
+        MX_FMT_E2M3:  max_unbiased_e8 = 1;
+        MX_FMT_E2M1:  max_unbiased_e8 = 1;   // E2M1: keep original (works with tight FP4)
+        default:       max_unbiased_e8 = 7;
+      endcase
+
+      eM_unbiased  = int'(max_e16) - BIAS_FP16;
+      scale_needed = eM_unbiased - max_unbiased_e8;
+      e8m0 = scale_needed + 127;
+
       if (e8m0 < 0)
         compute_shared_exp = 8'd0;
       else if (e8m0 > 255)
@@ -210,27 +212,64 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_fp8_e4m3_unscaled(
     end
 endfunction
    
-// FP16 -> MXFP8 (E4M3+shared exp)
+// FP16 -> MXFP8 (format-aware, with shared exponent scaling)
 function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
     input logic [BITW-1:0] val_fp16,
-    input logic [7:0] shared_exp
+    input logic [7:0] shared_exp,
+    input mx_format_e fmt
 );
     logic s;
     logic [4:0] e16;
     logic [9:0] m16;
 
-    logic [3:0] e8;
-    logic [2:0] m8_trunc, m8_round;
-    logic rbit, sbit, round_up, carry;
-
     int signed delta;
     int signed e8_unbiased;
     int signed e8_biased_tmp;
+    int signed fp8_bias;
+    int signed max_unbiased;
+    int        exp_bits;
+    int        mant_bits;
+
+    logic rbit, sbit, round_up, carry;
 
     begin
         s = val_fp16[15];
         e16 = val_fp16[14:10];
         m16 = val_fp16[9:0];
+
+        // Format parameters
+        case (fmt)
+          MX_FMT_E5M2: begin
+            fp8_bias     = BIAS_FP8_E5M2;  // 15
+            max_unbiased = 15;              // biased 30 - 15
+            exp_bits     = 5;
+            mant_bits    = 2;
+          end
+          MX_FMT_E3M2: begin
+            fp8_bias     = 3;
+            max_unbiased = 3;               // biased 6 - 3
+            exp_bits     = 3;
+            mant_bits    = 2;
+          end
+          MX_FMT_E2M3: begin
+            fp8_bias     = 1;
+            max_unbiased = 1;
+            exp_bits     = 2;
+            mant_bits    = 3;
+          end
+          MX_FMT_E2M1: begin
+            fp8_bias     = 1;
+            max_unbiased = 1;               // E2M1: keep original
+            exp_bits     = 2;
+            mant_bits    = 1;
+          end
+          default: begin  // E4M3
+            fp8_bias     = BIAS_FP8_E4M3;  // 7
+            max_unbiased = 7;               // biased 14 - 7
+            exp_bits     = 4;
+            mant_bits    = 3;
+          end
+        endcase
 
         // Zero
         if (e16 == 5'b0)
@@ -238,52 +277,177 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
 
         // Inf/NaN
         if (e16 == 5'b11111) begin
-            if (m16 == 0)
-                return {s, 4'hF, 3'b000}; // inf
-            else 
-                return {s, 4'hF, 3'b001}; // NaN
+            case (fmt)
+              MX_FMT_E5M2: begin
+                if (m16 == 0)
+                  return {s, 5'b11111, 2'b00}; // inf
+                else
+                  return {s, 5'b11111, 2'b01}; // NaN
+              end
+              MX_FMT_E3M2: begin
+                if (m16 == 0)
+                  return {2'b0, s, 3'b111, 2'b00}; // inf
+                else
+                  return {2'b0, s, 3'b111, 2'b01}; // NaN
+              end
+              MX_FMT_E2M3: begin
+                // E2M3 has no inf/NaN — saturate to max finite
+                return {2'b0, s, 2'b11, 3'b111};
+              end
+              MX_FMT_E2M1: begin
+                // E2M1 has no inf/NaN — saturate to max finite
+                return {4'b0, s, 2'b11, 1'b1};
+              end
+              default: begin  // E4M3
+                if (m16 == 0)
+                  return {s, 4'hF, 3'b000}; // inf
+                else
+                  return {s, 4'hF, 3'b001}; // NaN
+              end
+            endcase
         end
 
-        // Normal: compute FP8 exponent directly
-        // Decoder does: e16_scaled = e8 - BIAS_FP8 + BIAS_FP16 + (shared_exp - 127)
-        // So encoder needs: e8 = e16 - BIAS_FP16 + BIAS_FP8 - (shared_exp - 127)
+        // Normal: compute FP8 exponent
         delta = int'(shared_exp) - 127;
         e8_unbiased = int'(e16) - BIAS_FP16 - delta;
-        
-        // Check for underflow (maps to zero in FP8)
-        if (e8_unbiased < -BIAS_FP8_E4M3)
-            return {s, 4'b0000, 3'b000};
-        
-        // Check for overflow (saturate to max finite FP8)
-        if (e8_unbiased > 7)  // max unbiased exp for E4M3 is 7 (biased 14)
-            return {s, 4'hE, 3'b111};
-        
-        // Bias the exponent for FP8
-        e8_biased_tmp = e8_unbiased + BIAS_FP8_E4M3;
-        e8 = e8_biased_tmp[3:0];
-        
-        // Handle subnormal result (e8 would be 0)
-        if (e8 == 4'b0)
-            return {s, 4'b0000, 3'b000}; // flush to zero for simplicity
-        
-        // Truncate mantissa with RNE rounding
-        m8_trunc = m16[9:7];
-        rbit = m16[6];
-        sbit = |m16[5:0];
-        round_up = rne_round_up(m8_trunc[0], rbit, sbit);
-        
-        {carry, m8_round} = {1'b0, m8_trunc} + round_up;
-        
-        if (carry) begin
-            if (e8 >= 4'hE) begin
-                e8 = 4'hE;
-                m8_round = 3'b111;
-            end else begin
-                e8 = e8 + 4'd1;
-            end
+
+        // Underflow
+        if (e8_unbiased < -fp8_bias)
+            return {s, 7'b0};
+
+        // Overflow: saturate to max finite
+        if (e8_unbiased > max_unbiased) begin
+          case (fmt)
+            MX_FMT_E5M2: return {s, 5'b11110, 2'b11};       // max finite E5M2
+            MX_FMT_E3M2: return {2'b0, s, 3'b110, 2'b11};   // max finite E3M2
+            MX_FMT_E2M3: return {2'b0, s, 2'b11, 3'b111};   // max finite E2M3 (no inf, all-ones is normal)
+            MX_FMT_E2M1: return {4'b0, s, 2'b11, 1'b1};     // max finite E2M1
+            default:      return {s, 4'hE, 3'b111};           // max finite E4M3
+          endcase
         end
-        
-        return {s, e8, m8_round};
+
+        e8_biased_tmp = e8_unbiased + fp8_bias;
+
+        // Subnormal flush
+        if (e8_biased_tmp <= 0)
+            return {s, 7'b0};
+
+        // Format-dependent mantissa truncation and rounding
+        if (fmt == MX_FMT_E3M2) begin
+          // E3M2: 3-bit exponent, 2-bit mantissa, stored in low 6 bits
+          logic [2:0] e6_3;
+          logic [1:0] m6_2_trunc, m6_2_round;
+          logic carry_e3m2;
+
+          e6_3 = e8_biased_tmp[2:0];
+          m6_2_trunc = m16[9:8];
+          rbit = m16[7];
+          sbit = |m16[6:0];
+          round_up = rne_round_up(m6_2_trunc[0], rbit, sbit);
+          {carry_e3m2, m6_2_round} = {1'b0, m6_2_trunc} + round_up;
+
+          if (carry_e3m2) begin
+            if (e6_3 >= 3'b110) begin  // max normal exp for E3M2
+              e6_3 = 3'b110;
+              m6_2_round = 2'b11;
+            end else begin
+              e6_3 = e6_3 + 3'd1;
+            end
+          end
+
+          return {2'b0, s, e6_3, m6_2_round};
+        end else if (fmt == MX_FMT_E2M3) begin
+          // E2M3: 2-bit exponent, 3-bit mantissa, stored in low 6 bits
+          logic [1:0] e6_2;
+          logic [2:0] m6_3_trunc, m6_3_round;
+          logic carry_e2m3;
+
+          e6_2 = e8_biased_tmp[1:0];
+          m6_3_trunc = m16[9:7];
+          rbit = m16[6];
+          sbit = |m16[5:0];
+          round_up = rne_round_up(m6_3_trunc[0], rbit, sbit);
+          {carry_e2m3, m6_3_round} = {1'b0, m6_3_trunc} + round_up;
+
+          if (carry_e2m3) begin
+            if (e6_2 >= 2'b11) begin  // E2M3 has no inf, all-ones is max normal
+              e6_2 = 2'b11;
+              m6_3_round = 3'b111;
+            end else begin
+              e6_2 = e6_2 + 2'd1;
+            end
+          end
+
+          return {2'b0, s, e6_2, m6_3_round};
+        end else if (fmt == MX_FMT_E2M1) begin
+          // E2M1: 2-bit exponent, 1-bit mantissa, stored in low nibble
+          logic [1:0] e4_2;
+          logic       m4_1_trunc, m4_1_round;
+          logic       carry_1;
+
+          e4_2 = e8_biased_tmp[1:0];
+          m4_1_trunc = m16[9];  // top 1 mantissa bit
+          rbit = m16[8];
+          sbit = |m16[7:0];
+          round_up = rne_round_up(m4_1_trunc, rbit, sbit);
+          {carry_1, m4_1_round} = {1'b0, m4_1_trunc} + round_up;
+
+          if (carry_1) begin
+            if (e4_2 >= 2'b10) begin  // max normal exp for E2M1 = 2 (biased)
+              e4_2 = 2'b10;
+              m4_1_round = 1'b1;
+            end else begin
+              e4_2 = e4_2 + 2'd1;
+            end
+          end
+
+          // Pack into 8-bit container: {4'b0, S, EE, M}
+          return {4'b0, s, e4_2, m4_1_round};
+        end else if (fmt == MX_FMT_E5M2) begin
+          logic [4:0] e8_5;
+          logic [1:0] m8_2_trunc, m8_2_round;
+          logic carry_2;
+
+          e8_5 = e8_biased_tmp[4:0];
+          m8_2_trunc = m16[9:8];  // top 2 mantissa bits
+          rbit = m16[7];
+          sbit = |m16[6:0];
+          round_up = rne_round_up(m8_2_trunc[0], rbit, sbit);
+          {carry_2, m8_2_round} = {1'b0, m8_2_trunc} + round_up;
+
+          if (carry_2) begin
+            if (e8_5 >= 5'b11110) begin
+              e8_5 = 5'b11110;
+              m8_2_round = 2'b11;
+            end else begin
+              e8_5 = e8_5 + 5'd1;
+            end
+          end
+
+          return {s, e8_5, m8_2_round};
+        end else begin
+          logic [3:0] e8_4;
+          logic [2:0] m8_3_trunc, m8_3_round;
+          logic carry_3;
+
+          e8_4 = e8_biased_tmp[3:0];
+          m8_3_trunc = m16[9:7];  // top 3 mantissa bits
+          rbit = m16[6];
+          sbit = |m16[5:0];
+          round_up = rne_round_up(m8_3_trunc[0], rbit, sbit);
+          {carry_3, m8_3_round} = {1'b0, m8_3_trunc} + round_up;
+
+          if (carry_3) begin
+            if (e8_4 >= 4'hE) begin
+              e8_4 = 4'hE;
+              m8_3_round = 3'b111;
+            end else begin
+              e8_4 = e8_4 + 4'd1;
+            end
+          end
+
+          return {s, e8_4, m8_3_round};
+        end
     end
 endfunction
 
@@ -358,7 +522,7 @@ end
 
                     if (NUM_GROUPS == 1) begin
                         // block fits in the single group
-                        scale_reg_d = compute_shared_exp(e16_max_d);
+                        scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
                         group_idx_d = '0;
                         next_state = ENCODE;
                     end else begin
@@ -395,7 +559,7 @@ end
 
                     if (group_idx_q == NUM_GROUPS-1) begin
                         // finished with whole block
-                        scale_reg_d = compute_shared_exp(e16_max_d);
+                        scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
                         group_idx_d = '0;
                         next_state = ENCODE;
                         
@@ -424,7 +588,7 @@ end
 
                     elem_idx = group_idx_q * NUM_LANES + l;
                     fp16_val = fp16_buf_q[elem_idx];
-                    fp8_val = fp16_to_mxfp8(fp16_val, scale_reg_q);
+                    fp8_val = fp16_to_mxfp8(fp16_val, scale_reg_q, mx_format_i);
 
                     val_reg_d[ELEM_WIDTH*elem_idx +: ELEM_WIDTH] = fp8_val;
                     // // DEBUG: show encode step
