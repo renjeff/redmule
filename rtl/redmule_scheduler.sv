@@ -270,7 +270,6 @@ module redmule_scheduler
     if (!rst_ni) w_replaying_prev_q <= 1'b0;
     else         w_replaying_prev_q <= w_replaying_i;
   end
-  logic w_replay_just_ended;
   assign w_replay_just_ended = w_replaying_prev_q && !w_replaying_i;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : w_rows_iteration
