@@ -833,6 +833,10 @@ assign shadow_width_mask = (w_shadow_width_raw != '0)
                            ? w_shadow_width_raw
                            : TOT_DEPTH;
 
+logic w_scm_clear;        // Pulse: clear W buffer SCM at M-tile boundary
+logic w_shadow_capture;   // Shadow reg file capture during M0 K0
+logic w_shadow_bypass;    // Shadow bypass during M1 first H loads
+
 redmule_w_buffer #(
   .DW         ( DATAW_ALIGN         ),
   .FpFormat   ( FpFormat            ),
@@ -864,9 +868,7 @@ logic [$clog2(DATAW_ALIGN/BITW)-1:0] z_buf_d_index;
 logic y_reg_lock;  // From scheduler: locks Y register during y_push restart
 logic sched_y_push_en_ungated;  // y_push_en && ~stall_engine (for Y register's own counter)
 logic m_tile_transition;  // Active during M-tile z_avail+drain (W output gated to zero)
-logic w_scm_clear;        // Pulse: clear W buffer SCM at M-tile boundary
-logic w_shadow_capture;   // Shadow reg file capture during M0 K0
-logic w_shadow_bypass;    // Shadow bypass during M1 first H loads
+// w_scm_clear, w_shadow_capture, w_shadow_bypass declared above W buffer instantiation
 
 redmule_z_buffer #(
   .DW            ( DATAW_ALIGN        ),
