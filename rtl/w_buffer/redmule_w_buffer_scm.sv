@@ -82,7 +82,7 @@ module redmule_w_buffer_scm
 
   for (genvar r = 0; r < ROWS; r++) begin : gen_output_assignment
     logic forward_hit;
-    assign forward_hit = write_en_q && (write_addr_q == rows_read_addr_q[r]);
+    assign forward_hit = 1'b0; // disabled
     assign rdata_o[r] = forward_hit
         ? wdata_q[cols_read_addr[r]][elms_read_addr_q]
         : buffer_q[rows_read_addr_q[r]][cols_read_addr[r]][elms_read_addr_q];

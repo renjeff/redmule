@@ -1,0 +1,47 @@
+=== PnR sweep done. Starting shared decoder sweep ===
+Saved working directory and index state WIP on (no branch): c5cc1373 fix: remove BYPASS_VCR/VDR_ASSERT not in hwpe-stream v1.9.0
+Previous HEAD position was c5cc1373 fix: remove BYPASS_VCR/VDR_ASSERT not in hwpe-stream v1.9.0
+HEAD is now at acbd808a fix: wrap debug blocks in ifndef SYNTHESIS for Fusion Compiler
+# End time: 04:21:58 on Apr 14,2026, Elapsed time: 0:00:03
+# Errors: 0, Warnings: 19, Suppressed Warnings: 54
+# expected integer but got ""
+CSV: /scratch2/msc25h32/redmule/sweep_shared_20260414_042158.csv
+Detailed log: /scratch2/msc25h32/redmule/sweep_shared_20260414_042158_detailed.log
+FP16 32x64x64: 0err tc=327 stall=0ev/0cyc
+FP16 32x64x96: 0err tc=442 stall=0ev/0cyc
+FP16 32x64x128: 0err tc=474 stall=0ev/0cyc
+FP16 32x128x64: 0err tc=474 stall=0ev/0cyc
+FP16 32x128x96: 0err tc=698 stall=0ev/0cyc
+FP16 32x128x128: 0err tc=730 stall=0ev/0cyc
+FP16 64x64x64: 0err tc=474 stall=0ev/0cyc
+FP16 64x64x96: 0err tc=776 stall=1ev/78cyc
+FP16 64x64x128: 0err tc=838 stall=2ev/108cyc
+FP16 64x128x64: 0err tc=730 stall=0ev/0cyc
+FP16 64x128x96: 0err tc=1210 stall=0ev/0cyc
+FP16 64x128x128: 0err tc=1242 stall=0ev/0cyc
+FP16 96x64x64: 0err tc=643 stall=1ev/41cyc
+FP16 96x64x96: 0err tc=1144 stall=3ev/190cyc
+FP16 96x64x128: 0err tc=1222 stall=4ev/236cyc
+FP16 96x128x64: 0err tc=986 stall=0ev/0cyc
+FP16 96x128x96: 0err tc=1722 stall=0ev/0cyc
+FP16 96x128x128: 0err tc=1754 stall=0ev/0cyc
+E4M3 32x64x64: 0err tc=568 stall=0ev/0cyc
+E4M3 32x64x96: 0err tc=728 stall=1ev/56cyc
+E4M3 32x64x128: 0err tc=840 stall=1ev/71cyc
+E4M3 32x128x64: 0err tc=759 stall=1ev/63cyc
+E4M3 32x128x96: 0err tc=954 stall=4ev/116cyc
+E4M3 32x128x128: 0err tc=1165 stall=6ev/195cyc
+E4M3 64x64x64: 0err tc=813 stall=3ev/47cyc
+E4M3 64x64x96: 506err tc=1096 stall=4ev/168cyc
+E4M3 64x64x128: 0err tc=1240 stall=5ev/215cyc
+E4M3 64x128x64: 0err tc=1156 stall=6ev/195cyc
+E4M3 64x128x96: 0err tc=1639 stall=9ev/289cyc
+E4M3 64x128x128: 0err tc=1949 stall=14ev/467cyc
+E4M3 96x64x64: 0err tc=1013 stall=5ev/119cyc
+E4M3 96x64x96: 1006err tc=1464 stall=7ev/280cyc
+E4M3 96x64x128: 0err tc=1640 stall=9ev/359cyc
+E4M3 96x128x64: 0err tc=1548 stall=10ev/331cyc
+E4M3 96x128x96: 0err tc=2324 stall=14ev/462cyc
+E4M3 96x128x128: 0err tc=2733 stall=22ev/739cyc
+
+=== SHARED DECODER DONE Tue Apr 14 05:34:14 CEST 2026 ===

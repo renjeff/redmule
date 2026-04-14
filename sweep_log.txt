@@ -1,0 +1,29 @@
+=== Performance Sweep Mon Apr 13 22:12:59 CEST 2026 ===
+Results: /scratch2/msc25h32/redmule/sweep_results_20260413_221259.csv
+FP16 32x64x64: 0err tc=327 busy=96.64% eu=39.14% util=41.03% stall=0ev/0cyc
+FP16 32x64x96: 0err tc=442 busy=97.51% eu=28.96% util=29.98% stall=0ev/0cyc
+FP16 32x64x128: 0err tc=474 busy=97.68% eu=27.00% util=27.89% stall=0ev/0cyc
+FP16 32x128x64: 0err tc=474 busy=97.68% eu=27.00% util=27.89% stall=0ev/0cyc
+FP16 32x128x96: 0err tc=698 busy=98.42% eu=18.34% util=18.74% stall=0ev/0cyc
+FP16 32x128x128: 0err tc=730 busy=98.49% eu=17.53% util=17.90% stall=0ev/0cyc
+FP16 64x64x64: 0err tc=474 busy=97.68% eu=27.00% util=27.89% stall=0ev/0cyc
+FP16 64x64x96: 0err tc=776 busy=98.58% eu=16.49% util=16.82% stall=1ev/78cyc
+FP16 64x64x128: 0err tc=838 busy=98.69% eu=15.27% util=15.55% stall=2ev/108cyc
+FP16 64x128x64: 0err tc=730 busy=98.49% eu=17.53% util=17.90% stall=0ev/0cyc
+FP16 64x128x96: 0err tc=1210 busy=99.09% eu=10.58% util=10.71% stall=0ev/0cyc
+FP16 64x128x128: 0err tc=1242 busy=99.11% eu=10.31% util=10.43% stall=0ev/0cyc
+FP16 96x64x64: 0err tc=643 busy=98.29% eu=19.91% util=20.38% stall=1ev/41cyc
+FP16 96x64x96: 0err tc=1144 busy=99.04% eu=11.19% util=11.34% stall=3ev/190cyc
+FP16 96x64x128: 0err tc=1222 busy=99.10% eu=10.47% util=10.60% stall=4ev/236cyc
+FP16 96x128x64: 0err tc=986 busy=98.88% eu=12.98% util=13.18% stall=0ev/0cyc
+FP16 96x128x96: 0err tc=1722 busy=99.36% eu=7.43% util=7.50% stall=0ev/0cyc
+FP16 96x128x128: 0err tc=1754 busy=99.37% eu=7.30% util=7.36% stall=0ev/0cyc
+E5M2 32x64x64: 0err tc=570 busy=98.07% eu=22.46% util=23.06% stall=1ev/1cyc
+E5M2 32x64x96: 0err tc=703 busy=98.44% eu=18.21% util=18.60% stall=1ev/1cyc
+E5M2 32x64x128: 0err tc=801 busy=98.63% eu=15.98% util=16.28% stall=1ev/1cyc
+E5M2 32x128x64: 0err tc=711 busy=98.45% eu=18.00% util=18.39% stall=1ev/1cyc
+E5M2 32x128x96: 145err tc=878 busy=98.75% eu=14.58% util=14.83% stall=2ev/8cyc
+E5M2 32x128x128: 245err tc=1011 busy=98.91% eu=12.66% util=12.85% stall=2ev/8cyc
+E5M2 64x64x64: 299err tc=868 busy=98.73% eu=14.75% util=15.01% stall=2ev/2cyc
+E5M2 64x64x96: 109err tc=1038 busy=98.94% eu=12.33% util=12.51% stall=3ev/9cyc
+E5M2 64x64x128: 807err tc=1193 busy=99.08% eu=10.73% util=10.87% stall=3ev/9cyc

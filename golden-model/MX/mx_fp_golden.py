@@ -44,12 +44,15 @@ def mx_elem_to_fp16_bits(x: int, exp_bits: int, mant_bits: int, bias: int) -> in
     e = (x >> mant_bits) & exp_mask
     m = x & mant_mask
 
+    # E2M3 and E2M1 have no Inf/NaN per OCP MX spec: all exp values are normal.
+    has_inf_nan = (exp_bits, mant_bits) not in ((2, 3), (2, 1))
+
     # zero + subnormals -> signed zero
     if e == 0:
         return (s << 15)
 
-    # Inf / NaN (all-ones exponent)
-    if e == exp_mask:
+    # Inf / NaN (all-ones exponent) — only for formats that have them
+    if has_inf_nan and e == exp_mask:
         if m == 0:
             return (s << 15) | (0x1F << 10)             # Inf
         else:
@@ -110,7 +113,9 @@ def fp16_to_mx_elem_unscaled(x: int, exp_bits: int, mant_bits: int, bias: int) -
     bitwidth = 1 + exp_bits + mant_bits
     exp_mask = (1 << exp_bits) - 1
     mant_mask = (1 << mant_bits) - 1
-    max_finite_exp = exp_mask - 1  # all-ones minus 1
+    # E2M3 and E2M1 have no Inf/NaN per OCP MX spec: all-ones is normal.
+    has_inf_nan = (exp_bits, mant_bits) not in ((2, 3), (2, 1))
+    max_finite_exp = (exp_mask - 1) if has_inf_nan else exp_mask
 
     # zero
     if e16 == 0:
@@ -222,7 +227,8 @@ def encode_block_fp16_to_mx(fp16_block_bits, fmt='e4m3'):
     exp_bits, mant_bits, bias = MX_FORMAT_SPECS[fmt]
     # Formats with Inf/NaN: max_finite_biased = 2^exp_bits - 2 (all-ones is special)
     # Formats without (E2M1, E2M3): max_finite_biased = 2^exp_bits - 1 (all normal)
-    max_finite_biased = (1 << exp_bits) - 2
+    has_inf_nan = (exp_bits, mant_bits) not in ((2, 3), (2, 1))
+    max_finite_biased = ((1 << exp_bits) - 2) if has_inf_nan else ((1 << exp_bits) - 1)
     max_ub = max_finite_biased - bias
 
     fp16_block_bits = [int(x) & 0xFFFF for x in fp16_block_bits]

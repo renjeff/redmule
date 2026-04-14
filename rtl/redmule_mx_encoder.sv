@@ -104,8 +104,8 @@ function automatic logic [7:0] compute_shared_exp(input logic [4:0] max_e16, inp
       case (fmt)
         MX_FMT_E5M2:  max_unbiased_e8 = 15;
         MX_FMT_E3M2:  max_unbiased_e8 = 3;
-        MX_FMT_E2M3:  max_unbiased_e8 = 1;
-        MX_FMT_E2M1:  max_unbiased_e8 = 1;   // E2M1: keep original (works with tight FP4)
+        MX_FMT_E2M3:  max_unbiased_e8 = 2;   // no Inf: max biased=3, unbiased=2
+        MX_FMT_E2M1:  max_unbiased_e8 = 2;   // no Inf: max biased=3, unbiased=2
         default:       max_unbiased_e8 = 7;
       endcase
 
@@ -254,13 +254,13 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
           end
           MX_FMT_E2M3: begin
             fp8_bias     = 1;
-            max_unbiased = 1;
+            max_unbiased = 2;               // no Inf: biased 3, unbiased 2
             exp_bits     = 2;
             mant_bits    = 3;
           end
           MX_FMT_E2M1: begin
             fp8_bias     = 1;
-            max_unbiased = 1;               // E2M1: keep original
+            max_unbiased = 2;               // no Inf: biased 3, unbiased 2
             exp_bits     = 2;
             mant_bits    = 1;
           end
@@ -394,8 +394,8 @@ function automatic logic [ELEM_WIDTH-1:0] fp16_to_mxfp8(
           {carry_1, m4_1_round} = {1'b0, m4_1_trunc} + round_up;
 
           if (carry_1) begin
-            if (e4_2 >= 2'b10) begin  // max normal exp for E2M1 = 2 (biased)
-              e4_2 = 2'b10;
+            if (e4_2 >= 2'b11) begin  // no Inf: max normal exp for E2M1 = 3 (biased)
+              e4_2 = 2'b11;
               m4_1_round = 1'b1;
             end else begin
               e4_2 = e4_2 + 2'd1;
