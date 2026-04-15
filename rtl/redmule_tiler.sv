@@ -298,8 +298,10 @@ assign config_d.tot_x_read   = tot_x_read_raw;
 assign config_d.z_out_addr   = reg_file_i.hwpe_params[Z_OUT_ADDR];
 
 // register configuration to avoid critical paths (maybe removable!)
+`ifndef SYNTHESIS
 bit dbg_tiler;
 initial dbg_tiler = $test$plusargs("MX_DEBUG_DUMP");
+`endif
 
 always_ff @(posedge clk_int or negedge rst_ni) begin
   if(~rst_ni)
@@ -308,6 +310,7 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
     config_q <= '0;
   else if(x_rows_by_w_cols_by_w_rows_iter_valid & x_rows_by_w_cols_by_w_rows_iter_ready) begin
     config_q <= config_d;
+`ifndef SYNTHESIS
     if (dbg_tiler) begin
       $display("[DBG][TILER] mx_enable=%0d n_size=%0d n_size_for_systolic=%0d w_rows_iter=%0d w_cols_iter=%0d w_cols_lftovr=%0d",
                mx_enable, config_d.n_size, n_size_for_systolic, config_d.w_rows_iter,
@@ -320,6 +323,7 @@ always_ff @(posedge clk_int or negedge rst_ni) begin
                config_d.yz_tot_len, config_d.w_tot_len, config_d.tot_x_read, config_d.tot_stores,
                buf_x_rows_by_w_cols_iter[15:0], x_rows_by_w_cols_iter[15:0]);
     end
+`endif
   end
 end
 

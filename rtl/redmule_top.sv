@@ -757,21 +757,14 @@ hwpe_stream_fifo #(
   .pop_o          ( x_buffer_fifo   )
 );
 
-// W buffer FIFO with replay capability for M-tile boundary SCM priming
-logic w_fifo_mark, w_fifo_rewind, w_fifo_replaying;
-
-redmule_w_rewind_fifo #(
+hwpe_stream_fifo #(
   .DATA_WIDTH     ( DATAW_ALIGN   ),
-  .FIFO_DEPTH     ( 16            ),
-  .REPLAY_DEPTH   ( 32            )
+  .FIFO_DEPTH     ( 16            )
 ) i_w_buffer_fifo (
   .clk_i          ( clk_i              ),
   .rst_ni         ( rst_ni             ),
   .clear_i        ( clear              ),
-  .mark_i         ( w_fifo_mark        ),
-  .rewind_i       ( w_fifo_rewind      ),
   .flags_o        ( w_fifo_flgs        ),
-  .replaying_o    ( w_fifo_replaying   ),
   .push_i         ( w_buffer_muxed     ),
   .pop_o          ( w_buffer_fifo      )
 );
@@ -818,24 +811,7 @@ redmule_x_buffer #(
 
 logic [Height-1:0][BITW-1:0] w_buffer_q;
 
-// Detect replay end: reset W buffer read counters to align with scheduler
-logic w_replaying_prev_q, w_replay_end_pulse;
-always_ff @(posedge clk_i or negedge rst_ni) begin
-  if (!rst_ni) w_replaying_prev_q <= 1'b0;
-  else         w_replaying_prev_q <= w_fifo_replaying;
-end
-assign w_replay_end_pulse = w_replaying_prev_q && !w_fifo_replaying;
-
-// Shadow width mask from scheduler (LEFTOVERS[7:0], 0 = full tile)
-logic [7:0] w_shadow_width_raw;
-logic [$clog2(TOT_DEPTH):0] shadow_width_mask;
-assign shadow_width_mask = (w_shadow_width_raw != '0)
-                           ? w_shadow_width_raw
-                           : TOT_DEPTH;
-
 logic w_scm_clear;        // Pulse: clear W buffer SCM at M-tile boundary
-logic w_shadow_capture;   // Shadow reg file capture during M0 K0
-logic w_shadow_bypass;    // Shadow bypass during M1 first H loads
 
 redmule_w_buffer #(
   .DW         ( DATAW_ALIGN         ),
@@ -847,9 +823,6 @@ redmule_w_buffer #(
   .clear_i          ( clear              ),
   .scm_clear_i      ( w_scm_clear        ),
   .cnt_reset_i      ( 1'b0               ),
-  .shadow_capture_i ( w_shadow_capture   ),
-  .shadow_bypass_i  ( w_shadow_bypass    ),
-  .shadow_width_i   ( shadow_width_mask   ),
   .ctrl_i           ( w_buffer_ctrl      ),
   .flags_o          ( w_buffer_flgs      ),
   .w_buffer_o       ( w_buffer_q         ),
@@ -868,7 +841,6 @@ logic [$clog2(DATAW_ALIGN/BITW)-1:0] z_buf_d_index;
 logic y_reg_lock;  // From scheduler: locks Y register during y_push restart
 logic sched_y_push_en_ungated;  // y_push_en && ~stall_engine (for Y register's own counter)
 logic m_tile_transition;  // Active during M-tile z_avail+drain (W output gated to zero)
-// w_scm_clear, w_shadow_capture, w_shadow_bypass declared above W buffer instantiation
 
 redmule_z_buffer #(
   .DW            ( DATAW_ALIGN        ),
@@ -1195,7 +1167,6 @@ redmule_scheduler #(
   .cntrl_scheduler_i ( cntrl_scheduler     ),
   .mx_x_pending_i    ( x_mx_unpack_pending ),
   .mx_w_pending_i    ( w_mx_unpack_pending ),
-  .w_replaying_i     ( w_fifo_replaying    ),
   .reg_enable_o      ( reg_enable          ),
   .cntrl_engine_o    ( cntrl_engine        ),
   .cntrl_x_buffer_o  ( x_buffer_ctrl       ),
@@ -1209,12 +1180,7 @@ redmule_scheduler #(
   .y_reg_lock_o      ( y_reg_lock          ),
   .y_push_en_ungated_o ( sched_y_push_en_ungated ),
   .m_tile_transition_o ( m_tile_transition       ),
-  .w_scm_clear_o       ( w_scm_clear             ),
-  .w_fifo_mark_o       ( w_fifo_mark             ),
-  .w_fifo_rewind_o     ( w_fifo_rewind           ),
-  .w_shadow_capture_o  ( w_shadow_capture        ),
-  .w_shadow_bypass_o   ( w_shadow_bypass         ),
-  .w_shadow_width_o    ( w_shadow_width_raw      )
+  .w_scm_clear_o       ( w_scm_clear             )
 );
 
 endmodule : redmule_top
