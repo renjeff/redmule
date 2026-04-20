@@ -77,9 +77,12 @@ logic fifo_push, fifo_pop, fifo_valid;
 // Delay reg_enable by total pipeline latency
 // Includes: systolic array (Height + Width) + MX decoder path + FMA pipeline
 // Empirically tuned to align with first valid engine output
+// NOTE: reg_enable_delayed is currently UNUSED (leftover from earlier design).
+// The shift register is kept to match dual-decoder for area/timing comparison;
+// a real PnR pass may prune it once synthesis detects the unconsumed output.
 localparam int unsigned ENGINE_LATENCY = Height + Width + 55;
 logic [ENGINE_LATENCY-1:0] reg_enable_delay_q;
-logic reg_enable_delayed;
+logic reg_enable_delayed;  // unused — see note above
 
 always_ff @(posedge clk_i or negedge rst_ni) begin
   if (!rst_ni)
