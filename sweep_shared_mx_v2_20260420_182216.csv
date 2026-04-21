@@ -1,0 +1,3 @@
+Format,M,N,K,Errors,Total_Cyc,Busy_Cyc,Busy_Pct,Engine_Cyc,Engine_Util_Pct,LoadStore_Cyc,Ideal_Cyc,Utilization_Pct,W_Load_Cyc,W_Shift_Cyc,W_Valid_Cyc,Stall_Events,Stall_Cyc,Z_Hold_Cyc,Engine_Window_Cyc
+E5M2,32,64,64,0,568,557,98.06,568,22.54,553,128,23.15,64,392,225,0,0,0,393
+E5M2,32,64,96,0,728,717,98.49,728,17.58,713,128,17.95,128,488,407,1,56,0,545
