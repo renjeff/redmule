@@ -1,8 +1,15 @@
-// Exponent prefetch buffer: Unpacks individual exponents from compact beats
-// and stores them. Output is direct register access (NO streaming protocol).
+// Exponent prefetch buffer: wide-row SCM-style storage.
 //
-// Purpose: Completely decouple exponent fetch from data processing by buffering
-// all exponents upfront. No backpressure during computation.
+// Storage organization: one incoming beat per addressable row. A single
+// write port accepts the full beat per cycle; the read side selects one
+// exponent out of the current row via a sub-row mux. This aligns with
+// ReDMulE's established SCM convention (see redmule_w_buffer_scm.sv) and
+// avoids the multi-port register-file interface that per-exponent
+// addressing would otherwise require.
+//
+// Semantics (mark, rewind, segment gating, total_count cap) are unchanged
+// from the prior implementation. Pointers remain in flat exponent space;
+// row and sub-row indices are derived by slicing the pointer.
 //
 // Mark/Rewind: Supports replaying exponents for multi-K-tile and multi-M-tile.
 //   mark_i: save current read pointer (call at start of each replay group)
@@ -10,8 +17,7 @@
 //
 // Segment gating: When segment_size_i != 0, limits consumption to at most
 //   segment_size_i exponents per segment. Rewind and mark both reset the
-//   segment counter. This prevents the decoder from reading ahead into
-//   future M-tile exponents.
+//   segment counter.
 //
 // Input format: Exponents packed tightly in beats (no padding)
 //   X: 128 exponents per 1024-bit beat (8 bits each)
@@ -50,14 +56,27 @@ module redmule_exp_buffer #(
   input  logic                  rewind_i   // Restore read_ptr to saved mark
 );
 
-  localparam int unsigned PTR_WIDTH = $clog2(BUFFER_DEPTH);
-  localparam int unsigned EXPS_PER_BEAT = BEAT_WIDTH / EXP_WIDTH;
-  localparam int unsigned EPB_WIDTH = $clog2(EXPS_PER_BEAT + 1);
+  localparam int unsigned PTR_WIDTH     = $clog2(BUFFER_DEPTH);
+  localparam int unsigned EXPS_PER_ROW  = BEAT_WIDTH / EXP_WIDTH;
+  localparam int unsigned SUB_IDX_W     = $clog2(EXPS_PER_ROW);
+  localparam int unsigned ROWS          = BUFFER_DEPTH / EXPS_PER_ROW;
+  localparam int unsigned ROW_IDX_W     = $clog2(ROWS);
+  localparam int unsigned EPB_WIDTH     = $clog2(EXPS_PER_ROW + 1);
 
-  // Circular buffer storage for individual exponents
-  logic [EXP_WIDTH-1:0] buffer [BUFFER_DEPTH-1:0];
-  logic [PTR_WIDTH-1:0] write_ptr_q, read_ptr_q;
-  logic [PTR_WIDTH:0]   occupancy_q;  // Extra bit to distinguish full/empty
+  // BUFFER_DEPTH must be an integer multiple of EXPS_PER_ROW so row slicing
+  // of the flat pointer wraps cleanly at the buffer boundary.
+  initial begin
+    assert (BUFFER_DEPTH % EXPS_PER_ROW == 0)
+      else $fatal(1, "BUFFER_DEPTH (%0d) must be a multiple of EXPS_PER_ROW (%0d)",
+                  BUFFER_DEPTH, EXPS_PER_ROW);
+    assert (ROWS >= 2)
+      else $fatal(1, "ROWS (%0d) must be >= 2 for valid row-index slicing", ROWS);
+  end
+
+  // Wide-row storage: one full beat per addressable row, single write port.
+  logic [BEAT_WIDTH-1:0] buffer [ROWS-1:0];
+  logic [PTR_WIDTH-1:0]  write_ptr_q, read_ptr_q;
+  logic [PTR_WIDTH:0]    occupancy_q;  // Extra bit to distinguish full/empty
 
   // Track total exponents written to cap at total_count_i
   logic [15:0] total_written_q;
@@ -68,15 +87,15 @@ module redmule_exp_buffer #(
 
   always_comb begin
     if (!cap_active) begin
-      valid_in_beat = EPB_WIDTH'(EXPS_PER_BEAT);
+      valid_in_beat = EPB_WIDTH'(EXPS_PER_ROW);
     end else begin
       automatic logic [16:0] remaining;
       remaining = {1'b0, total_count_i} - {1'b0, total_written_q};
       if (remaining[16] || remaining == '0) begin
         // total_count <= total_written: nothing left to write
         valid_in_beat = '0;
-      end else if (remaining >= EXPS_PER_BEAT) begin
-        valid_in_beat = EPB_WIDTH'(EXPS_PER_BEAT);
+      end else if (remaining >= EXPS_PER_ROW) begin
+        valid_in_beat = EPB_WIDTH'(EXPS_PER_ROW);
       end else begin
         valid_in_beat = remaining[EPB_WIDTH-1:0];
       end
@@ -97,12 +116,19 @@ module redmule_exp_buffer #(
 
   // Buffer status
   logic buffer_full, buffer_empty;
-  assign buffer_full  = (occupancy_q >= (BUFFER_DEPTH - EXPS_PER_BEAT));
+  assign buffer_full  = (occupancy_q >= (BUFFER_DEPTH - EXPS_PER_ROW));
   assign buffer_empty = (occupancy_q == 0);
 
-  // Output: provide current exponent at read pointer (simple direct access)
-  // Gated by segment exhaustion: once segment_size consumed, output invalid
-  assign data_o  = buffer[read_ptr_q];
+  // Read-side: derive row and sub-row indices from flat exponent pointer.
+  // Row mux picks one beat from storage; sub-row mux extracts one exponent.
+  logic [ROW_IDX_W-1:0] read_row_idx;
+  logic [SUB_IDX_W-1:0] read_sub_idx;
+  assign read_row_idx = read_ptr_q[PTR_WIDTH-1 : SUB_IDX_W];
+  assign read_sub_idx = read_ptr_q[SUB_IDX_W-1 : 0];
+
+  // Output: provide current exponent at read pointer (sub-row mux).
+  // Gated by segment exhaustion: once segment_size consumed, output invalid.
+  assign data_o  = buffer[read_row_idx][read_sub_idx*EXP_WIDTH +: EXP_WIDTH];
   assign valid_o = !buffer_empty && !seg_exhausted;
 
   // Write and read logic
@@ -211,14 +237,13 @@ module redmule_exp_buffer #(
 `endif
       end
 
-      // Write only valid exponents from the beat into buffer (skip padding)
+      // Wide-row write: single port, one full beat per row.
+      // write_ptr_q advances by valid_in_beat (aligned to EXPS_PER_ROW except
+      // on the final partial beat, after which no more writes occur).
+      // Padding bits in a partial last row are never read because read_ptr_q
+      // stops at write_ptr_q via occupancy tracking.
       if (input_accept && valid_in_beat != '0) begin
-        for (int i = 0; i < EXPS_PER_BEAT; i++) begin
-          if (i < valid_in_beat) begin
-            automatic int unsigned wr_idx = (write_ptr_q + i) % BUFFER_DEPTH;
-            buffer[wr_idx] <= stream_i.data[i*EXP_WIDTH +: EXP_WIDTH];
-          end
-        end
+        buffer[write_ptr_q[PTR_WIDTH-1 : SUB_IDX_W]] <= stream_i.data;
         total_written_q <= total_written_q + valid_in_beat;
       end
     end
