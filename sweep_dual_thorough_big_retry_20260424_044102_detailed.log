@@ -1,0 +1,1625 @@
+================================================================================
+[E4M3] 160x128x128  (04:48:40)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 6f 6f 70 6e 6e 70 6f 71 70 6e 6e 70 71 6f 6e 6f
+# [GOLD] r0: 6f 6f 70 6e 6e 70 6f 71 70 6e 6e 70 71 6f 6e 6f
+# [DUMP] r32: 70 70 70 70 6f 71 6f 71 71 6e 6f 71 71 70 6f 6f
+# [GOLD] r32: 70 70 70 70 6f 71 6f 71 71 6e 6f 71 71 70 6f 6f
+# [DUMP] r33: 6e 6e 6e 6d 6d 6e 6d 70 70 6b 6d 6e 70 6d 6d 6d
+# [GOLD] r33: 6e 6e 6e 6d 6d 6e 6d 70 70 6b 6d 6e 70 6d 6d 6d
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=12231   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 3191
+# [PERF] busy cycles     : 3180
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2763
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 640
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 640
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 640
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2239
+# [PERF] engine cycles   : 3191
+# [PERF] engine util     : 4.01 %
+# [PERF] load->store cycles : 3176
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.03 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 2998
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 441604 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x6f706e6f
+#   [1]: 0x706f6f70
+#   [2]: 0x6e6e6e6e
+#   [3]: 0x706f6f6e
+#   [4]: 0x6f6f6f70
+#   [5]: 0x706f6f6f
+#   [6]: 0x6e6e6f6e
+#   [7]: 0x6f6f6f6f
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2280
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2178
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2113
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 04:48:40 on Apr 24,2026, Elapsed time: 0:05:55
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E4M3] 192x128x128  (04:57:26)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 70 6f 70 6e 6e 70 6e 70 70 6f 6f 70 71 70 6f 6f
+# [GOLD] r0: 70 6f 70 6e 6e 70 6e 70 70 6f 6f 70 71 70 6f 6f
+# [DUMP] r32: 70 70 70 6f 6f 71 6f 71 71 6f 6f 70 71 70 6f 70
+# [GOLD] r32: 70 70 70 6f 6f 71 6f 71 71 6f 6f 70 71 70 6f 70
+# [DUMP] r33: 77 75 77 75 75 76 76 76 77 74 75 77 77 76 75 75
+# [GOLD] r33: 77 75 77 75 75 76 76 76 77 74 75 77 77 76 75 75
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=14562   
+# [TB] - cnt_wr=1728    
+# [PERF] total cycles    : 3728
+# [PERF] busy cycles     : 3717
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3300
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 768
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2641
+# [PERF] engine cycles   : 3728
+# [PERF] engine util     : 3.43 %
+# [PERF] load->store cycles : 3713
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.45 %
+# [PERF] X stream done   : 12
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3535
+# [TB][STALL] events       : 16
+# [TB][STALL] cycles       : 134
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 511695 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x6f6f6f6e
+#   [1]: 0x6f706f6f
+#   [2]: 0x6f6f6f6e
+#   [3]: 0x706f6e70
+#   [4]: 0x6d706f70
+#   [5]: 0x6e6e706f
+#   [6]: 0x706e6e6f
+#   [7]: 0x6f6e6f6d
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2739
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2587
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2586
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 04:57:26 on Apr 24,2026, Elapsed time: 0:06:44
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E4M3] 128x160x128  (05:04:43)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 71 71 72 71 71 72 71 73 73 71 71 72 73 72 71 72
+# [GOLD] r0: 71 71 72 71 71 72 71 73 73 71 71 72 73 72 71 72
+# [DUMP] r32: 72 72 73 72 72 73 72 73 73 71 72 73 73 73 73 73
+# [GOLD] r32: 72 72 73 72 72 73 72 73 73 71 72 73 73 73 73 73
+# [DUMP] r33: 73 73 73 72 72 73 72 73 74 72 72 73 74 73 73 72
+# [GOLD] r33: 73 73 73 72 72 73 72 73 74 72 72 73 74 73 73 72
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=11799   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3226
+# [PERF] busy cycles     : 3215
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2780
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2313
+# [PERF] engine cycles   : 3226
+# [PERF] engine util     : 3.97 %
+# [PERF] load->store cycles : 3211
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.99 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3029
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 140
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 371826 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x72727272
+#   [1]: 0x72737272
+#   [2]: 0x72717271
+#   [3]: 0x73727272
+#   [4]: 0x72737273
+#   [5]: 0x73727372
+#   [6]: 0x73727272
+#   [7]: 0x73727372
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2312
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2199
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2070
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=20 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:04:43 on Apr 24,2026, Elapsed time: 0:05:34
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E4M3] 128x192x128  (05:13:24)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 74 74 74 73 73 74 73 74 74 73 74 74 75 73 73 73
+# [GOLD] r0: 74 74 74 73 73 74 73 74 74 73 74 74 75 73 73 73
+# [DUMP] r32: 73 74 73 73 72 73 73 75 75 73 73 73 75 74 73 73
+# [GOLD] r32: 73 74 73 73 72 73 73 75 75 73 73 73 75 74 73 73
+# [DUMP] r33: 75 75 74 74 74 75 75 75 75 74 74 76 76 74 74 74
+# [GOLD] r33: 75 75 74 74 74 75 75 75 75 74 74 76 76 74 74 74
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=13428   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3686
+# [PERF] busy cycles     : 3675
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3250
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2677
+# [PERF] engine cycles   : 3686
+# [PERF] engine util     : 3.47 %
+# [PERF] load->store cycles : 3671
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.49 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3485
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 84
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 372282 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x74757474
+#   [1]: 0x74747475
+#   [2]: 0x74737473
+#   [3]: 0x75747374
+#   [4]: 0x73747575
+#   [5]: 0x74737475
+#   [6]: 0x74747374
+#   [7]: 0x74747374
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2725
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2545
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2416
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:13:24 on Apr 24,2026, Elapsed time: 0:06:34
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E4M3] 160x192x128  (05:23:22)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 73 74 73 74 73 73 73 74 74 74 74 74 74 73 73 73
+# [GOLD] r0: 73 74 73 74 73 73 73 74 74 74 74 74 74 73 73 73
+# [DUMP] r32: 73 74 73 74 73 74 73 74 74 73 73 73 75 74 73 73
+# [GOLD] r32: 73 74 73 74 73 74 73 74 74 73 73 73 75 74 73 73
+# [DUMP] r33: 74 75 74 74 75 75 75 75 75 74 74 75 76 75 74 74
+# [GOLD] r33: 74 75 74 74 75 75 75 75 75 74 74 75 76 75 74 74
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=16632   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 4479
+# [PERF] busy cycles     : 4468
+# [PERF] busy ratio      : 99.75 %
+# [PERF] MX blocks dec   : 4043
+# [PERF] MX blocks dec X : 1920
+# [PERF] MX blocks dec W : 3840
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 960
+# [PERF] W unpack in     : 1920
+# [PERF] X unpack out    : 960
+# [PERF] W unpack out    : 1920
+# [PERF] X fifo pop      : 960
+# [PERF] W fifo pop      : 1920
+# [PERF] W load cycles   : 1920
+# [PERF] W shift cycles  : 4168
+# [PERF] W valid cycles  : 3271
+# [PERF] engine cycles   : 4479
+# [PERF] engine util     : 2.86 %
+# [PERF] load->store cycles : 4464
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 2.87 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 4278
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 442718 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x74747473
+#   [1]: 0x74747374
+#   [2]: 0x74747574
+#   [3]: 0x73747474
+#   [4]: 0x74747475
+#   [5]: 0x74747575
+#   [6]: 0x74747374
+#   [7]: 0x74747373
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=3408
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=3146
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=3145
+# [load_fifo 3] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:23:22 on Apr 24,2026, Elapsed time: 0:06:39
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E5M2] 160x128x128  (05:30:41)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 77 77 78 77 77 78 77 78 78 77 77 78 78 77 77 77
+# [GOLD] r0: 77 77 78 77 77 78 77 78 78 77 77 78 78 77 77 77
+# [DUMP] r32: 77 78 78 78 77 78 77 78 78 77 77 78 78 78 77 77
+# [GOLD] r32: 77 78 78 78 77 78 77 78 78 77 77 78 78 78 77 77
+# [DUMP] r33: 7b 7b 7b 7b 7a 7b 7b 7b 7b 7a 7a 7b 7b 7b 7a 7b
+# [GOLD] r33: 7b 7b 7b 7b 7a 7b 7b 7b 7b 7a 7a 7b 7b 7b 7a 7b
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=12231   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 3191
+# [PERF] busy cycles     : 3180
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2763
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 640
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 640
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 640
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2239
+# [PERF] engine cycles   : 3191
+# [PERF] engine util     : 4.01 %
+# [PERF] load->store cycles : 3176
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.03 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 2998
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 441418 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77787777
+#   [1]: 0x78777878
+#   [2]: 0x77777777
+#   [3]: 0x78777777
+#   [4]: 0x77777778
+#   [5]: 0x78777877
+#   [6]: 0x77777777
+#   [7]: 0x77777778
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2280
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2178
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2113
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:30:41 on Apr 24,2026, Elapsed time: 0:05:35
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E5M2] 192x128x128  (05:39:29)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 78 77 78 77 77 78 77 78 78 77 77 78 78 77 77 77
+# [GOLD] r0: 78 77 78 77 77 78 77 78 78 77 77 78 78 77 77 77
+# [DUMP] r32: 78 78 78 77 77 78 77 78 78 77 77 78 78 78 77 78
+# [GOLD] r32: 78 78 78 77 77 78 77 78 78 77 77 78 78 78 77 78
+# [DUMP] r33: 7b 7a 7b 7b 7a 7b 7b 7b 7b 7a 7a 7b 7b 7b 7b 7b
+# [GOLD] r33: 7b 7a 7b 7b 7a 7b 7b 7b 7b 7a 7a 7b 7b 7b 7b 7b
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=14562   
+# [TB] - cnt_wr=1728    
+# [PERF] total cycles    : 3728
+# [PERF] busy cycles     : 3717
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3300
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 768
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2641
+# [PERF] engine cycles   : 3728
+# [PERF] engine util     : 3.43 %
+# [PERF] load->store cycles : 3713
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.45 %
+# [PERF] X stream done   : 12
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3535
+# [TB][STALL] events       : 16
+# [TB][STALL] cycles       : 134
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 511599 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77777777
+#   [1]: 0x7b7b7b7b
+#   [2]: 0x7b7b7b7b
+#   [3]: 0x7b7b7b7b
+#   [4]: 0x7a7b7b7b
+#   [5]: 0x7b7b7b7b
+#   [6]: 0x7b7b7b7b
+#   [7]: 0x7b7b7b7b
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2739
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2587
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2586
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:39:29 on Apr 24,2026, Elapsed time: 0:06:39
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E5M2] 128x160x128  (05:46:26)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 79 78 79 78 78 79 78 79 79 78 78 79 79 79 78 79
+# [GOLD] r0: 79 78 79 78 78 79 78 79 79 78 78 79 79 79 78 79
+# [DUMP] r32: 79 79 79 79 79 7a 79 7a 79 78 79 79 79 79 79 79
+# [GOLD] r32: 79 79 79 79 79 7a 79 7a 79 78 79 79 79 79 79 79
+# [DUMP] r33: 79 79 79 79 79 7a 79 79 7a 79 79 79 7a 79 79 79
+# [GOLD] r33: 79 79 79 79 79 7a 79 79 7a 79 79 79 7a 79 79 79
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=11799   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3226
+# [PERF] busy cycles     : 3215
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2780
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2313
+# [PERF] engine cycles   : 3226
+# [PERF] engine util     : 3.97 %
+# [PERF] load->store cycles : 3211
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.99 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3029
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 140
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 371749 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x79797979
+#   [1]: 0x79797979
+#   [2]: 0x79797979
+#   [3]: 0x79797979
+#   [4]: 0x79797979
+#   [5]: 0x79797979
+#   [6]: 0x79797979
+#   [7]: 0x79797979
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2312
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2199
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2070
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=20 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:46:26 on Apr 24,2026, Elapsed time: 0:05:12
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E5M2] 128x192x128  (05:54:15)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 7a 7a 7a 79 79 7a 79 7a 7a 7a 7a 7a 7a 79 79 7a
+# [GOLD] r0: 7a 7a 7a 79 79 7a 79 7a 7a 7a 7a 7a 7a 79 79 7a
+# [DUMP] r32: 79 7a 7a 79 79 7a 7a 7a 7a 79 7a 79 7a 7a 7a 79
+# [GOLD] r32: 79 7a 7a 79 79 7a 7a 7a 7a 79 7a 79 7a 7a 7a 79
+# [DUMP] r33: 7a 7a 7a 7a 7a 7a 7a 7a 7a 7a 7a 7b 7b 7a 7a 7a
+# [GOLD] r33: 7a 7a 7a 7a 7a 7a 7a 7a 7a 7a 7a 7b 7b 7a 7a 7a
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=13428   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3686
+# [PERF] busy cycles     : 3675
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3250
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2677
+# [PERF] engine cycles   : 3686
+# [PERF] engine util     : 3.47 %
+# [PERF] load->store cycles : 3671
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.49 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3485
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 84
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 372397 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x7a7a7a7a
+#   [1]: 0x7a7a7a7a
+#   [2]: 0x7a797a79
+#   [3]: 0x7a7a797a
+#   [4]: 0x7a7a7a7a
+#   [5]: 0x7a7a7a7a
+#   [6]: 0x7a7a7a7a
+#   [7]: 0x7a7a797a
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2725
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2545
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2416
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 05:54:15 on Apr 24,2026, Elapsed time: 0:05:40
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E5M2] 160x192x128  (06:03:13)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 79 7a 79 7a 79 7a 79 7a 7a 7a 7a 7a 7a 7a 79 7a
+# [GOLD] r0: 79 7a 79 7a 79 7a 79 7a 7a 7a 7a 7a 7a 7a 79 7a
+# [DUMP] r32: 79 7a 7a 7a 7a 7a 7a 7a 7a 79 7a 79 7a 7a 79 79
+# [GOLD] r32: 79 7a 7a 7a 7a 7a 7a 7a 7a 79 7a 79 7a 7a 79 79
+# [DUMP] r33: 7a 7a 7a 7a 7a 7a 7a 7a 7b 7a 7a 7a 7b 7a 7a 7a
+# [GOLD] r33: 7a 7a 7a 7a 7a 7a 7a 7a 7b 7a 7a 7a 7b 7a 7a 7a
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=16632   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 4479
+# [PERF] busy cycles     : 4468
+# [PERF] busy ratio      : 99.75 %
+# [PERF] MX blocks dec   : 4043
+# [PERF] MX blocks dec X : 1920
+# [PERF] MX blocks dec W : 3840
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 960
+# [PERF] W unpack in     : 1920
+# [PERF] X unpack out    : 960
+# [PERF] W unpack out    : 1920
+# [PERF] X fifo pop      : 960
+# [PERF] W fifo pop      : 1920
+# [PERF] W load cycles   : 1920
+# [PERF] W shift cycles  : 4168
+# [PERF] W valid cycles  : 3271
+# [PERF] engine cycles   : 4479
+# [PERF] engine util     : 2.86 %
+# [PERF] load->store cycles : 4464
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 2.87 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 4278
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 442838 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x7a7a7a79
+#   [1]: 0x7a7a797a
+#   [2]: 0x7a7a7a7a
+#   [3]: 0x7a7a7a7a
+#   [4]: 0x7a7a7a7a
+#   [5]: 0x7a7a7a7a
+#   [6]: 0x7a7a797a
+#   [7]: 0x7a7a797a
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=3408
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=3146
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=3145
+# [load_fifo 3] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:03:13 on Apr 24,2026, Elapsed time: 0:06:28
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E3M2] 160x128x128  (06:10:42)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 17 17 18 17 17 18 17 18 18 17 17 18 18 17 17 17
+# [GOLD] r0: 17 17 18 17 17 18 17 18 18 17 17 18 18 17 17 17
+# [DUMP] r32: 17 18 18 18 17 18 17 18 18 17 17 18 18 18 17 17
+# [GOLD] r32: 17 18 18 18 17 18 17 18 18 17 17 18 18 18 17 17
+# [DUMP] r33: 1b 1b 1b 1b 1a 1b 1b 1b 1b 1a 1a 1b 1b 1b 1a 1b
+# [GOLD] r33: 1b 1b 1b 1b 1a 1b 1b 1b 1b 1a 1a 1b 1b 1b 1a 1b
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=12231   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 3191
+# [PERF] busy cycles     : 3180
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2763
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 640
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 640
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 640
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2239
+# [PERF] engine cycles   : 3191
+# [PERF] engine util     : 4.01 %
+# [PERF] load->store cycles : 3176
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.03 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 2998
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 441418 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x17181717
+#   [1]: 0x18171818
+#   [2]: 0x17171717
+#   [3]: 0x18171717
+#   [4]: 0x17171718
+#   [5]: 0x18171817
+#   [6]: 0x17171717
+#   [7]: 0x17171718
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2280
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2178
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2113
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:10:42 on Apr 24,2026, Elapsed time: 0:05:43
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E3M2] 192x128x128  (06:21:26)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 18 17 18 17 17 18 17 18 18 17 17 18 18 17 17 17
+# [GOLD] r0: 18 17 18 17 17 18 17 18 18 17 17 18 18 17 17 17
+# [DUMP] r32: 18 18 18 17 17 18 17 18 18 17 17 18 18 18 17 18
+# [GOLD] r32: 18 18 18 17 17 18 17 18 18 17 17 18 18 18 17 18
+# [DUMP] r33: 1b 1a 1b 1b 1a 1b 1b 1b 1b 1a 1a 1b 1b 1b 1b 1b
+# [GOLD] r33: 1b 1a 1b 1b 1a 1b 1b 1b 1b 1a 1a 1b 1b 1b 1b 1b
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=14562   
+# [TB] - cnt_wr=1728    
+# [PERF] total cycles    : 3728
+# [PERF] busy cycles     : 3717
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3300
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 768
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2641
+# [PERF] engine cycles   : 3728
+# [PERF] engine util     : 3.43 %
+# [PERF] load->store cycles : 3713
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.45 %
+# [PERF] X stream done   : 12
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3535
+# [TB][STALL] events       : 16
+# [TB][STALL] cycles       : 134
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 511599 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x17171717
+#   [1]: 0x1b1b1b1b
+#   [2]: 0x1b1b1b1b
+#   [3]: 0x1b1b1b1b
+#   [4]: 0x1a1b1b1b
+#   [5]: 0x1b1b1b1b
+#   [6]: 0x1b1b1b1b
+#   [7]: 0x1b1b1b1b
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2739
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2587
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2586
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:21:26 on Apr 24,2026, Elapsed time: 0:08:40
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E3M2] 128x160x128  (06:28:42)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 19 18 19 18 18 19 18 19 19 18 18 19 19 19 18 19
+# [GOLD] r0: 19 18 19 18 18 19 18 19 19 18 18 19 19 19 18 19
+# [DUMP] r32: 19 19 19 19 19 1a 19 1a 19 18 19 19 19 19 19 19
+# [GOLD] r32: 19 19 19 19 19 1a 19 1a 19 18 19 19 19 19 19 19
+# [DUMP] r33: 19 19 19 19 19 1a 19 19 1a 19 19 19 1a 19 19 19
+# [GOLD] r33: 19 19 19 19 19 1a 19 19 1a 19 19 19 1a 19 19 19
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=11799   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3226
+# [PERF] busy cycles     : 3215
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2780
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2313
+# [PERF] engine cycles   : 3226
+# [PERF] engine util     : 3.97 %
+# [PERF] load->store cycles : 3211
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.99 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3029
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 140
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 371749 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x19191919
+#   [1]: 0x19191919
+#   [2]: 0x19191919
+#   [3]: 0x19191919
+#   [4]: 0x19191919
+#   [5]: 0x19191919
+#   [6]: 0x19191919
+#   [7]: 0x19191919
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2312
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2199
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2070
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=20 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:28:42 on Apr 24,2026, Elapsed time: 0:05:17
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E3M2] 128x192x128  (06:36:59)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 1a 1a 1a 19 19 1a 19 1a 1a 1a 1a 1a 1a 19 19 1a
+# [GOLD] r0: 1a 1a 1a 19 19 1a 19 1a 1a 1a 1a 1a 1a 19 19 1a
+# [DUMP] r32: 19 1a 1a 19 19 1a 1a 1a 1a 19 1a 19 1a 1a 1a 19
+# [GOLD] r32: 19 1a 1a 19 19 1a 1a 1a 1a 19 1a 19 1a 1a 1a 19
+# [DUMP] r33: 1a 1a 1a 1a 1a 1a 1a 1a 1a 1a 1a 1b 1b 1a 1a 1a
+# [GOLD] r33: 1a 1a 1a 1a 1a 1a 1a 1a 1a 1a 1a 1b 1b 1a 1a 1a
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=13428   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3686
+# [PERF] busy cycles     : 3675
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3250
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2677
+# [PERF] engine cycles   : 3686
+# [PERF] engine util     : 3.47 %
+# [PERF] load->store cycles : 3671
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.49 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3485
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 84
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 372397 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x1a1a1a1a
+#   [1]: 0x1a1a1a1a
+#   [2]: 0x1a191a19
+#   [3]: 0x1a1a191a
+#   [4]: 0x1a1a1a1a
+#   [5]: 0x1a1a1a1a
+#   [6]: 0x1a1a1a1a
+#   [7]: 0x1a1a191a
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2725
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2545
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2416
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:36:59 on Apr 24,2026, Elapsed time: 0:06:12
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E3M2] 160x192x128  (06:46:47)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 19 1a 19 1a 19 1a 19 1a 1a 1a 1a 1a 1a 1a 19 1a
+# [GOLD] r0: 19 1a 19 1a 19 1a 19 1a 1a 1a 1a 1a 1a 1a 19 1a
+# [DUMP] r32: 19 1a 1a 1a 1a 1a 1a 1a 1a 19 1a 19 1a 1a 19 19
+# [GOLD] r32: 19 1a 1a 1a 1a 1a 1a 1a 1a 19 1a 19 1a 1a 19 19
+# [DUMP] r33: 1a 1a 1a 1a 1a 1a 1a 1a 1b 1a 1a 1a 1b 1a 1a 1a
+# [GOLD] r33: 1a 1a 1a 1a 1a 1a 1a 1a 1b 1a 1a 1a 1b 1a 1a 1a
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=16632   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 4479
+# [PERF] busy cycles     : 4468
+# [PERF] busy ratio      : 99.75 %
+# [PERF] MX blocks dec   : 4043
+# [PERF] MX blocks dec X : 1920
+# [PERF] MX blocks dec W : 3840
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 960
+# [PERF] W unpack in     : 1920
+# [PERF] X unpack out    : 960
+# [PERF] W unpack out    : 1920
+# [PERF] X fifo pop      : 960
+# [PERF] W fifo pop      : 1920
+# [PERF] W load cycles   : 1920
+# [PERF] W shift cycles  : 4168
+# [PERF] W valid cycles  : 3271
+# [PERF] engine cycles   : 4479
+# [PERF] engine util     : 2.86 %
+# [PERF] load->store cycles : 4464
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 2.87 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 4278
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 442838 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x1a1a1a19
+#   [1]: 0x1a1a191a
+#   [2]: 0x1a1a1a1a
+#   [3]: 0x1a1a1a1a
+#   [4]: 0x1a1a1a1a
+#   [5]: 0x1a1a1a1a
+#   [6]: 0x1a1a191a
+#   [7]: 0x1a1a191a
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=3408
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=3146
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=3145
+# [load_fifo 3] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:46:47 on Apr 24,2026, Elapsed time: 0:06:57
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M3] 160x128x128  (06:56:07)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 16 16 18 15 15 17 16 18 18 15 15 17 18 16 15 16
+# [GOLD] r0: 16 16 18 15 15 17 16 18 18 15 15 17 18 16 15 16
+# [DUMP] r32: 17 18 17 18 17 18 17 18 19 16 17 19 19 17 16 17
+# [GOLD] r32: 17 18 17 18 17 18 17 18 19 16 17 19 19 17 16 17
+# [DUMP] r33: 1e 1e 1d 1d 1c 1e 1d 1f 1f 1b 1c 1e 1f 1d 1c 1d
+# [GOLD] r33: 1e 1e 1d 1d 1c 1e 1d 1f 1f 1b 1c 1e 1f 1d 1c 1d
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=12231   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 3191
+# [PERF] busy cycles     : 3180
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2763
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 640
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 640
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 640
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2239
+# [PERF] engine cycles   : 3191
+# [PERF] engine util     : 4.01 %
+# [PERF] load->store cycles : 3176
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.03 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 2998
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 441418 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x17171516
+#   [1]: 0x18171717
+#   [2]: 0x15151515
+#   [3]: 0x17161616
+#   [4]: 0x16171618
+#   [5]: 0x17171717
+#   [6]: 0x16161716
+#   [7]: 0x17161717
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2280
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2178
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2113
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 06:56:07 on Apr 24,2026, Elapsed time: 0:07:22
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E2M3] 192x128x128  (07:07:52)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 17 16 17 15 15 17 15 17 17 16 16 18 18 17 16 16
+# [GOLD] r0: 17 16 17 15 15 17 15 17 17 16 16 18 18 17 16 16
+# [DUMP] r32: 18 18 18 17 17 18 17 19 19 16 17 18 18 18 17 17
+# [GOLD] r32: 18 18 18 17 17 18 17 19 19 16 17 18 18 18 17 17
+# [DUMP] r33: 1f 1c 1e 1d 1c 1e 1d 1e 1f 1c 1c 1e 1f 1d 1d 1d
+# [GOLD] r33: 1f 1c 1e 1d 1c 1e 1d 1e 1f 1c 1c 1e 1f 1d 1d 1d
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=14562   
+# [TB] - cnt_wr=1728    
+# [PERF] total cycles    : 3728
+# [PERF] busy cycles     : 3717
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3300
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 768
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2641
+# [PERF] engine cycles   : 3728
+# [PERF] engine util     : 3.43 %
+# [PERF] load->store cycles : 3713
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.45 %
+# [PERF] X stream done   : 12
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3535
+# [TB][STALL] events       : 16
+# [TB][STALL] cycles       : 134
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 511599 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x17161616
+#   [1]: 0x1f1f1f1e
+#   [2]: 0x1e1e1f1e
+#   [3]: 0x1f1f1e1f
+#   [4]: 0x1c1f1f1f
+#   [5]: 0x1e1e1f1e
+#   [6]: 0x1f1d1e1f
+#   [7]: 0x1e1e1e1d
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2739
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2587
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2586
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:07:52 on Apr 24,2026, Elapsed time: 0:09:00
+# Errors: 0, Warnings: 3
+
+================================================================================
+[E2M3] 128x160x128  (07:16:50)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 19 19 1a 18 18 1a 19 1a 1a 18 18 1a 1b 19 18 19
+# [GOLD] r0: 19 19 1a 18 18 1a 19 1a 1a 18 18 1a 1b 19 18 19
+# [DUMP] r32: 1a 1a 1a 1a 19 1b 1a 1b 1b 19 1a 1b 1b 1a 1a 1b
+# [GOLD] r32: 1a 1a 1a 1a 19 1b 1a 1b 1b 19 1a 1b 1b 1a 1a 1b
+# [DUMP] r33: 1a 1a 1b 1a 1a 1b 1a 1b 1b 19 19 1b 1b 1a 1a 1a
+# [GOLD] r33: 1a 1a 1b 1a 1a 1b 1a 1b 1b 19 19 1b 1b 1a 1a 1a
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=11799   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3226
+# [PERF] busy cycles     : 3215
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2780
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2313
+# [PERF] engine cycles   : 3226
+# [PERF] engine util     : 3.97 %
+# [PERF] load->store cycles : 3211
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.99 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3029
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 140
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 371923 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x1a1a1a1a
+#   [1]: 0x1a1a1a1a
+#   [2]: 0x19191919
+#   [3]: 0x1b1a191a
+#   [4]: 0x191a1a1b
+#   [5]: 0x1b1a1a1a
+#   [6]: 0x1a1a1a1a
+#   [7]: 0x1a1a1a1a
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2312
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2199
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2070
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=20 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:16:50 on Apr 24,2026, Elapsed time: 0:06:22
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M3] 128x192x128  (07:25:45)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 1b 1b 1c 1a 1a 1b 1a 1c 1b 1b 1b 1c 1c 1b 1a 1a
+# [GOLD] r0: 1b 1b 1c 1a 1a 1b 1a 1c 1b 1b 1b 1c 1c 1b 1a 1a
+# [DUMP] r32: 1b 1b 1b 1b 19 1b 1b 1c 1c 1a 1b 1b 1c 1c 1b 1a
+# [GOLD] r32: 1b 1b 1b 1b 19 1b 1b 1c 1c 1a 1b 1b 1c 1c 1b 1a
+# [DUMP] r33: 1c 1c 1c 1b 1b 1c 1c 1d 1c 1c 1b 1d 1d 1b 1c 1c
+# [GOLD] r33: 1c 1c 1c 1b 1b 1c 1c 1d 1c 1c 1b 1d 1d 1b 1c 1c
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=13428   
+# [TB] - cnt_wr=1152    
+# [PERF] total cycles    : 3686
+# [PERF] busy cycles     : 3675
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3250
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2677
+# [PERF] engine cycles   : 3686
+# [PERF] engine util     : 3.47 %
+# [PERF] load->store cycles : 3671
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.49 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3485
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 84
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 372457 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x1c1d1c1c
+#   [1]: 0x1c1b1b1c
+#   [2]: 0x1b1a1c1a
+#   [3]: 0x1d1c1b1c
+#   [4]: 0x1b1c1c1d
+#   [5]: 0x1c1b1c1d
+#   [6]: 0x1c1c1b1c
+#   [7]: 0x1c1c1b1b
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=2725
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2545
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=2416
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:25:44 on Apr 24,2026, Elapsed time: 0:06:30
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M3] 160x192x128  (07:35:18)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 1b 1b 1b 1b 1b 1b 1a 1c 1c 1b 1b 1c 1c 1b 1b 1b
+# [GOLD] r0: 1b 1b 1b 1b 1b 1b 1a 1c 1c 1b 1b 1c 1c 1b 1b 1b
+# [DUMP] r32: 1b 1b 1b 1c 1b 1c 1b 1b 1c 1b 1b 1b 1c 1b 1b 1b
+# [GOLD] r32: 1b 1b 1b 1c 1b 1c 1b 1b 1c 1b 1b 1b 1c 1b 1b 1b
+# [DUMP] r33: 1c 1c 1c 1c 1c 1d 1c 1d 1d 1c 1c 1c 1e 1c 1b 1b
+# [GOLD] r33: 1c 1c 1c 1c 1c 1d 1c 1d 1d 1c 1c 1c 1e 1c 1b 1b
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=16632   
+# [TB] - cnt_wr=1440    
+# [PERF] total cycles    : 4479
+# [PERF] busy cycles     : 4468
+# [PERF] busy ratio      : 99.75 %
+# [PERF] MX blocks dec   : 4043
+# [PERF] MX blocks dec X : 1920
+# [PERF] MX blocks dec W : 3840
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 960
+# [PERF] W unpack in     : 1920
+# [PERF] X unpack out    : 960
+# [PERF] W unpack out    : 1920
+# [PERF] X fifo pop      : 960
+# [PERF] W fifo pop      : 1920
+# [PERF] W load cycles   : 1920
+# [PERF] W shift cycles  : 4168
+# [PERF] W valid cycles  : 3271
+# [PERF] engine cycles   : 4479
+# [PERF] engine util     : 2.86 %
+# [PERF] load->store cycles : 4464
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 2.87 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 4278
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 442898 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x1b1c1b1b
+#   [1]: 0x1b1b1b1c
+#   [2]: 0x1c1c1d1c
+#   [3]: 0x1b1c1c1c
+#   [4]: 0x1c1c1c1c
+#   [5]: 0x1c1c1c1d
+#   [6]: 0x1c1c1b1c
+#   [7]: 0x1b1b1b1b
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=8 rsp_peak=10 req_bp=0 rsp_in_bp=0 rsp_out_bp=3408
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=3146
+# [load_fifo 2] depth=32 req_peak=22 rsp_peak=24 req_bp=0 rsp_in_bp=0 rsp_out_bp=3145
+# [load_fifo 3] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:35:18 on Apr 24,2026, Elapsed time: 0:06:48
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M1] 160x128x128  (07:41:22)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r0: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [DUMP] r32: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r32: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [DUMP] r33: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r33: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=8100    
+# [TB] - cnt_wr=720     
+# [PERF] total cycles    : 3172
+# [PERF] busy cycles     : 3161
+# [PERF] busy ratio      : 99.65 %
+# [PERF] MX blocks dec   : 2758
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 640
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 640
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 640
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2226
+# [PERF] engine cycles   : 3172
+# [PERF] engine util     : 4.04 %
+# [PERF] load->store cycles : 3157
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.05 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 2998
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 134220 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77777777
+#   [1]: 0x77777777
+#   [2]: 0x77777777
+#   [3]: 0x77777777
+#   [4]: 0x77777777
+#   [5]: 0x77777777
+#   [6]: 0x77777777
+#   [7]: 0x77777777
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=6 rsp_peak=8 req_bp=0 rsp_in_bp=0 rsp_out_bp=2396
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2479
+# [load_fifo 2] depth=32 req_peak=16 rsp_peak=18 req_bp=0 rsp_in_bp=0 rsp_out_bp=2100
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:41:22 on Apr 24,2026, Elapsed time: 0:04:14
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M1] 192x128x128  (07:47:31)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r0: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [DUMP] r32: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r32: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [DUMP] r33: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# [GOLD] r33: 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77 77
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=9522    
+# [TB] - cnt_wr=864     
+# [PERF] total cycles    : 3709
+# [PERF] busy cycles     : 3698
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3295
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 768
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2628
+# [PERF] engine cycles   : 3709
+# [PERF] engine util     : 3.45 %
+# [PERF] load->store cycles : 3694
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.47 %
+# [PERF] X stream done   : 12
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3535
+# [TB][STALL] events       : 16
+# [TB][STALL] cycles       : 134
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 142974 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77777777
+#   [1]: 0x77777777
+#   [2]: 0x77777777
+#   [3]: 0x77777777
+#   [4]: 0x77777777
+#   [5]: 0x77777777
+#   [6]: 0x77777777
+#   [7]: 0x77777777
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=6 rsp_peak=8 req_bp=0 rsp_in_bp=0 rsp_out_bp=2881
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2952
+# [load_fifo 2] depth=32 req_peak=16 rsp_peak=18 req_bp=0 rsp_in_bp=0 rsp_out_bp=2573
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=16 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:47:31 on Apr 24,2026, Elapsed time: 0:03:56
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M1] 128x160x128  (07:52:23)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# [GOLD] r0: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# [DUMP] r32: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# [GOLD] r32: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# [DUMP] r33: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# [GOLD] r33: 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66 66
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=7524    
+# [TB] - cnt_wr=576     
+# [PERF] total cycles    : 3208
+# [PERF] busy cycles     : 3197
+# [PERF] busy ratio      : 99.66 %
+# [PERF] MX blocks dec   : 2780
+# [PERF] MX blocks dec X : 1280
+# [PERF] MX blocks dec W : 2560
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1280
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1280
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1280
+# [PERF] W load cycles   : 1280
+# [PERF] W shift cycles  : 2888
+# [PERF] W valid cycles  : 2301
+# [PERF] engine cycles   : 3208
+# [PERF] engine util     : 3.99 %
+# [PERF] load->store cycles : 3193
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 4.01 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3029
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 140
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 126061 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x66666666
+#   [1]: 0x66666666
+#   [2]: 0x66666666
+#   [3]: 0x66666666
+#   [4]: 0x66666666
+#   [5]: 0x66666666
+#   [6]: 0x66666666
+#   [7]: 0x66666666
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=6 rsp_peak=8 req_bp=0 rsp_in_bp=0 rsp_out_bp=1859
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2501
+# [load_fifo 2] depth=32 req_peak=16 rsp_peak=18 req_bp=0 rsp_in_bp=0 rsp_out_bp=2058
+# [load_fifo 3] depth=32 req_peak=5 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=20 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:52:23 on Apr 24,2026, Elapsed time: 0:03:08
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M1] 128x192x128  (07:58:20)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 76 67 76 66 66 76 67 66 67 67 77 76 67 67 66 67
+# [GOLD] r0: 76 67 76 66 66 76 67 66 67 67 77 76 67 67 66 67
+# [DUMP] r32: 77 77 76 76 67 67 67 66 77 77 77 76 67 77 77 76
+# [GOLD] r32: 77 77 76 76 67 67 67 66 77 77 77 76 67 77 77 76
+# [DUMP] r33: 77 77 76 76 67 77 77 76 77 77 77 77 67 77 77 77
+# [GOLD] r33: 77 77 76 76 67 77 77 76 77 77 77 77 67 77 77 77
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=8460    
+# [TB] - cnt_wr=576     
+# [PERF] total cycles    : 3668
+# [PERF] busy cycles     : 3657
+# [PERF] busy ratio      : 99.70 %
+# [PERF] MX blocks dec   : 3250
+# [PERF] MX blocks dec X : 1536
+# [PERF] MX blocks dec W : 3072
+# [PERF] MX blocks enc   : 512
+# [PERF] X unpack in     : 768
+# [PERF] W unpack in     : 1536
+# [PERF] X unpack out    : 768
+# [PERF] W unpack out    : 1536
+# [PERF] X fifo pop      : 768
+# [PERF] W fifo pop      : 1536
+# [PERF] W load cycles   : 1536
+# [PERF] W shift cycles  : 3400
+# [PERF] W valid cycles  : 2665
+# [PERF] engine cycles   : 3668
+# [PERF] engine util     : 3.49 %
+# [PERF] load->store cycles : 3653
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 3.50 %
+# [PERF] X stream done   : 8
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 3485
+# [TB][STALL] events       : 10
+# [TB][STALL] cycles       : 84
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 126517 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77777777
+#   [1]: 0x77766777
+#   [2]: 0x76777767
+#   [3]: 0x76777777
+#   [4]: 0x77777767
+#   [5]: 0x76767777
+#   [6]: 0x67777777
+#   [7]: 0x77777677
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=6 rsp_peak=8 req_bp=0 rsp_in_bp=0 rsp_out_bp=2880
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=2911
+# [load_fifo 2] depth=32 req_peak=16 rsp_peak=18 req_bp=0 rsp_in_bp=0 rsp_out_bp=2404
+# [load_fifo 3] depth=32 req_peak=6 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 07:58:20 on Apr 24,2026, Elapsed time: 0:03:52
+# Errors: 0, Warnings: 4
+
+================================================================================
+[E2M1] 160x192x128  (08:04:56)  rc=0
+================================================================================
+# Resumed!
+# [DUMP] r0: 66 66 66 76 67 76 67 66 67 77 67 77 67 67 66 66
+# [GOLD] r0: 66 66 66 76 67 76 67 66 67 77 67 77 67 67 66 66
+# [DUMP] r32: 77 76 76 77 67 77 77 67 77 77 77 77 67 67 67 77
+# [GOLD] r32: 77 76 76 77 67 77 77 67 77 77 77 77 67 67 67 77
+# [DUMP] r33: 77 67 76 77 67 67 77 67 77 77 77 77 67 77 76 77
+# [GOLD] r33: 77 67 76 77 67 67 77 67 77 77 77 77 67 77 76 77
+# Terminated test with 0 errors. See you!
+# [TB] - cnt_rd=10368   
+# [TB] - cnt_wr=720     
+# [PERF] total cycles    : 4461
+# [PERF] busy cycles     : 4450
+# [PERF] busy ratio      : 99.75 %
+# [PERF] MX blocks dec   : 4043
+# [PERF] MX blocks dec X : 1920
+# [PERF] MX blocks dec W : 3840
+# [PERF] MX blocks enc   : 640
+# [PERF] X unpack in     : 960
+# [PERF] W unpack in     : 1920
+# [PERF] X unpack out    : 960
+# [PERF] W unpack out    : 1920
+# [PERF] X fifo pop      : 960
+# [PERF] W fifo pop      : 1920
+# [PERF] W load cycles   : 1920
+# [PERF] W shift cycles  : 4168
+# [PERF] W valid cycles  : 3259
+# [PERF] engine cycles   : 4461
+# [PERF] engine util     : 2.87 %
+# [PERF] load->store cycles : 4446
+# [PERF] ideal cycles       : 128
+# [PERF] engine utilization : 2.88 %
+# [PERF] X stream done   : 10
+# [PERF] W stream done   : 1
+# [PERF] Z stream done   : 1
+# [PERF] engine window cycles : 4278
+# [TB][STALL] events       : 13
+# [TB][STALL] cycles       : 109
+# [TB][ZHOLD] hold cycles  : 0
+# [TB][ZHOLD] violations   : 0
+# [TB] - Success!
+# [TB] - errors=00000000
+# ** Note: $finish    : /scratch2/msc25h32/redmule/target/sim/src/redmule_tb.sv(1762)
+#    Time: 135521 ns  Iteration: 1  Instance: /redmule_tb_wrap/i_redmule_tb
+# [TB DEBUG] Memory at y_inp (0x1c0103dc):
+#   [0]: 0x77777777
+#   [1]: 0x77777767
+#   [2]: 0x66777767
+#   [3]: 0x77777777
+#   [4]: 0x77777767
+#   [5]: 0x77777667
+#   [6]: 0x76777777
+#   [7]: 0x77767777
+# [TB DEBUG] Memory at z_oup (check address):
+# [TB] - MX encoder outputs written to mx_encoder_*.txt
+# [load_fifo 0] depth=32 req_peak=6 rsp_peak=8 req_bp=0 rsp_in_bp=0 rsp_out_bp=3605
+# [load_fifo 1] depth=32 req_peak=1 rsp_peak=3 req_bp=0 rsp_in_bp=0 rsp_out_bp=3608
+# [load_fifo 2] depth=32 req_peak=16 rsp_peak=18 req_bp=0 rsp_in_bp=0 rsp_out_bp=3133
+# [load_fifo 3] depth=32 req_peak=8 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# [load_fifo 4] depth=32 req_peak=24 rsp_peak=1 req_bp=0 rsp_in_bp=0 rsp_out_bp=0
+# End time: 08:04:56 on Apr 24,2026, Elapsed time: 0:03:55
+# Errors: 0, Warnings: 4
+
