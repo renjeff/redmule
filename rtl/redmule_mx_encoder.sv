@@ -276,6 +276,28 @@ function automatic logic [ELEM_WIDTH-1:0] mx_normal_pack(
 endfunction
 
 // ---------------------------------------------------------------
+//  Tree-based max exponent across input lanes (log2 depth)
+// ---------------------------------------------------------------
+
+logic [4:0] e16_masked [NUM_LANES];
+generate
+  for (lane = 0; lane < NUM_LANES; lane++) begin : gen_mask
+    assign e16_masked[lane] = (e16_lane[lane] != 5'b0 && e16_lane[lane] != 5'b11111)
+                              ? e16_lane[lane] : 5'd0;
+  end
+endgenerate
+
+logic [4:0] tree_max;
+
+redmule_tree_max #(
+  .WIDTH (5),
+  .N     (NUM_LANES)
+) i_tree_max (
+  .in  (e16_masked),
+  .out (tree_max)
+);
+
+// ---------------------------------------------------------------
 //  Sequential registers
 // ---------------------------------------------------------------
 
@@ -338,14 +360,11 @@ always_comb begin : fsm
     IDLE: begin
       fp16_ready_o = 1'b1;
       if (fp16_valid_i) begin
-        e16_max_d = 5'd0;
         val_reg_d = '0;
         group_idx_d = '0;
+        e16_max_d = tree_max;
         for (int l = 0; l < NUM_LANES; l++) begin
           fp16_buf_d[l] = fp16_lane[l];
-          if (e16_lane[l] != 5'b0 && e16_lane[l] != 5'b11111)
-            if (e16_lane[l] > e16_max_d)
-              e16_max_d = e16_lane[l];
         end
         if (NUM_GROUPS == 1) begin
           scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
@@ -368,10 +387,8 @@ always_comb begin : fsm
           int unsigned elem_idx;
           elem_idx = group_idx_q * NUM_LANES + l;
           fp16_buf_d[elem_idx] = fp16_lane[l];
-          if (e16_lane[l] != 5'b0 && e16_lane[l] != 5'b11111)
-            if (e16_lane[l] > e16_max_d)
-              e16_max_d = e16_lane[l];
         end
+        e16_max_d = (tree_max > e16_max_q) ? tree_max : e16_max_q;
         if (group_idx_q == NUM_GROUPS-1) begin
           scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
           group_idx_d = '0;
