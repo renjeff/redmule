@@ -466,7 +466,15 @@ hwpe_stream_intf_stream #( .DATA_WIDTH ( DATAW ) ) out_stream [NumStreamSources-
 
 hci_package::hci_streamer_ctrl_t  [NumStreamSources-1:0] source_ctrl;
 hci_package::hci_streamer_flags_t [NumStreamSources-1:0] source_flags;
-localparam int unsigned LoadFifoDepth = 32;
+// Per-stream load FIFO depths, sized to observed peak occupancy.
+// Assignments are by index (0=X, 1=W, 2=Y, 3=Xexp, 4=Wexp).
+localparam int unsigned LoadFifoDepths [NumStreamSources] = '{
+     4, // X    : depth>4 saves no cycles (Y is critical path)
+     4, // W    : peak 1, protocol minimum
+    32, // Y    : >=32 saturated, only depth that moves total cycles
+     4, // Xexp : peak 4
+     4  // Wexp : peak<=16 on MX, but MX is engine-bound, so 4 is plenty
+};
 
 // Assign input control buses to the relative ID in the vector.
 assign source_ctrl[XsourceStreamId]      = ctrl_i.x_stream_source_ctrl;
@@ -480,8 +488,8 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
   hci_core_assign i_load_assign ( .tcdm_target (load_fifo_d[i]), .tcdm_initiator (virt_tcdm[i]) );
 
   hci_core_fifo #(
-    .FIFO_DEPTH  ( LoadFifoDepth  ), // to avoid protocol violations, as the consumer has a throughput
-                         // of 1 packet over 4 cycles, we need a depth of 4 elements.
+    .FIFO_DEPTH  ( LoadFifoDepths[i] ), // per-stream depth — see LoadFifoDepths[] above
+                         // (protocol minimum is 4: consumer takes 1 packet per 4 cycles)
     .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(ldst_tcdm) )
   ) i_load_tcdm_fifo (
     .clk_i          ( clk_i          ),
@@ -542,8 +550,8 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
       rsp_out_backpressure_cycles_q <= '0;
     end else begin
       cycle_q <= cycle_q + 1;
-      if (dbg_fifo_chk && req_push && !req_pop && (req_occ_q >= LoadFifoDepth)) begin
-        $error("load_fifo[%0d] request path overflow: occ=%0d depth=%0d", i, req_occ_q, LoadFifoDepth);
+      if (dbg_fifo_chk && req_push && !req_pop && (req_occ_q >= LoadFifoDepths[i])) begin
+        $error("load_fifo[%0d] request path overflow: occ=%0d depth=%0d", i, req_occ_q, LoadFifoDepths[i]);
         if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
           $display("[DBG][STREAMER][REQ_OVF] i=%0d cyc=%0d req_occ_q=%0d req_occ_d=%0d req_push=%0b req_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
             i, cycle_q, req_occ_q, req_occ_d, req_push, req_pop,
@@ -562,8 +570,8 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
           viol_print_cnt_q <= viol_print_cnt_q + 1;
         end
       end
-      if (dbg_fifo_chk && rsp_push && !rsp_pop && (rsp_occ_q >= LoadFifoDepth)) begin
-        $error("load_fifo[%0d] response path overflow: occ=%0d depth=%0d", i, rsp_occ_q, LoadFifoDepth);
+      if (dbg_fifo_chk && rsp_push && !rsp_pop && (rsp_occ_q >= LoadFifoDepths[i])) begin
+        $error("load_fifo[%0d] response path overflow: occ=%0d depth=%0d", i, rsp_occ_q, LoadFifoDepths[i]);
         if (dbg_rsp_trace && (viol_print_cnt_q < 16)) begin
           $display("[DBG][STREAMER][RSP_OVF] i=%0d cyc=%0d rsp_occ_q=%0d rsp_occ_d=%0d rsp_push=%0b rsp_pop=%0b q.req=%0b q.gnt=%0b d.req=%0b d.gnt=%0b q.r_valid=%0b q.r_ready=%0b d.r_valid=%0b d.r_ready=%0b",
             i, cycle_q, rsp_occ_q, rsp_occ_d, rsp_push, rsp_pop,
@@ -596,7 +604,7 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
 
   final begin
     $display("[load_fifo %0d] depth=%0d req_peak=%0d rsp_peak=%0d req_bp=%0d rsp_in_bp=%0d rsp_out_bp=%0d",
-      i, LoadFifoDepth, req_occ_peak_q, rsp_occ_peak_q, req_backpressure_cycles_q,
+      i, LoadFifoDepths[i], req_occ_peak_q, rsp_occ_peak_q, req_backpressure_cycles_q,
       rsp_in_backpressure_cycles_q, rsp_out_backpressure_cycles_q);
   end
 `endif
