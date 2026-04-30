@@ -330,7 +330,9 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : state_register
     e16_max_q <= e16_max_d;
     scale_reg_q <= scale_reg_d;
     val_reg_q <= val_reg_d;
-    tree_max_q <= tree_max;  // sample tree_max every cycle
+    // Sample tree_max only when an input handshake completes, so tree_max_q
+    // is not corrupted by stale fp16_data_i during stalls or non-input states.
+    if (fp16_valid_i && fp16_ready_o) tree_max_q <= tree_max;
     for (int i = 0; i < NUM_ELEMS; i++) fp16_buf_q[i] <= fp16_buf_d[i];
     for (int i = 0; i < NUM_LANES; i++) begin
       s1_e8_biased_q[i] <= s1_e8_biased_d[i];
