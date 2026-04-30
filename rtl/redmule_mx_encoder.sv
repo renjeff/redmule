@@ -33,10 +33,15 @@ localparam int BIAS_FP8_E4M3 = 7;
 localparam int BIAS_FP8_E5M2 = 15;
 localparam int BIAS_FP16 = 15;
 
-// State machine — ENCODE split into two pipeline stages + registered OUTPUT
+// State machine — SCAN pipelined (tree_max registered) + ENCODE split into two
+// pipeline stages + registered OUTPUT. The SCAN_DRAIN state absorbs the
+// last tree_max_q comparison after the final SCAN input cycle, breaking
+// the deep combinational path from block_data_q → tree_max → e16_max_q
+// (post-route ~95 levels of logic, −1.0 ns WNS without this register).
 typedef enum logic [2:0] {
     IDLE,
     SCAN,
+    SCAN_DRAIN,   // Absorb last registered tree_max_q into e16_max_q
     ENCODE_EXP,   // Stage 1: exponent computation + special case detection
     ENCODE_MANT,  // Stage 2: mantissa rounding + packing (format-aware)
     OUTPUT        // Registered handoff to consumer
@@ -288,6 +293,9 @@ generate
 endgenerate
 
 logic [4:0] tree_max;
+logic [4:0] tree_max_q;  // Registered tree_max output — breaks the
+                         // combinational path from block_data_q through
+                         // the tree into the running-max compare/register.
 
 redmule_tree_max #(
   .WIDTH (5),
@@ -308,6 +316,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : state_register
     e16_max_q <= 5'd0;
     scale_reg_q <= 8'd0;
     val_reg_q <= '0;
+    tree_max_q <= 5'd0;
     for (int i = 0; i < NUM_ELEMS; i++) fp16_buf_q[i] <= '0;
     for (int i = 0; i < NUM_LANES; i++) begin
       s1_e8_biased_q[i] <= '0;
@@ -321,6 +330,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : state_register
     e16_max_q <= e16_max_d;
     scale_reg_q <= scale_reg_d;
     val_reg_q <= val_reg_d;
+    tree_max_q <= tree_max;  // sample tree_max every cycle
     for (int i = 0; i < NUM_ELEMS; i++) fp16_buf_q[i] <= fp16_buf_d[i];
     for (int i = 0; i < NUM_LANES; i++) begin
       s1_e8_biased_q[i] <= s1_e8_biased_d[i];
@@ -362,14 +372,18 @@ always_comb begin : fsm
       if (fp16_valid_i) begin
         val_reg_d = '0;
         group_idx_d = '0;
-        e16_max_d = tree_max;
+        // Reset running max for new block. tree_max for group 0 is sampled
+        // into tree_max_q at the end of this cycle and absorbed in SCAN
+        // (or SCAN_DRAIN if NUM_GROUPS == 1).
+        e16_max_d = 5'd0;
         for (int l = 0; l < NUM_LANES; l++) begin
           fp16_buf_d[l] = fp16_lane[l];
         end
         if (NUM_GROUPS == 1) begin
-          scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
+          // Single group: route via SCAN_DRAIN to absorb the registered
+          // tree_max_q (1-cycle latency added vs old direct ENCODE_EXP path).
           group_idx_d = '0;
-          next_state = ENCODE_EXP;
+          next_state = SCAN_DRAIN;
         end else begin
           group_idx_d = 1;
           next_state = SCAN;
@@ -388,15 +402,26 @@ always_comb begin : fsm
           elem_idx = group_idx_q * NUM_LANES + l;
           fp16_buf_d[elem_idx] = fp16_lane[l];
         end
-        e16_max_d = (tree_max > e16_max_q) ? tree_max : e16_max_q;
+        // tree_max_q holds the previous group's tree_max (registered).
+        // The current group's tree_max is sampled at the end of this cycle
+        // and absorbed in the next SCAN cycle (or SCAN_DRAIN for the last group).
+        e16_max_d = (tree_max_q > e16_max_q) ? tree_max_q : e16_max_q;
         if (group_idx_q == NUM_GROUPS-1) begin
-          scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
           group_idx_d = '0;
-          next_state = ENCODE_EXP;
+          next_state = SCAN_DRAIN;
         end else begin
           group_idx_d = group_idx_q + 1;
         end
       end
+    end
+
+    SCAN_DRAIN: begin
+      // Final absorb: combine the last registered tree_max_q with the running
+      // max, then compute the shared exponent. No new input consumed.
+      fp16_ready_o = 1'b0;
+      e16_max_d = (tree_max_q > e16_max_q) ? tree_max_q : e16_max_q;
+      scale_reg_d = compute_shared_exp(e16_max_d, mx_format_i);
+      next_state = ENCODE_EXP;
     end
 
     // ---- Stage 1: exponent compute + special case detection ----
