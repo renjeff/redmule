@@ -189,7 +189,14 @@ int main() {
   errors = redmule8_compare_int((uint32_t *)z, (uint32_t *)golden_mx,
                                 m_size * k_size / 4);
 #endif
-  // Dump first 16 elements of rows 0, 32, 33 as hex bytes
+  // BUG: byte-stride below is k_size, but for FP4 (4-bit elements) the
+  // actual byte stride per row is k_size/2 (two elements per byte), and
+  // for FP8 it's k_size. As a result, FP4 rows past row 0 read past the
+  // end of z/golden_mx into adjacent memory and print garbage. The
+  // word-level error counter above is unaffected (it walks the right
+  // number of uint32_t words regardless of element width), so "0 errors"
+  // remains a valid verification verdict; only the visualisation here is
+  // wrong for FP4.
   {
     int words_per_row = k_size / 4;
     int rows[] = {0, 32, 33};
