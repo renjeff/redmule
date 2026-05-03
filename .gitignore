@@ -19,3 +19,22 @@ work
 
 **.md
 *.pdf
+
+# Sweep / regression run artefacts
+sweep_*.csv
+sweep_*.log
+sweep_*.txt
+regress_*.csv
+regress_*.log
+*_detailed.log
+perf_results/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# Editor / backup files
+*.bak
+
+# Local Claude state
+.claude/scheduled_tasks.lock
