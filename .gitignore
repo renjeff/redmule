@@ -36,5 +36,14 @@ __pycache__/
 # Editor / backup files
 *.bak
 
-# Local Claude state
-.claude/scheduled_tasks.lock
+# AI tooling state (Claude / Codex / Cursor / Aider / etc.)
+.claude/
+CLAUDE.md
+.codex/
+.cursor/
+.cursorrules
+.cursorignore
+.aider*
+.continue/
+.windsurf/
+.github/copilot-instructions.md
