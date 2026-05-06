@@ -18,7 +18,7 @@ golden-model/mxfp-main-golden-Gamze/**
 work
 
 **.md
-*.pdf
+/*.pdf
 
 # Sweep / regression run artefacts
 sweep_*.csv
@@ -35,15 +35,3 @@ __pycache__/
 
 # Editor / backup files
 *.bak
-
-# AI tooling state (Claude / Codex / Cursor / Aider / etc.)
-.claude/
-CLAUDE.md
-.codex/
-.cursor/
-.cursorrules
-.cursorignore
-.aider*
-.continue/
-.windsurf/
-.github/copilot-instructions.md

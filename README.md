@@ -1,3 +1,26 @@
+# RedMulE-MX
+
+This fork extends [RedMulE](https://github.com/pulp-platform/redmule) with hardware
+support for the OCP Microscaling (MX) data formats: MXFP8 (E4M3, E5M2),
+MXFP6 (E3M2, E2M3), and MXFP4 (E2M1). MX is used exclusively for
+storage and TCDM transfer; the FP16 compute datapath is untouched.
+Dedicated decoder and encoder modules sit at the accelerator's input
+and output interfaces, reconstructing FP16 values from MX blocks via
+exponent-domain scaling on the input side and quantizing FP16 results
+back to MX on the output side. Tiling logic is extended to handle the
+packed-vs-unpacked dimension duality, and a dedicated exponent
+prefetch path with mark-rewind buffering avoids redundant TCDM
+accesses.
+
+The full thesis report and final-presentation slides are available
+under [`report/`](./report/).
+
+The remainder of this README documents the original RedMulE features
+and integration paths that this work builds on, followed by the
+MX-specific build and simulation commands in [Getting Started](#getting-started).
+
+---
+
 # RedMulE
 RedMulE (**Red**uced-Precision Matrix **Mul**tiplication **E**ngine) is an open-source hardware accelerator based on the [HWPE](https://hwpe-doc.readthedocs.io/en/latest/index.html) template. It is designed to accelerate General Matrix-Matrix Operations (GEMM-Ops) on Floating-Point (FP) FP16 and FP8 input matrices. The keyword GEMM-Ops includes all the matrix operations of the kind **Z = (X op1 W) op2 Z**. The operators *op1* and *op2* can be any of those grouped in the following table:
 
@@ -220,52 +243,84 @@ asm volatile(
 The unified `sw/redmule.c` provides an example of code for programming RedMulE either through its memory-mapped interface or through a dedicate ISA extension.
 
 ### Getting Started
-The RedMulE repository offers support for different simulation targets. At the moment, the support is for Questasim (`vsim`) and Verilator (`verilator`).
-
-If you are working on ETH Lagrev servers, sourcing one of the setup scripts located under the `scripts` folder suffice to export all the required environment variables. Otherwise, it is recommanded to install a riscv [toolchain](https://github.com/pulp-platform/pulp-riscv-gnu-toolchain) and do the following:
-```bash
-export PATH=/absolute/path/to/riscv/toolchain/bin:$PATH
-export PULP_RISCV_GCC_TOOLCHAIN=/absolute/path/to/riscv/toolchain
-export PATH=/absolute/path/to/gcc/bin:$PATH
-```
-
-The `scripts/setup-hwpe.sh` offers an example of bash script to export the required environment variables to test the HWPE memory-mapped configuration of the thesbench, while the `scripts/setup-complex.sh` does the same for the ISA extension-based configuration. There is also a `scripts/setup64.sh` that shows how the same can be done for a 64-bit toolchain.
+The RedMulE-MX repository supports Questasim (`vsim`) and Verilator (`verilator`).
 
 #### Install requirements
-
-A fully-open-source simulation environment is available for RedMulE, based on GCC and Verilator. To install the needed tools, run:
+A fully-open-source simulation environment is available, based on GCC and Verilator:
 ```bash
-make verilator # Installs verilator
-make riscv32-gcc # Installs GCC
+make verilator    # Installs verilator
+make riscv32-gcc  # Installs GCC
 ```
-The compiler and Verilator are installed under a `vendor/install` directory.
+The compiler and Verilator are installed under `vendor/install/`.
 
-RedMulE relies on [Bender](https://github.com/pulp-platform/bender) to handle hardware dependencies. Install bender by executing:
+RedMulE-MX relies on [Bender](https://github.com/pulp-platform/bender) to handle hardware dependencies. Install with:
 ```bash
 make bender
 ```
-Bender installation is not mandatory. If any bender version is already installed, it is just needed to add the absolute path to the `bender` binary to the `PATH` variable, or by exporting the `BENDER` environment variable to where you installed the bender binary.
+If Bender is already installed system-wide, set the `BENDER` environment variable to its binary path instead.
 
-To clone the dependencies and generate the compilation script we need to define the target we intend to use to simulate the accelerator testbench. The target selection is done by using the `target = <target_type>` at compilation time. Let's assume we want to use Verilator. To clone the dependencies and create the compilation scripts for hardware simulation, run:
+#### Environment setup
+
+If you are on ETH Lagrev servers, sourcing one of the setup scripts under `scripts/` exports the required toolchain and simulator paths. Otherwise install a RISC-V [toolchain](https://github.com/pulp-platform/pulp-riscv-gnu-toolchain) and export:
 ```bash
-make hw-script target=verilator
+export PATH=/absolute/path/to/riscv/toolchain/bin:$PATH
+export PULP_RISCV_GCC_TOOLCHAIN=/absolute/path/to/riscv/toolchain
 ```
 
-The compiled hardware is then built with the command:
+For MX simulations the canonical environment script is:
 ```bash
-make hw-build target=verilator (UseXif=1 if you want to build for the XiF interface)
+source scripts/run_sim_env.sh
+export LD_LIBRARY_PATH=$(pwd)/vendor/install/riscv/lib:$LD_LIBRARY_PATH
+```
+The vendor GCC 13.2.0 needs `libmpfr.so.6`; if not present on the host, symlink it from the system MPFR (e.g. `vendor/install/riscv/lib/libmpfr.so.6 → /lib64/libmpfr.so.4`).
+
+> **Note**: do not use the PULP-SDK GCC 7.1.1 with `Gcc=""` and `XTEN=imc` — it produces binaries that deadlock the simulator (wrong ISA encoding, no `_zicsr`).
+
+#### Build the hardware
+```bash
+make hw-script target=vsim   # clone deps + generate compile scripts
+make hw-build  target=vsim   # compile RTL (vsim or verilator)
+```
+Add `UseXif=1` to build the ISA-extension co-processor variant.
+
+### Running an FP16 simulation
+```bash
+# 1. Generate FP16 golden vectors
+make golden-clean
+make golden OP=gemm M=<M> N=<N> K=<K>
+
+# 2. Build SW (dimensions are picked up from the headers above)
+make sw-clean
+make sw-build MX_ENABLE=0 target=vsim
+
+# 3. Run
+timeout 360 make hw-run target=vsim
 ```
 
-In case one wants to run a simulation using Questasim, it sufficient to re-run the above commands replacing the `target=vsim` string.
+> **Critical**: `make sw-clean` is required between runs that change `M`, `N`, `K`, or format. The implicit `tensor_dim.h` dependency is not tracked by `sw-build`, so without `sw-clean` the binary keeps the previous dimensions baked in.
 
-### Run the test
-
-To run the available tests, just do:
+### Running an MX simulation
 ```bash
-make sw-build (UseXif=1 if you want to compile the test for the XiF interface)
-make hw-run target=verilator (gui=1 to open the GtkWave tool or the Questasim Graphic User Interface depending on the value of `target`, and UseXif=1 if you want to run test for the XiF interface)
+# Build SW with MX enabled. MX_FORMAT must be a bare code:
+#    e4m3, e5m2, e3m2, e2m3, e2m1 (no "fp8_" / "fp6_" prefix).
+# sw-build with MX_ENABLE=1 pulls in mx-headers, so this single command regenerates the FP16 baseline,
+# the MX-encoded vectors, and the binary.
+make sw-clean
+make sw-build M=<M> N=<N> K=<K> MX_ENABLE=1 MX_FORMAT=<fmt> target=vsim
+
+# Run
+timeout 360 make hw-run target=vsim
 ```
-It is possible to run the test introducing a parametric probability of stall by explicitly passing the `P_STALL` parameter while running the test (`P_STALL=0.1` means a stall probability of the 10%).
+If MX headers do not regenerate, delete `sw/build/.mx_dimensions` to force a refresh.
+
+For sweep scripts running many configs, it is faster to call `make golden` and `make mx-headers M=<M> N=<N> K=<K> MX_FORMAT=<fmt> MX_ENABLE=1 MX_SKIP_FP16=1` separately so the FP16 baseline is not regenerated on every iteration.
+
+`P_STALL=<prob>` can be passed to `hw-run` to inject TCDM stall events (e.g. `P_STALL=0.1` for 10%). Add `gui=1` to open the simulator GUI / GtkWave.
+
+### Common pitfalls
+- **`tensor_dim.h` not updating in build**: always `make sw-clean` after a dim/format change.
+- **Orphaned `vsim` processes**: check with `ps aux | grep vsim` and kill manually if a run is interrupted.
+- **Stale transcript output**: capture `make hw-run` output from stdout rather than re-reading `target/sim/vsim/transcript`, which can contain prior-run data.
 
 ### Golden Model Generation
 It is possible to generate fresh golden models directly from the `redmule` folder. The parameters that can be used to generate different golden models are the following:
